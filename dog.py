@@ -1,7 +1,7 @@
 import requests
 import re
 
-def fill_submit (html, url, session = None, idx = 0, **data):
+def fill_submit (html, url, idx = 0, nonstdtags = [] , session = None, **data):
 
     tform = re.findall (r'<form.+?</form>', html, re.DOTALL | re.MULTILINE |
             re.IGNORECASE)[idx]
@@ -20,9 +20,14 @@ def fill_submit (html, url, session = None, idx = 0, **data):
     else:
         targs['url'] = re.sub (url.split ('/')[-1], targs['url'], url)
 
-    ifields = re.findall(r'<input.+?name.*?=.*?(?:"|\')(.*?)(?:"|\')', tform, re.DOTALL | re.MULTILINE)
+    ifieldp = r'.+?name.*?=.*?(?:"|\')(.*?)(?:"|\')'
 
-    ifields += re.findall(r'<button.+?name.*?=.*?(?:"|\')(.*?)(?:"|\')', tform, re.DOTALL | re.MULTILINE)
+    ifields = re.findall(r'<\s*input'+ifieldp, tform, re.DOTALL | re.MULTILINE)
+
+    if len (nonstdtags) > 0 :
+        ifields += [ f for farr in [ re.findall(r'<\s*' + i +
+            ifieldp, tform, re.DOTALL | re.MULTILINE) for i in nonstdtags if not re.match ('input',
+                i, re.IGNORECASE) ] for f in farr if f not in ifields]
 
     targs['data'] = { f: None for f in ifields }
 
@@ -49,5 +54,5 @@ def fill_submit (html, url, session = None, idx = 0, **data):
 
     else:
 
-        return requests.Request(**targs).prepare ()
+        return requests.Request(**targs)
 
