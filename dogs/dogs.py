@@ -1,7 +1,14 @@
 import requests
 import re
+from dogs.html_utils import uncomment_html, txtnode_to_name_attr
 
-def fill_submit (html, url, idx = 0, nonstdtags = [] , session = None, **data):
+
+#def fill_radio ():
+
+#def fill_checkbox ():
+
+def fill_form (html, url, idx = 0, nonstdtags = [] , session = None, **data):
+    html = uncomment_html (html)
 
     tform = re.findall (r'<form.+?</form>', html, re.DOTALL | re.MULTILINE |
             re.IGNORECASE)[idx]
@@ -11,7 +18,7 @@ def fill_submit (html, url, idx = 0, nonstdtags = [] , session = None, **data):
     targs['method'] = re.findall(r'<form.+?method.*?=.*?(?:"|\')(.*?)(?:"|\')', tform,
             re.DOTALL | re.MULTILINE)[0].upper ()
 
-    targs['url'] = re.findall(r'<form.+?action.*?=.*?(?:"|\')(.*?)(?:"|\')', tform,
+    targs['url'] = re.findall(r'<form.+?action\s*=\s*(?:"|\')(.*?)(?:"|\')', tform,
             re.DOTALL | re.MULTILINE)[0]
 
     if len (targs['url']) == 0 :
@@ -31,7 +38,12 @@ def fill_submit (html, url, idx = 0, nonstdtags = [] , session = None, **data):
 
     targs['data'] = { f: None for f in ifields }
 
-    targs['data'].update (**{ f: data[f] for f in data if f in ifields })
+    tnodes = list (data.keys())
+    names = txtnode_to_name_attr (tform, tnodes)
+
+    targs['data'].update (**{ names[i] : data[tnodes[i]] for i in range (len
+        (names)) if
+        names[i] is not None and names[i] in ifields })
 
     for k in targs['data']:
 
@@ -55,4 +67,22 @@ def fill_submit (html, url, idx = 0, nonstdtags = [] , session = None, **data):
     else:
 
         return requests.Request(**targs)
+
+#def form_type ():
+
+
+#def click_form ():
+
+#def click_link ():
+
+def click (html, ltext, idx = 0, session = None):
+    tagcap = r'<\s*(?P<tag>\b\w+\b).+?>\s*'+ ltext + r'\s*<\s*/\1\s*>'
+    for i, m in enumerate (re.finditer(tagcap, htm, re.MULTILINE)):
+        if i == idx:
+            break
+
+    if re.fullmatch ('button', m.group ('tag'), flags = re.IGNORECASE):
+        tform 
+    elif re.fullmatch ('a', m.group ('tag'), flags = re.IGNORECASE):
+
 
