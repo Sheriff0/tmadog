@@ -13,14 +13,14 @@ def gethtml_tag (nodestr):
         return None
 
 
-def subnomatch (text, post, *rest):
+def subnomatch (text, post, **rest):
     
     def cb (mobj):
              alt_pat, m = mobj
              if not m:
-                m = re.search (alt_pat, text, *rest)
+                m = re.search (alt_pat, text, **rest)
                 if not m:
-                    return None
+                        return None
              if m:
                 return eval ('m.%s' % (post))
 
@@ -36,7 +36,7 @@ def txtnode_to_name_attr (html, targ):
         else:
             return None
     elif isinstance (targ, list):
-       return list (map (subnomatch (html, 'group("name")', re.MULTILINE), 
+       return list (map (subnomatch (html, 'group("name")', flags = re.MULTILINE), 
                [ (r'<\s*.+?name\s*=\s*(\'|")(?P<name>' + t + r')\1.*?>', re.search (r'<\s*.+?name\s*=\s*(\'|")(?P<name>[^\'"]*)\1.*?>\s*'+ t +
            r'\s*<\s*/.+?>', html, re.MULTILINE)) for t in targ ])) 
 
@@ -56,8 +56,9 @@ def txtnode_to_value_attr (html, targ):
             return m.group ('value')
         else:
             return None
+
     elif isinstance (targ, list):
-       return list (map (subnomatch (html, 'group("value")', re.MULTILINE), 
+       return list (map (subnomatch (html, 'group("value")', flags = re.MULTILINE), 
                [ (r'<\s*.+?value\s*=\s*(\'|")(?P<value>' + t + r')\1.*?>', re.search (r'<\s*.+?value\s*=\s*(\'|")(?P<value>[^\'"]*)\1.*?>\s*'+ t +
            r'\s*<\s*/.+?>', html, re.MULTILINE)) for t in targ ])) 
 
