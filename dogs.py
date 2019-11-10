@@ -1,9 +1,13 @@
 import requests
 import re
-from html_utils import uncomment_html, txtnode_to_name_attr, txtnode_to_value_attr
+from dog_html_utils import uncomment_html, txtnode_to_name_attr, txtnode_to_value_attr
+
+#__all__ = ['click', 'fill_form', 'getdef_value']
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
+
+LastForm = {}
 
 #def fill_radio ():
 
@@ -16,12 +20,11 @@ def undo_if_none (t):
         else:
             return v
 
-def getdef_value (form, t, fb = None):
+def getdef_value (form, t, fb = False):
     m = re.search (r'<\s*.+?name\s*=\s*(\'|")(?P<name>' + t + r')\1.*?>', form)
-    
-    m = re.search (r'value\s*=\s*(\'|")(?P<value>[^\'"]*?)\1.*?>',
-            m.group(0))
-    if m:
+    if isinstance(m, re.Match):
+        m = re.search (r'value\s*=\s*(\'|")(?P<value>.*?)\1.*?>', m.group(0))
+    if isinstance (m, re.Match):
         return m.group('value')
     else:
         if fb:
@@ -68,7 +71,7 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
     targs['data'] = { f: None for f in ifields }
 
     if flags  == (NO_TXTNODE_KEY | NO_TXTNODE_VALUE):
-        targs['data'].update (**{k: data[k] for k in ifields if k in data })
+        targs['data'].update (**{k: data[k] for k in data if k in targs['data'] })
     
     else:
         if not flags & NO_TXTNODE_VALUE:
@@ -102,11 +105,14 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     kwargs.pop('method', None)
 
+    LastForm = targs['data']
+
     if targs['method'] in ('GET', 'get'):
         kwargs.pop('params', None)
         targs['params'] = targs['data']
         targs['data'] = None
     
+
     session = kwargs.pop('session', None)
 
     if isinstance (session, requests.Session):
@@ -148,8 +154,7 @@ def click (html, ltext, url, idx = 0, **kwargs):
                 turl = url
 
             if 'session' in kwargs and isinstance (kwargs['session'], requests.Session):
-                session = kwargs['session']
-                del kwargs['session']
+                session = kwargs.pop('session')
 
                 treq = session.prepare_request (requests.Request(method =
                 'GET', url =

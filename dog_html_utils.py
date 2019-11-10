@@ -27,7 +27,7 @@ def subnomatch (text, post, **rest):
     return cb
 
 
-def txtnode_to_name_attr (html, targ):
+def txtnode_to_name_attr (html, targ, delim = None):
     
     if isinstance (targ, str):
         m = re.search (r'<\s*.+?name\s*=\s*(\'|")(?P<name>[^\'"]*)\1.*?>\s*'+ targ + r'\s*<\s*/.+?>' , html, re.MULTILINE)
@@ -37,12 +37,15 @@ def txtnode_to_name_attr (html, targ):
             return None
     elif isinstance (targ, list):
        return list (map (subnomatch (html, 'group("name")', flags = re.MULTILINE), 
-               [ (r'<\s*.+?name\s*=\s*(\'|")(?P<name>' + t + r')\1.*?>', re.search (r'<\s*.+?name\s*=\s*(\'|")(?P<name>[^\'"]*)\1.*?>\s*'+ t +
+               [ (r'<\s*.+?name\s*=\s*(\'|")(?P<name>' + t + r')\1.*?>',
+                   re.search
+                   (r'<\s*.+?name\s*=\s*(\'|")(?P<name>[^\'"]*)\1.*?>\s*'+
+                       r'\s*'.join (t.strip ().split (delim)) +
            r'\s*<\s*/.+?>', html, re.MULTILINE)) for t in targ ])) 
 
 
 
-def txtnode_to_value_attr (html, targ):
+def txtnode_to_value_attr (html, targ, delim = None):
     if isinstance (targ, str):
         m = re.search (r'<\s*.+?value\s*=\s*(\'|")(?P<value>[^\'"]*)\1.*?>\s*'+ targ
                 + r'\s*<\s*/.+?>', html,
@@ -59,7 +62,10 @@ def txtnode_to_value_attr (html, targ):
 
     elif isinstance (targ, list):
        return list (map (subnomatch (html, 'group("value")', flags = re.MULTILINE), 
-               [ (r'<\s*.+?value\s*=\s*(\'|")(?P<value>' + t + r')\1.*?>', re.search (r'<\s*.+?value\s*=\s*(\'|")(?P<value>[^\'"]*)\1.*?>\s*'+ t +
+               [ (r'<\s*.+?value\s*=\s*(\'|")(?P<value>' + t + r')\1.*?>',
+                   re.search
+                   (r'<\s*.+?value\s*=\s*(\'|")(?P<value>[^\'"]*)\1.*?>\s*'+
+                       r'\s*'.join (t.strip ().split (delim)) +
            r'\s*<\s*/.+?>', html, re.MULTILINE)) for t in targ ])) 
 
 
