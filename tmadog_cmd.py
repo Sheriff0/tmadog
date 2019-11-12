@@ -18,71 +18,36 @@ TMADOGDB = 'tmadogdb'
 #    
 #    query = tmadog_utils.get_query (qst.text)
 
+def scrape_tma (db = TMADOGDB, **kwargs):
+    rl = kwargs.pop ('rl', None)
 
-def scrape_tma (rl, db = TMADOGDB, **kwargs):
-
-    repeats = 0
-    conn = sqlite3.connect (db)
-
-    try:
-        conn.execute ('''SELECT * from questions;''')
-
-    except sqlite3.OperationalError:
-        conn.execute ('''CREATE TABLE questions (dogid INTEGER PRIMARY KEY
-            AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE, ans VARCHAR, nouid CHAR);''')
-
-
-    if rl.startswith ('http'):
-        session = kwargs.pop ('session', requests.Session())
-
-        headers = kwargs.pop ('headers', None)
-
-        matno = kwargs.pop ('matno', None)
-        crscode = kwargs.pop ('crscode', None)
-        tma = kwargs.pop ('tma', 1)
-
-        samplehtml = kwargs.pop ('html', None)
-        nqst = int (kwargs.pop ('nqst', 1))
-        
-        if matno and crscode and samplehtml:
-            
-            req = dogs.dogs.fill_form(samplehtml, url = rl, flags = 3, idx=0,
-                    nonstdtags =['button'], headers = headers)
-            
-            v = ''
-
-            for k in req.data:
-                if re.search (r'nou\d{9}', req.data[k], flags = re.IGNORECASE):
-                    v = req.data[k]
-                    break
-
-            v = re.sub (r'nou\d{9}', matno.upper(), v, flags = re.IGNORECASE)
-            v = re.sub (r'\w{3}\d{3}(\D)', crscode.upper() + r'\1', v, count =
-                    1, flags = re.IGNORECASE)
-
-            v = re.sub (r'tma[1-3]', 'TMA' + str (tma), v, flags = re.IGNORECASE)
-            req.data[k] = v
-
-
+    if rl and rl.startswith ('http'):
+        dt = []
+        nqst = kwargs.pop ('nqst', 1)
+        try:
+            fetch = tmadog_utils.fetchtma (rl, **kwargs) 
             while nqst:
-                    res = session.post(req.url, data = req.data, headers =
-                            req.headers)
-    #                res.raise_for_status ()
-                    return res
+                m,qid = fetch()
+                dt.append (tmadog_utils.QstDbT (m, nouid = qid))
+                nqst -= 1
 
-                    m = tmadog_utils.get_query (res.text)
-                    if m :
-                        try:
-                            conn.execute ('''INSERT INTO questions (qdescr) VALUES (?);''', ('+'.join (m.strip ().split ()),))
+            if len (dt):
+                tmadog_utils.updatedb_questions(db, dt)
 
-                        except sqlite3.IntegrityError:
-                            repeats += 1
-                    else:
-                        return res
-                
-                    nqst -= 1
+        except requests.HTTPError as err:
+            if len (dt):
+                tmadog_utils.updatedb_questions(db, dt)
+            print (err.args[0])
+            return -1
+
+    elif not rl:
+        html = kwargs.pop ('html', None)
+        if html:
+            m,qid = (tmadog_utils.get_query (html), tmadog_utils.get_qid (html))
+            return tmadog_utils.updatedb_questions(db, [ tmadog_utils.QstDbT (m, nouid = qid) ])
 
     else:
+        fstr = ''
         try:
             with open (rl, 'rt') as f:
                 fstr = f.read ()
@@ -97,19 +62,6 @@ def scrape_tma (rl, db = TMADOGDB, **kwargs):
         fpat = r'qtn\s*:.*?\n(.+?)ans\s*:.*?\n(.+?)\n' 
 
 
-        for m in re.finditer (fpat, fstr, flags = re.MULTILINE | re.IGNORECASE
-                | re.DOTALL ):
-            try:
-                conn.execute ('''INSERT INTO questions (qdescr, ans) VALUES (?, ?);''', ('+'.join (m.group (1).strip ().split ()), '+'.join (m.group (2).strip ().split ())))
-
-            except sqlite3.IntegrityError:
-                repeats += 1
-
-    conn.commit ()
-
-    conn.close()
-
-    if repeats > 0:
-        print ('%d questions repeated' % (repeats,))
-
-    return None
+        return tmadog_utils.updatedb_questions (db, [ tmadog_utils.QstDbT (m[0], m[1]) for m in
+            re.findall (fpat, fstr, flags = re.MULTILINE | re.IGNORECASE
+                | re.DOTALL ) ])

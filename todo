@@ -1,0 +1,1 @@
+make tmadog able to recognize invalid login attempt and other non-http errors

@@ -108,17 +108,22 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
     LastForm = targs['data']
 
     if targs['method'] in ('GET', 'get'):
-        kwargs.pop('params', None)
-        targs['params'] = targs['data']
+        params = kwargs.pop('params', {})
+        targs['params'] = targs['data'].update (**params)
         targs['data'] = None
     
 
     session = kwargs.pop('session', None)
 
     if isinstance (session, requests.Session):
-        treq = session.prepare_request (requests.Request(**targs, **kwargs))
+        treq = requests.Request(**targs, **kwargs)
+        
+        met = targs.pop ('method')
 
-        return session.send (treq)
+        if met in ('POST', 'post'):
+            return session.post (**targs, **kwargs)
+        else:
+            return session.get (**targs, **kwargs)
 
     else:
 
@@ -156,10 +161,8 @@ def click (html, ltext, url, idx = 0, **kwargs):
             if 'session' in kwargs and isinstance (kwargs['session'], requests.Session):
                 session = kwargs.pop('session')
 
-                treq = session.prepare_request (requests.Request(method =
-                'GET', url =
-                turl, **kwargs))
-                return session.send (treq) 
+                return session.get (url = turl, **kwargs)
+
             else:
         
                 return requests.Request(method = 'GET', url = turl, **kwargs)
