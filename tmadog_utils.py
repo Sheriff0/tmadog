@@ -3,11 +3,17 @@ import dogs
 import requests
 import collections
 import sqlite3
+import hashlib
 
-QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, nouid', defaults =
-        [None, None])
+QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, nouid, crscode')
 
-def login (session, url, ldata):
+#CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
+
+def login (session, url, **ldata):
+    
+    if not ldata:
+        return -1
+
     index = session.get (url, headers = {'referer': url})
 
     index.raise_for_status()
@@ -104,43 +110,136 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
 
     return fetcher
 
-#def updatedb_courses ():
 
-def updatedb_questions (db, data):
+def updatedb (db, data):
 
     repeats = 0
     
     conn = sqlite3.connect (db)
+
+    conn.row_factory = sqlite3.Row
+
+    cur = conn.cursor ()
+
+    ierr = None
     
     try:
-        conn.execute ('''SELECT * from questions;''')
+        cur.executescript ('''
+	CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
+		AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
+
+	CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
+		AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, qid INTEGER NOT
+                NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
+                UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, nouid CHAR);
+
+	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR NOT NULL, qref INTEGER
+		NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
+		CASCADE ON UPDATE CASCADE, crsref INTEGER UNIQUE DEFAULT NULL
+		REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
+		UPDATE CASCADE);
+                ''')
 
     except sqlite3.OperationalError as err:
-        if (re.search ('no\s+such\s+table', err.args[0], flags =
-            re.IGNORECASE)):
-            conn.execute ('''CREATE TABLE questions (dogid INTEGER PRIMARY KEY
-                    AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE, ans VARCHAR,
-                    nouid CHAR);''')
-        else:
-            print (err.args[0])
-            conn.close ()
-            return -1
+        print ('create: ',err.args[0])
+        conn.close ()
+        return -1
 
+
+    qid, cid, sha1 = None, None, None
 
     for datum in set (map ( 
-        lambda t: QstDbT('+'.join (t.qdescr.strip ().split ()), t.ans, t.nouid), 
+        lambda t: QstDbT('+'.join (re.sub (r'\\[ntr]', ' ', t.qdescr.strip
+            ()).split ()), t.ans, t.nouid,
+            t.crscode), 
         data)):
         try:
-            conn.execute ('''INSERT INTO questions (qdescr, ans, nouid)
-                    VALUES (?, ?, ?);''', (datum.qdescr, datum.ans, datum.nouid))
+            cur.execute ('''INSERT INTO questions (qdescr)
+                    VALUES (?);''', (datum.qdescr,))
 
-        except sqlite3.IntegrityError:
+            qid = cur.lastrowid
+            cid, sha1 = None, None
+
+            cur.execute ('''INSERT INTO courses (crscode, qid, ready,
+            nouid) VALUES
+                    (?, ?, ?, ?)''', (
+                        datum.crscode,
+                        qid,
+                        (datum.ans and datum.crscode and datum.nouid) is not None,
+                        datum.nouid
+                        ))
+
+            cid = cur.lastrowid
+
+            cur.execute ('''
+                    INSERT INTO answers (ans, qref, crsref) VALUES (?, ?,
+                    ?);
+                    ''', (
+                        datum.ans,
+                        qid,
+                        cid
+                        ))
+
+        except sqlite3.IntegrityError as ierr:
+            
             repeats += 1
+
+            dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
+
+            crsref = cur.execute (''' 
+                    SELECT * FROM courses WHERE (crscode = ? AND nouid = ? AND
+                    qid = ?) OR (qid = ? AND ready = FALSE) LIMIT 1
+                    ''', (
+                        datum.crscode,
+                        datum.nouid,
+                        dupq['dogid'],
+                        dupq['dogid'],
+                        )).fetchone() or {
+                                'cid': None, 
+                                'qid': dupq['dogid'],
+                                'crscode': None,
+                                'ready': False,
+                                'nouid': None
+                                } 
+    
+            ansref = cur.execute ('''SELECT * FROM answers WHERE qref =
+                    ? AND crsref = ?;''', (dupq['dogid'],
+                        crsref['cid'])).fetchone () or {
+                                'ans': None, 
+                                'qref': None, 
+                                'crsref': None
+                                }
+
+            cur1 = conn.cursor ()
+
+            cur1.execute (''' 
+                    REPLACE INTO courses (cid, crscode, qid, ready, nouid)
+                    VALUES (?, ?, ?, ?, ?)
+                    ''', (
+                        crsref['cid'],
+                        datum.crscode or crsref['crscode'],
+                        crsref['qid'],
+                        ((ansref['ans'] or datum.ans) and (datum.nouid or
+                            crsref['nouid']) and (crsref['crscode'] or datum.crscode)) is not None,
+                        datum.nouid or crsref['nouid']
+                        ))
+
+            cid = cur1.lastrowid
+
+            cur.execute (''' 
+                    REPLACE INTO answers (ans, qref, crsref) VALUES (?,
+                    ?, ?)
+                    ''', (
+                        datum.ans or ansref['ans'],
+                        dupq['dogid'],
+                        cid
+                        ))
         
         except sqlite3.OperationalError as err:
-            print (err.args[0])
+            print ('insert/replace: ', err.args[0])
             conn.close ()
             return -1
+
 
     try:
         conn.commit ()
