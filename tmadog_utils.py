@@ -133,7 +133,7 @@ def updatedb (db, data):
                 NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
                 UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, nouid CHAR);
 
-	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR NOT NULL, qref INTEGER
+	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, qref INTEGER
 		NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
 		CASCADE ON UPDATE CASCADE, crsref INTEGER UNIQUE DEFAULT NULL
 		REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
@@ -149,9 +149,12 @@ def updatedb (db, data):
     qid, cid, sha1 = None, None, None
 
     for datum in set (map ( 
-        lambda t: QstDbT('+'.join (re.sub (r'\\[ntr]', ' ', t.qdescr.strip
-            ()).split ()), t.ans, t.nouid,
-            t.crscode), 
+        lambda t: QstDbT(
+            '+'.join (re.sub (r'\\[ntr]', ' ', t.qdescr.lower().strip ()).split ()), 
+            t.ans.strip().lower() if isinstance (t.ans, str) else t.ans, 
+            t.nouid.strip() if isinstance (t.nouid, str) else t.nouid,
+            t.crscode.strip().lower() if isinstance (t.crscode, str) else t.crscode
+            ), 
         data)):
         try:
             cur.execute ('''INSERT INTO questions (qdescr)
@@ -188,12 +191,13 @@ def updatedb (db, data):
 
             crsref = cur.execute (''' 
                     SELECT * FROM courses WHERE (crscode = ? AND nouid = ? AND
-                    qid = ?) OR (qid = ? AND ready = FALSE) LIMIT 1
+                    qid = ?) OR (qid = ? AND ready = ?) LIMIT 1
                     ''', (
                         datum.crscode,
                         datum.nouid,
                         dupq['dogid'],
                         dupq['dogid'],
+                        False
                         )).fetchone() or {
                                 'cid': None, 
                                 'qid': dupq['dogid'],
@@ -202,9 +206,12 @@ def updatedb (db, data):
                                 'nouid': None
                                 } 
     
-            ansref = cur.execute ('''SELECT * FROM answers WHERE qref =
-                    ? AND crsref = ?;''', (dupq['dogid'],
-                        crsref['cid'])).fetchone () or {
+            ansref = cur.execute ('''SELECT * FROM answers WHERE (qref =
+                    ? AND crsref = ?) OR qref = ?;''', (
+                        dupq['dogid'],
+                        crsref['cid'],
+                        dupq['dogid']
+                        )).fetchone () or {
                                 'ans': None, 
                                 'qref': None, 
                                 'crsref': None

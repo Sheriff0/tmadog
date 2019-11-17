@@ -3,6 +3,7 @@ import sqlite3
 import re
 import requests
 import dogs
+import builtins
 
 
 __all__ = ['submit', 'hack', 'scrape_tma']
@@ -39,7 +40,7 @@ def scrape_tma (db = TMADOGDB, **kwargs):
             if len (dt):
                 return tmadog_utils.updatedb(db, dt)
 
-        except requests.HTTPError as err:
+        except builtins.BaseException as err:
             if len (dt):
                 tmadog_utils.updatedb(db, dt)
             print (err.args[0])
@@ -69,7 +70,7 @@ def scrape_tma (db = TMADOGDB, **kwargs):
 
 
         return tmadog_utils.updatedb (db, [ tmadog_utils.QstDbT (m[0], m[1],
-            crscode = crscode, ans = None) for m in
+            crscode = crscode, nouid = None) for m in
             re.findall (fpat, fstr, flags = re.MULTILINE | re.IGNORECASE
                 | re.DOTALL ) if not re.fullmatch (r'\s+',m[0]) and not
             re.fullmatch (r'\s+', m[1]) ])

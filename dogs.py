@@ -2,6 +2,8 @@ import requests
 import re
 from dog_html_utils import uncomment_html, txtnode_to_name_attr, txtnode_to_value_attr
 
+re.Match = type (re.match (r'foo', 'foo'))
+
 #__all__ = ['click', 'fill_form', 'getdef_value']
 
 NO_TXTNODE_KEY = 0b0001
