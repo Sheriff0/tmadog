@@ -73,13 +73,17 @@ def get_qid (html):
 
 def fetchtma (url, matno, tma , crscode, html, **kwargs):
 
-    def fetcher ():
-        res = session.post(req.url, data = req.data, headers =
+    def fetcher (url = None, headers = {}):
+        url = url if url else req.url
+        req.headers.update (**headers)
+        res = session.post(url, data = req.data, headers =
             req.headers)
         res.raise_for_status ()
-        m = get_query (res.text)
-        if m:
-            return (m, get_qid (res.text))
+        m = dogs.fill_form (res.text, 'https://foo/foo.html', flags =
+                dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+                data = { 'ans': None })
+        if 'qdescr' in m:
+            return m
         else:
             raise requests.HTTPError ('Not a Question Page', res)
 
@@ -109,6 +113,155 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
         raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
 
     return fetcher
+
+
+#def update_hacktb (db, data):
+#
+#    repeats = 0
+#    
+#    conn = sqlite3.connect (db)
+#
+#    conn.row_factory = sqlite3.Row
+#
+#    cur = conn.cursor ()
+#
+#    ierr = None
+#    
+#    try:
+#        cur.executescript ('''
+#	CREATE TABLE IF NOT EXISTS hacktb (qref INTEGER NOT NULL UNIQUE
+#        REFERENCES courses (cid), 
+#        opta VARCHAR NOT NULL,
+#        optb VARCHAR NOT NULL,
+#        optc VARCHAR NOT NULL,
+#        optd VARCHAR NOT NULL,
+#        );
+#                ''')
+#
+#    except sqlite3.OperationalError as err:
+#        print ('create: ',err.args[0])
+#        conn.close ()
+#        return -1
+#
+#
+#    qid, cid, = None, None
+#
+#    for datum in set (data):
+#        try:
+#            crsref = cur.execute ('''
+#                    SELECT * FROM courses WHERE nouid = ? AND crscode = ?
+#                    ;''', (datum['qid'], datum['crscode'].lower ())).fetchone ()
+#            or {
+#                    'cid': None,
+#                    'crscode': datum['crscode'].lower (),
+#                    'nouid': datum['qid'],
+#                    'ready': False,
+#                    'qid': None
+#                    }
+#
+#
+#            cur.execute ('''REPLACE INTO courses (cid, crscode, qid, ready,
+#            nouid) VALUES
+#                    (?, ?, ?, ?, ?)''', (
+#                        crsref['cid']
+#                        crsref['crscode'],
+#                        crsref['qid'],
+#                        crsref['ready'],
+#                        crsref['nouid']
+#                        ))
+#
+#            cid = cur.lastrowid
+#
+#            cur.execute ('''
+#                    REPLACE INTO hacktb (qref, opta, optb, optc, optd) VALUES (?, ?,
+#                    ?, ?, ?);
+#                    ''', (
+#                        cid,
+#                        datum['opta'],
+#                        datum['optb'],
+#                        datum['optc'],
+#                        datum['optd']
+#                        ))
+#
+#        except sqlite3.IntegrityError as ierr:
+#            
+#            repeats += 1
+#
+#            dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
+#
+#            crsref = cur.execute (''' 
+#                    SELECT * FROM courses WHERE (crscode = ? AND nouid = ? AND
+#                    qid = ?) OR (qid = ? AND ready = ?) LIMIT 1
+#                    ''', (
+#                        datum.crscode,
+#                        datum.nouid,
+#                        dupq['dogid'],
+#                        dupq['dogid'],
+#                        False
+#                        )).fetchone() or {
+#                                'cid': None, 
+#                                'qid': dupq['dogid'],
+#                                'crscode': None,
+#                                'ready': False,
+#                                'nouid': None
+#                                } 
+#    
+#            ansref = cur.execute ('''SELECT * FROM answers WHERE (qref =
+#                    ? AND crsref = ?) OR qref = ?;''', (
+#                        dupq['dogid'],
+#                        crsref['cid'],
+#                        dupq['dogid']
+#                        )).fetchone () or {
+#                                'ans': None, 
+#                                'qref': None, 
+#                                'crsref': None
+#                                }
+#
+#            cur1 = conn.cursor ()
+#
+#            cur1.execute (''' 
+#                    REPLACE INTO courses (cid, crscode, qid, ready, nouid)
+#                    VALUES (?, ?, ?, ?, ?)
+#                    ''', (
+#                        crsref['cid'],
+#                        datum.crscode or crsref['crscode'],
+#                        crsref['qid'],
+#                        ((ansref['ans'] or datum.ans) and (datum.nouid or
+#                            crsref['nouid']) and (crsref['crscode'] or datum.crscode)) is not None,
+#                        datum.nouid or crsref['nouid']
+#                        ))
+#
+#            cid = cur1.lastrowid
+#
+#            cur.execute (''' 
+#                    REPLACE INTO answers (ans, qref, crsref) VALUES (?,
+#                    ?, ?)
+#                    ''', (
+#                        datum.ans or ansref['ans'],
+#                        dupq['dogid'],
+#                        cid
+#                        ))
+#        
+#        except sqlite3.OperationalError as err:
+#            print ('insert/replace: ', err.args[0])
+#            conn.close ()
+#            return -1
+#
+#
+#    try:
+#        conn.commit ()
+#
+#    except sqlite3.OperationalError as err:
+#        print (err.args[0])
+#        return conn
+#
+#    conn.close()
+#
+#    if repeats > 0:
+#        print ('%d questions repeated' % (repeats,))
+#
+#    return None
+#
 
 
 def updatedb (db, data):
@@ -146,14 +299,14 @@ def updatedb (db, data):
         return -1
 
 
-    qid, cid, sha1 = None, None, None
+    qid, cid, = None, None
 
     for datum in set (map ( 
         lambda t: QstDbT(
-            '+'.join (re.sub (r'\\[ntr]', ' ', t.qdescr.lower().strip ()).split ()), 
-            t.ans.strip().lower() if isinstance (t.ans, str) else t.ans, 
-            t.nouid.strip() if isinstance (t.nouid, str) else t.nouid,
-            t.crscode.strip().lower() if isinstance (t.crscode, str) else t.crscode
+            '+'.join (re.sub (r'\\[ntr]', ' ', t['qdescr'].strip ()).split ()), 
+            '+'.join (re.sub(r'\W', ' ',t['ans'].strip()).split ()) if isinstance (t['ans'], str) else t['ans'], 
+            t['qid'].strip() if isinstance (t['qid'], str) else t['qid'],
+            t['crscode'].strip().upper() if isinstance (t['crscode'], str) else t['crscode']
             ), 
         data)):
         try:
@@ -161,7 +314,7 @@ def updatedb (db, data):
                     VALUES (?);''', (datum.qdescr,))
 
             qid = cur.lastrowid
-            cid, sha1 = None, None
+            cid = None
 
             cur.execute ('''INSERT INTO courses (crscode, qid, ready,
             nouid) VALUES

@@ -19,6 +19,8 @@ TMADOGDB = 'tmadogdb'
 #    
 #    query = tmadog_utils.get_query (qst.text)
 
+#def hack_submit_tma ()
+
 def scrape_tma (db = TMADOGDB, **kwargs):
     rl = kwargs.pop ('rl', None)
 
@@ -32,9 +34,8 @@ def scrape_tma (db = TMADOGDB, **kwargs):
         try:
             fetch = tmadog_utils.fetchtma (rl, **kwargs) 
             while nqst:
-                m,qid = fetch()
-                dt.append (tmadog_utils.QstDbT (m, nouid = qid, crscode =
-                    crscode, ans = None))
+                m = fetch()
+                dt.append (m)
                 nqst -= 1
 
             if len (dt):
@@ -49,9 +50,13 @@ def scrape_tma (db = TMADOGDB, **kwargs):
     elif not rl:
         html = kwargs.pop ('html', None)
         if html:
-            m,qid = (tmadog_utils.get_query (html), tmadog_utils.get_qid (html))
-            return tmadog_utils.updatedb(db, [ tmadog_utils.QstDbT (m,
-                nouid = qid, crscode = crscode, ans = None) ])
+            m = dogs.fill_form (
+                    html, 
+                    'https://foo/foo.html', 
+                    flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+                    data = { 'ans': None }
+                    )
+            return tmadog_utils.updatedb(db, [ m ])
 
     else:
         fstr = ''
@@ -69,8 +74,8 @@ def scrape_tma (db = TMADOGDB, **kwargs):
         fpat = r'qtn\s*:.*?\n(.+?)^\W*ans\s*:.*?\n(.+?)\n' 
 
 
-        return tmadog_utils.updatedb (db, [ tmadog_utils.QstDbT (m[0], m[1],
-            crscode = crscode, nouid = None) for m in
+        return tmadog_utils.updatedb (db, [ dict (qdescr = m[0], ans = m[1],
+            crscode = crscode, qid = None) for m in
             re.findall (fpat, fstr, flags = re.MULTILINE | re.IGNORECASE
                 | re.DOTALL ) if not re.fullmatch (r'\s+',m[0]) and not
             re.fullmatch (r'\s+', m[1]) ])

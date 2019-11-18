@@ -8,6 +8,7 @@ re.Match = type (re.match (r'foo', 'foo'))
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
+DATAONLY = 0b0100
 
 LastForm = {}
 
@@ -98,7 +99,7 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     for k in targs['data']:
 
-        if targs['data'][k] is None :
+        if targs['data'][k] is None and not k in data:
             r = getdef_value (tform, k, None)
             if not r:
                 r = ''
@@ -107,7 +108,8 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     kwargs.pop('method', None)
 
-    LastForm = targs['data']
+    if flags & DATAONLY:
+        return targs['data']
 
     if targs['method'] in ('GET', 'get'):
         params = kwargs.pop('params', {})
