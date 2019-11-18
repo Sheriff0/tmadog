@@ -4,6 +4,7 @@ import requests
 import collections
 import sqlite3
 import hashlib
+import builtins
 
 QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, nouid, crscode')
 
@@ -115,169 +116,12 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     return fetcher
 
 
-#def update_hacktb (db, data):
-#
-#    repeats = 0
-#    
-#    conn = sqlite3.connect (db)
-#
-#    conn.row_factory = sqlite3.Row
-#
-#    cur = conn.cursor ()
-#
-#    ierr = None
-#    
-#    try:
-#        cur.executescript ('''
-#	CREATE TABLE IF NOT EXISTS hacktb (qref INTEGER NOT NULL UNIQUE
-#        REFERENCES courses (cid), 
-#        opta VARCHAR NOT NULL,
-#        optb VARCHAR NOT NULL,
-#        optc VARCHAR NOT NULL,
-#        optd VARCHAR NOT NULL,
-#        );
-#                ''')
-#
-#    except sqlite3.OperationalError as err:
-#        print ('create: ',err.args[0])
-#        conn.close ()
-#        return -1
-#
-#
-#    qid, cid, = None, None
-#
-#    for datum in set (data):
-#        try:
-#            crsref = cur.execute ('''
-#                    SELECT * FROM courses WHERE nouid = ? AND crscode = ?
-#                    ;''', (datum['qid'], datum['crscode'].lower ())).fetchone ()
-#            or {
-#                    'cid': None,
-#                    'crscode': datum['crscode'].lower (),
-#                    'nouid': datum['qid'],
-#                    'ready': False,
-#                    'qid': None
-#                    }
-#
-#
-#            cur.execute ('''REPLACE INTO courses (cid, crscode, qid, ready,
-#            nouid) VALUES
-#                    (?, ?, ?, ?, ?)''', (
-#                        crsref['cid']
-#                        crsref['crscode'],
-#                        crsref['qid'],
-#                        crsref['ready'],
-#                        crsref['nouid']
-#                        ))
-#
-#            cid = cur.lastrowid
-#
-#            cur.execute ('''
-#                    REPLACE INTO hacktb (qref, opta, optb, optc, optd) VALUES (?, ?,
-#                    ?, ?, ?);
-#                    ''', (
-#                        cid,
-#                        datum['opta'],
-#                        datum['optb'],
-#                        datum['optc'],
-#                        datum['optd']
-#                        ))
-#
-#        except sqlite3.IntegrityError as ierr:
-#            
-#            repeats += 1
-#
-#            dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
-#
-#            crsref = cur.execute (''' 
-#                    SELECT * FROM courses WHERE (crscode = ? AND nouid = ? AND
-#                    qid = ?) OR (qid = ? AND ready = ?) LIMIT 1
-#                    ''', (
-#                        datum.crscode,
-#                        datum.nouid,
-#                        dupq['dogid'],
-#                        dupq['dogid'],
-#                        False
-#                        )).fetchone() or {
-#                                'cid': None, 
-#                                'qid': dupq['dogid'],
-#                                'crscode': None,
-#                                'ready': False,
-#                                'nouid': None
-#                                } 
-#    
-#            ansref = cur.execute ('''SELECT * FROM answers WHERE (qref =
-#                    ? AND crsref = ?) OR qref = ?;''', (
-#                        dupq['dogid'],
-#                        crsref['cid'],
-#                        dupq['dogid']
-#                        )).fetchone () or {
-#                                'ans': None, 
-#                                'qref': None, 
-#                                'crsref': None
-#                                }
-#
-#            cur1 = conn.cursor ()
-#
-#            cur1.execute (''' 
-#                    REPLACE INTO courses (cid, crscode, qid, ready, nouid)
-#                    VALUES (?, ?, ?, ?, ?)
-#                    ''', (
-#                        crsref['cid'],
-#                        datum.crscode or crsref['crscode'],
-#                        crsref['qid'],
-#                        ((ansref['ans'] or datum.ans) and (datum.nouid or
-#                            crsref['nouid']) and (crsref['crscode'] or datum.crscode)) is not None,
-#                        datum.nouid or crsref['nouid']
-#                        ))
-#
-#            cid = cur1.lastrowid
-#
-#            cur.execute (''' 
-#                    REPLACE INTO answers (ans, qref, crsref) VALUES (?,
-#                    ?, ?)
-#                    ''', (
-#                        datum.ans or ansref['ans'],
-#                        dupq['dogid'],
-#                        cid
-#                        ))
-#        
-#        except sqlite3.OperationalError as err:
-#            print ('insert/replace: ', err.args[0])
-#            conn.close ()
-#            return -1
-#
-#
-#    try:
-#        conn.commit ()
-#
-#    except sqlite3.OperationalError as err:
-#        print (err.args[0])
-#        return conn
-#
-#    conn.close()
-#
-#    if repeats > 0:
-#        print ('%d questions repeated' % (repeats,))
-#
-#    return None
-#
+def setupdb (db):
 
-
-def updatedb (db, data):
-
-    repeats = 0
-    
     conn = sqlite3.connect (db)
 
-    conn.row_factory = sqlite3.Row
-
-    cur = conn.cursor ()
-
-    ierr = None
-    
     try:
-        cur.executescript ('''
+        conn.executescript ('''
 	CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
 		AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
 
@@ -291,41 +135,128 @@ def updatedb (db, data):
 		CASCADE ON UPDATE CASCADE, crsref INTEGER UNIQUE DEFAULT NULL
 		REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
 		UPDATE CASCADE);
+	
+        CREATE TABLE IF NOT EXISTS hacktb (qref INTEGER NOT NULL UNIQUE
+        REFERENCES courses (cid), 
+        opta VARCHAR NOT NULL,
+        optb VARCHAR NOT NULL,
+        optc VARCHAR NOT NULL,
+        optd VARCHAR NOT NULL);
                 ''')
 
+        conn.commit ()
     except sqlite3.OperationalError as err:
         print ('create: ',err.args[0])
         conn.close ()
+        return None
+
+    return conn
+
+
+def update_hacktb (db, data, cursor = None):
+
+    conn = setupdb (db) if not cursor else cursor.connection
+
+    conn.row_factory = sqlite3.Row
+
+    if not conn:
         return -1
 
+    cur = conn.cursor ()
+
+    ierr = None
+    
+    qid, cid, = None, None
+
+    for datum in data:
+        try:
+            crsref = cur.execute ('''
+                    SELECT * FROM courses WHERE nouid = ? AND crscode = ?
+                    ;''', (
+                        datum['qid'], 
+                        datum['crscode']
+                        )).fetchone ()
+            
+            if not crsref:
+                cid = updatedb (db, [datum], cur)['cid']
+                
+            else:
+                cid = crsref['cid']
+
+            cur.execute ('''
+                    REPLACE INTO hacktb (qref, opta, optb, optc, optd) VALUES (?, ?,
+                    ?, ?, ?);
+                    ''', (
+                        cid,
+                        datum['opta'],
+                        datum['optb'],
+                        datum['optc'],
+                        datum['optd']
+                        ))
+            if cursor:
+                return cursor
+
+        except sqlite3.OperationalError as err:
+            print ('update_hacktb: replace: ', err.args[0])
+            conn.close ()
+            return -1
+
+    try:
+        conn.commit ()
+
+    except sqlite3.OperationalError as err:
+        print (err.args[0])
+        return conn
+    
+    return None
+
+
+
+def updatedb (db, data, cursor = None):
+
+    repeats = 0
+    
+    conn = setupdb (db) if not cursor else cursor.connection
+   
+    conn.row_factory = sqlite3.Row
+
+    if not conn:
+        return -1
+
+    cur = conn.cursor ()
 
     qid, cid, = None, None
 
+    ids = {}
+
     for datum in set (map ( 
         lambda t: QstDbT(
-            '+'.join (re.sub (r'\\[ntr]', ' ', t['qdescr'].strip ()).split ()), 
+            re.sub (r'\\[ntr]', ' ', t['qdescr'].strip ()), 
             '+'.join (re.sub(r'\W', ' ',t['ans'].strip()).split ()) if isinstance (t['ans'], str) else t['ans'], 
             t['qid'].strip() if isinstance (t['qid'], str) else t['qid'],
             t['crscode'].strip().upper() if isinstance (t['crscode'], str) else t['crscode']
             ), 
         data)):
+
         try:
             cur.execute ('''INSERT INTO questions (qdescr)
                     VALUES (?);''', (datum.qdescr,))
 
             qid = cur.lastrowid
-            cid = None
+            ids['qid'] = qid
 
             cur.execute ('''INSERT INTO courses (crscode, qid, ready,
             nouid) VALUES
                     (?, ?, ?, ?)''', (
                         datum.crscode,
                         qid,
-                        (datum.ans and datum.crscode and datum.nouid) is not None,
+                        True if datum.ans and datum.crscode and datum.nouid else
+                        False,
                         datum.nouid
                         ))
 
-            cid = cur.lastrowid
+            cid = cur.lastrowid            
+            ids['cid'] = cid
 
             cur.execute ('''
                     INSERT INTO answers (ans, qref, crsref) VALUES (?, ?,
@@ -335,6 +266,9 @@ def updatedb (db, data):
                         qid,
                         cid
                         ))
+
+            if cursor:        
+                return ids
 
         except sqlite3.IntegrityError as ierr:
             
@@ -370,7 +304,7 @@ def updatedb (db, data):
                                 'crsref': None
                                 }
 
-            cur1 = conn.cursor ()
+            cur1 = cur.connection.cursor ()
 
             cur1.execute (''' 
                     REPLACE INTO courses (cid, crscode, qid, ready, nouid)
@@ -379,12 +313,17 @@ def updatedb (db, data):
                         crsref['cid'],
                         datum.crscode or crsref['crscode'],
                         crsref['qid'],
-                        ((ansref['ans'] or datum.ans) and (datum.nouid or
-                            crsref['nouid']) and (crsref['crscode'] or datum.crscode)) is not None,
+                        True if (ansref['ans'] or datum.ans) and (datum.nouid or
+                            crsref['nouid']) and (crsref['crscode'] or
+                                datum.crscode) else False,
                         datum.nouid or crsref['nouid']
                         ))
 
             cid = cur1.lastrowid
+            
+            ids['cid'] = cid
+
+            ids['qid'] = dupq['dogid']
 
             cur.execute (''' 
                     REPLACE INTO answers (ans, qref, crsref) VALUES (?,
@@ -394,7 +333,10 @@ def updatedb (db, data):
                         dupq['dogid'],
                         cid
                         ))
-        
+            
+            if cursor:
+                return ids
+
         except sqlite3.OperationalError as err:
             print ('insert/replace: ', err.args[0])
             conn.close ()
@@ -407,8 +349,11 @@ def updatedb (db, data):
     except sqlite3.OperationalError as err:
         print (err.args[0])
         return conn
-
-    conn.close()
+    
+    if not cursor:
+        conn.close()
+    else:
+        return cursor
 
     if repeats > 0:
         print ('%d questions repeated' % (repeats,))

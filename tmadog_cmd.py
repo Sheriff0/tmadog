@@ -39,11 +39,11 @@ def scrape_tma (db = TMADOGDB, **kwargs):
                 nqst -= 1
 
             if len (dt):
-                return tmadog_utils.updatedb(db, dt)
+                return tmadog_utils.update_hacktb(db, dt)
 
         except builtins.BaseException as err:
             if len (dt):
-                tmadog_utils.updatedb(db, dt)
+                tmadog_utils.update_hacktb(db, dt)
             print (err.args[0])
             return -1
 
@@ -56,7 +56,7 @@ def scrape_tma (db = TMADOGDB, **kwargs):
                     flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
                     data = { 'ans': None }
                     )
-            return tmadog_utils.updatedb(db, [ m ])
+            return tmadog_utils.update_hacktb(db, [ m ])
 
     else:
         fstr = ''
