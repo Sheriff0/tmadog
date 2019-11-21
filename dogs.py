@@ -9,6 +9,7 @@ re.Match = type (re.match (r'foo', 'foo'))
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
 DATAONLY = 0b0100
+URLONLY = 0b1000
 
 LastForm = {}
 
@@ -41,8 +42,16 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     data = kwargs.pop('data', {})
 
-    tform = re.findall (r'<form.+?</form>', html, re.DOTALL | re.MULTILINE |
-            re.IGNORECASE)[idx]
+    tform = None
+    
+    for ind, mt in enumerate (re.findall (r'<form.+?</form>', html, re.DOTALL | re.MULTILINE |
+            re.IGNORECASE)):
+        if ind == idx:
+            tform = mt
+            break
+
+    if not (tform):
+        return None
 
     targs = {}
     
@@ -60,6 +69,10 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     else:
         targs['url'] = re.sub (url.split ('/')[-1], targs['url'], url)
+
+
+    if flags & URLONLY:
+        return targs['url']
 
     ifieldp = r'.+?name.*?=.*?(?:"|\')(.*?)(?:"|\')'
 
@@ -110,6 +123,7 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
     if flags & DATAONLY:
         return targs['data']
+    
 
     if targs['method'] in ('GET', 'get'):
         params = kwargs.pop('params', {})

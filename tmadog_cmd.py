@@ -8,18 +8,54 @@ import builtins
 
 __all__ = ['submit', 'hack', 'scrape_tma']
 
-
 TMADOGDB = 'tmadogdb'
 
-#def hack (url, token, session, trojan):
-#
-#
-#def submit (reqobj, tma_token, session, ansfile):
-#    qst = session.send (session.prepare_request (reqobj))
-#    
-#    query = tmadog_utils.get_query (qst.text)
+def hack_submit_tma (url, session, stp = 10, db = TMADOGDB, **kwargs):
 
-#def hack_submit_tma ()
+    dt = []
+
+    try:
+        fetch = tmadog_utils.fetchtma (url, session = session, **kwargs) 
+
+        qst, url2 = fetch()
+        dt.append (qst.copy())
+        ansraw = tmadog_utils.get_answer (TMADOGDB, qst, tmadog_utils.HACK)
+        qn = int (qst['qj'])
+
+        while qn <= stp:
+            qst.update (ansraw)
+            kont = session.post (url2, data = qst, headers = {
+            'referer': url,
+            }) 
+            kont.raise_for_status ()
+
+            qpage = dogs.click(kont.text, ltext = 'continue', url = kont.url,
+            session = session)
+
+            if isinstance (qpage, requests.Response):
+                qpage.raise_for_status ()
+
+                qst = dogs.fill_form(qpage.text, url = qpage.url, flags =
+                   dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+                   data = {'ans': None})
+                qn = int (qst['qj'])
+
+                dt.append (qst.copy ())
+
+                url = dogs.fill_form(qpage.text, url = qpage.url, flags =
+                   dogs.URLONLY)
+            else:
+                break
+
+        if len (dt):
+            return tmadog_utils.update_hacktab(db, dt)
+
+    except builtins.BaseException as err:
+        if len (dt):
+            tmadog_utils.update_hacktab(db, dt)
+        print (err.args[0])
+        return -1
+
 
 def scrape_tma (db = TMADOGDB, **kwargs):
     rl = kwargs.pop ('rl', None)
@@ -34,16 +70,16 @@ def scrape_tma (db = TMADOGDB, **kwargs):
         try:
             fetch = tmadog_utils.fetchtma (rl, **kwargs) 
             while nqst:
-                m = fetch()
+                m = fetch()[0]
                 dt.append (m)
                 nqst -= 1
 
             if len (dt):
-                return tmadog_utils.update_hacktb(db, dt)
+                return tmadog_utils.update_hacktab(db, dt)
 
         except builtins.BaseException as err:
             if len (dt):
-                tmadog_utils.update_hacktb(db, dt)
+                tmadog_utils.update_hacktab(db, dt)
             print (err.args[0])
             return -1
 
@@ -56,7 +92,7 @@ def scrape_tma (db = TMADOGDB, **kwargs):
                     flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
                     data = { 'ans': None }
                     )
-            return tmadog_utils.update_hacktb(db, [ m ])
+            return tmadog_utils.update_hacktab(db, [ m ])
 
     else:
         fstr = ''

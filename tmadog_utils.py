@@ -6,11 +6,11 @@ import sqlite3
 import hashlib
 import builtins
 
-QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, nouid, crscode')
+QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
 #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
 
-def login (session, url, **ldata):
+def login (session, url, button = 'Login',**ldata):
     
     if not ldata:
         return -1
@@ -19,7 +19,7 @@ def login (session, url, **ldata):
 
     index.raise_for_status()
     
-    lpage = dogs.click (index.text, 'Take TMA3', url+'pad', idx = 0, headers = {
+    lpage = dogs.click (index.text, button, url+'pad', idx = 0, headers = {
         'referer': url,
         }, 
         session = session)
@@ -76,19 +76,23 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
 
     def fetcher (url = None, headers = {}):
         url = url if url else req.url
+
         req.headers.update (**headers)
+
         res = session.post(url, data = req.data, headers =
             req.headers)
         res.raise_for_status ()
-        m = dogs.fill_form (res.text, 'https://foo/foo.html', flags =
+
+        m = dogs.fill_form (res.text, res.url, flags =
                 dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
                 data = { 'ans': None })
         if 'qdescr' in m:
-            return m
+            return ( m, dogs.fill_form (res.text, res.url, flags = dogs.URLONLY)
+                    )
         else:
             raise requests.HTTPError ('Not a Question Page', res)
 
-
+#>>>>>>>>>>>>>>Body<<<<<<<<<<<<<<<<
     session = kwargs.pop ('session', requests)
 
     headers = kwargs.pop ('headers', None)
@@ -116,6 +120,51 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     return fetcher
 
 
+def convert_ans (row):
+    a = r'\W+?'.join (row ['ans'].split ('+'))
+    opts = row[3:]
+    t = ('A', 'B', 'C', 'D')
+
+    for i, tv in enumerate (t):
+        if re.search (a, opts[i], flags = re.IGNORECASE):
+            return tv
+    return None
+
+HACK = 0b01
+
+def get_answer (db, qst, flag):
+
+    conn = sqlite3.connect (db)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor ()
+    
+    if flag & HACK:
+        cur.execute ('''
+                SELECT qdescr AS qdescr, ans AS ans, qid AS qid, opta AS opta,
+                optb AS optb, optc AS optc, optd AS optd FROM questions
+                AS q INNER JOIN (courses AS c, answers AS a, hacktab AS h) ON
+                (c.dogid == q.dogid AND a.dogid == q.dogid AND a.cid == c.cid
+                AND h.cid == c.cid)
+                WHERE ready == 1 AND crscode LIKE ?
+                ''', (
+                    qst['crscode'],
+                    ))
+        row = cur.fetchone ()
+
+        conn.close ()
+        
+        if not set (row.keys ()).issubset (set (qst.keys ())):
+            return -1
+
+        ans = {k: row[k] for k in row.keys ()}
+        ans['ans'] = convert_ans(row)
+        
+        if not ans['ans']:
+            return -1
+
+        return ans
+
+
 def setupdb (db):
 
     conn = sqlite3.connect (db)
@@ -126,17 +175,17 @@ def setupdb (db):
 		AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
 
 	CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
-		AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, qid INTEGER NOT
+		AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, dogid INTEGER NOT
                 NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
-                UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, nouid CHAR);
+                UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, qid CHAR);
 
-	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, qref INTEGER
+	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
 		NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
-		CASCADE ON UPDATE CASCADE, crsref INTEGER UNIQUE DEFAULT NULL
+		CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE DEFAULT NULL
 		REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
 		UPDATE CASCADE);
 	
-        CREATE TABLE IF NOT EXISTS hacktb (qref INTEGER NOT NULL UNIQUE
+        CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL UNIQUE
         REFERENCES courses (cid), 
         opta VARCHAR NOT NULL,
         optb VARCHAR NOT NULL,
@@ -153,7 +202,7 @@ def setupdb (db):
     return conn
 
 
-def update_hacktb (db, data, cursor = None):
+def update_hacktab (db, data, cursor = None):
 
     conn = setupdb (db) if not cursor else cursor.connection
 
@@ -166,12 +215,12 @@ def update_hacktb (db, data, cursor = None):
 
     ierr = None
     
-    qid, cid, = None, None
+    dogid, cid, = None, None
 
     for datum in data:
         try:
             crsref = cur.execute ('''
-                    SELECT * FROM courses WHERE nouid = ? AND crscode = ?
+                    SELECT * FROM courses WHERE qid = ? AND crscode = ?
                     ;''', (
                         datum['qid'], 
                         datum['crscode']
@@ -184,7 +233,7 @@ def update_hacktb (db, data, cursor = None):
                 cid = crsref['cid']
 
             cur.execute ('''
-                    REPLACE INTO hacktb (qref, opta, optb, optc, optd) VALUES (?, ?,
+                    REPLACE INTO hacktab (cid, opta, optb, optc, optd) VALUES (?, ?,
                     ?, ?, ?);
                     ''', (
                         cid,
@@ -197,7 +246,7 @@ def update_hacktb (db, data, cursor = None):
                 return cursor
 
         except sqlite3.OperationalError as err:
-            print ('update_hacktb: replace: ', err.args[0])
+            print ('update_hacktab: replace: ', err.args[0])
             conn.close ()
             return -1
 
@@ -225,7 +274,7 @@ def updatedb (db, data, cursor = None):
 
     cur = conn.cursor ()
 
-    qid, cid, = None, None
+    dogid, cid, = None, None
 
     ids = {}
 
@@ -242,28 +291,28 @@ def updatedb (db, data, cursor = None):
             cur.execute ('''INSERT INTO questions (qdescr)
                     VALUES (?);''', (datum.qdescr,))
 
-            qid = cur.lastrowid
-            ids['qid'] = qid
+            dogid = cur.lastrowid
+            ids['dogid'] = dogid
 
-            cur.execute ('''INSERT INTO courses (crscode, qid, ready,
-            nouid) VALUES
+            cur.execute ('''INSERT INTO courses (crscode, dogid, ready,
+            qid) VALUES
                     (?, ?, ?, ?)''', (
                         datum.crscode,
-                        qid,
-                        True if datum.ans and datum.crscode and datum.nouid else
+                        dogid,
+                        True if datum.ans and datum.crscode and datum.qid else
                         False,
-                        datum.nouid
+                        datum.qid
                         ))
 
             cid = cur.lastrowid            
             ids['cid'] = cid
 
             cur.execute ('''
-                    INSERT INTO answers (ans, qref, crsref) VALUES (?, ?,
+                    INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
                     ?);
                     ''', (
                         datum.ans,
-                        qid,
+                        dogid,
                         cid
                         ))
 
@@ -277,56 +326,56 @@ def updatedb (db, data, cursor = None):
             dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
 
             crsref = cur.execute (''' 
-                    SELECT * FROM courses WHERE (crscode = ? AND nouid = ? AND
-                    qid = ?) OR (qid = ? AND ready = ?) LIMIT 1
+                    SELECT * FROM courses WHERE (crscode = ? AND qid = ? AND
+                    dogid = ?) OR (dogid = ? AND ready = ?) LIMIT 1
                     ''', (
                         datum.crscode,
-                        datum.nouid,
+                        datum.qid,
                         dupq['dogid'],
                         dupq['dogid'],
                         False
                         )).fetchone() or {
                                 'cid': None, 
-                                'qid': dupq['dogid'],
+                                'dogid': dupq['dogid'],
                                 'crscode': None,
                                 'ready': False,
-                                'nouid': None
+                                'qid': None
                                 } 
     
-            ansref = cur.execute ('''SELECT * FROM answers WHERE (qref =
-                    ? AND crsref = ?) OR qref = ?;''', (
+            ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
+                    ? AND cid = ?) OR dogid = ?;''', (
                         dupq['dogid'],
                         crsref['cid'],
                         dupq['dogid']
                         )).fetchone () or {
                                 'ans': None, 
-                                'qref': None, 
-                                'crsref': None
+                                'dogid': None, 
+                                'cid': None
                                 }
 
             cur1 = cur.connection.cursor ()
 
             cur1.execute (''' 
-                    REPLACE INTO courses (cid, crscode, qid, ready, nouid)
+                    REPLACE INTO courses (cid, crscode, dogid, ready, qid)
                     VALUES (?, ?, ?, ?, ?)
                     ''', (
                         crsref['cid'],
                         datum.crscode or crsref['crscode'],
-                        crsref['qid'],
-                        True if (ansref['ans'] or datum.ans) and (datum.nouid or
-                            crsref['nouid']) and (crsref['crscode'] or
+                        crsref['dogid'],
+                        True if (ansref['ans'] or datum.ans) and (datum.qid or
+                            crsref['qid']) and (crsref['crscode'] or
                                 datum.crscode) else False,
-                        datum.nouid or crsref['nouid']
+                        datum.qid or crsref['qid']
                         ))
 
             cid = cur1.lastrowid
             
             ids['cid'] = cid
 
-            ids['qid'] = dupq['dogid']
+            ids['dogid'] = dupq['dogid']
 
             cur.execute (''' 
-                    REPLACE INTO answers (ans, qref, crsref) VALUES (?,
+                    REPLACE INTO answers (ans, dogid, cid) VALUES (?,
                     ?, ?)
                     ''', (
                         datum.ans or ansref['ans'],
