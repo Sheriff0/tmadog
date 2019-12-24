@@ -1,6 +1,8 @@
-import requests
+import requests_html
 import re
-from dog_html_utils import uncomment_html, txtnode_to_name_attr, txtnode_to_value_attr
+from urllib.parse import urljoin
+
+requests = requests_html.requests
 
 re.Match = type (re.match (r'foo', 'foo'))
 
@@ -37,115 +39,74 @@ def getdef_value (form, t, fb = False):
             return None
 
 
-def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
-    html = uncomment_html (html)
+def fill_form (html, url, flags, idx = 0, selector = 'form', **kwargs):
 
     data = kwargs.pop('data', {})
-
-    tform = None
     
-    for ind, mt in enumerate (re.findall (r'<form.+?</form>', html, re.DOTALL | re.MULTILINE |
-            re.IGNORECASE)):
-        if ind == idx:
-            tform = mt
-            break
+    html = requests_html.HTML (html = html, url = url) if not isinstance (html,
+            requests_html.HTML) else html
 
-    if not (tform):
+    tform = html.find (selector)
+
+    if not len (tform):
         return None
+    else:
+        tform = tform[idx]
 
     targs = {}
     
-    kwargs.pop('method', None)
+    targs['method'] = tform.element.method
 
-    targs['method'] = re.findall(r'<form.+?method.*?=.*?(?:"|\')(.*?)(?:"|\')', tform,
-            re.DOTALL | re.MULTILINE)[0].upper ()
-
-
-    targs['url'] = re.findall(r'<form.+?action\s*=\s*(?:"|\')(.*?)(?:"|\')', tform,
-            re.DOTALL | re.MULTILINE)[0]
-
-    if len (targs['url']) == 0 :
-        targs['url'] = url
-
-    else:
-        targs['url'] = re.sub (url.split ('/')[-1], targs['url'], url)
-
+    targs['url'] = urljoin (tform.url, tform.element.action)
 
     if flags & URLONLY:
         return targs['url']
 
-    ifieldp = r'.+?name.*?=.*?(?:"|\')(.*?)(?:"|\')'
+    ifields = tform.element.fields
 
-    ifields = list (set (re.findall(r'<\s*input'+ifieldp, tform, re.DOTALL |
-        re.MULTILINE)))
+    params = kwargs.pop('params', {})
 
-    if len (nonstdtags) > 0 :
-        ifields += [ f for farr in [ re.findall(r'<\s*' + i +
-            ifieldp, tform, re.DOTALL | re.MULTILINE) for i in nonstdtags if not re.match ('input',
-                i, re.IGNORECASE) ] for f in farr if f not in ifields]
+    data.update (**params)
 
-    targs['data'] = { f: None for f in ifields }
+    submit = { el.attrs['name']: el.attrs.get ('value', '') for el in tform.find ('[type=submit][name]') }
 
-    if flags  == (NO_TXTNODE_KEY | NO_TXTNODE_VALUE):
-        targs['data'].update (**{k: data[k] for k in data if k in targs['data'] })
+    # targs['data'].update (**{el.attrs['name']: el.attrs.get ('value', None) for
+    #    el in tform.find ('form button[name]')}) # or maybe 'form :not(input)[name]'
+
     
-    else:
-        if not flags & NO_TXTNODE_VALUE:
-            ttuple = [ (k, data[k]) for k in data ]
-            tnodes = [txtnode for k,txtnode in ttuple ]
-            values = txtnode_to_value_attr (tform, tnodes)
-            for i, v1 in enumerate (values):
-                k,v0 = ttuple[i]
-                if v1:
-                    targs['data'][k] = v1
-                else:
-                    targs['data'][k] = v0
+    if not flags & NO_TXTNODE_VALUE:
+        # unwilling to make sense now. will probe later
+        pass
+    if not flags & NO_TXTNODE_KEY:
+        # Handle cases like:
+        # html = '<label> Name <input name = "nm"> </label>'
+        # data = {'Name': 'Linus'}
+        ## make:
+        # data = {'nm': 'Linus'}
+        pass
 
-        if not flags & NO_TXTNODE_KEY:
-            tnodes = list (data.keys())
-            names = txtnode_to_name_attr (tform, tnodes)
+    try:
+        ifields.update (**data)
+    except KeyError:
+        return None
+    
+    targs['data'] = dict (ifields)
 
-            targs['data'].update (**{ names[i] : data[tnodes[i]] for i in range
-                (len (names)) if
-        names[i] is not None and names[i] in ifields })
-
+    targs['data'].update (**submit)
 
     for k in targs['data']:
 
         if targs['data'][k] is None and not k in data:
-            r = getdef_value (tform, k, None)
-            if not r:
-                r = ''
-            
-            targs['data'][k] = r
-
-    kwargs.pop('method', None)
+            targs['data'][k] = ''
 
     if flags & DATAONLY:
         return targs['data']
-    
 
     if targs['method'] in ('GET', 'get'):
-        params = kwargs.pop('params', {})
-        targs['params'] = targs['data'].update (**params)
+        targs['params'] = targs['data']
         targs['data'] = None
     
-
-    session = kwargs.pop('session', None)
-
-    if isinstance (session, requests.Session):
-        treq = requests.Request(**targs, **kwargs)
-        
-        met = targs.pop ('method')
-
-        if met in ('POST', 'post'):
-            return session.post (**targs, **kwargs)
-        else:
-            return session.get (**targs, **kwargs)
-
-    else:
-
-        return requests.Request(**targs, **kwargs)
+        return targs
 
 #def form_type ():
 
@@ -156,35 +117,25 @@ def fill_form (html, url, flags, idx = 0, nonstdtags = [], **kwargs):
 
 
 def click (html, ltext, url, idx = 0, **kwargs):
-    tagcap = r'<\s*(?P<tag>\ba\b|(?:\bbutton\b)).*?>\W*?'+ ltext + r'\W*?<\s*/\1\s*>'
-    m = None
 
-    for i, m in enumerate (re.finditer(tagcap, html, re.IGNORECASE)):
-        if i == idx:
-            break
+    html = requests_html.HTML (html = html, url = url) if not isinstance (html,
+            requests_html.HTML) else html
+    m = html.find ('a, form', containing = ltext)
+    if not len (m):
+        return None
+    else:
+        m = m[idx]
+    
+    t = m.element.tag
 
-    if m is not None:
-        if re.fullmatch ('button', m.group ('tag'), flags = re.IGNORECASE):
-            return fill_form (html, url, NO_TXTNODE_KEY | NO_TXTNODE_VALUE, idx =
-                idx, nonstdtags = ['button'], **kwargs)
+    if t in ('form', 'FORM'):
+        return fill_form (m, url, NO_TXTNODE_KEY | NO_TXTNODE_VALUE, **kwargs)
+    elif t in ('a', 'A'):
+        return {
+                'method': 'GET', 
+                'url': urljoin (url, m.attrs['href'])
+                }
 
-        elif re.fullmatch ('a', m.group ('tag'), flags = re.IGNORECASE):
-            turl = re.search (r'href\s*=\s*(\'|")(?P<href>.*?)\1', m.group
-                (0), re.IGNORECASE).group('href')
-            if len (turl):
-                turl = re.sub (url.split ('/')[-1], turl, url)
-            else:
-                turl = url
-
-            if 'session' in kwargs and isinstance (kwargs['session'], requests.Session):
-                session = kwargs.pop('session')
-
-                return session.get (url = turl, **kwargs)
-
-            else:
-        
-                return requests.Request(method = 'GET', url = turl, **kwargs)
     else:
         return None
-
 

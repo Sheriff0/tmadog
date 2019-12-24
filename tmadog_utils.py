@@ -11,37 +11,42 @@ QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
 
 def login (session, url, button = 'Login',**ldata):
-    
+
     if not ldata:
         return -1
-
-    index = session.get (url, headers = {'referer': url})
-
-    index.raise_for_status()
     
-    lpage = dogs.click (index.text, button, url+'pad', idx = 0, headers = {
-        'referer': url,
-        }, 
-        session = session)
+    try:
+        index = session.get (url, headers = {'referer': url})
 
-    lpage.raise_for_status()
+        index.raise_for_status()
 
-    propage = dogs.fill_form (lpage.text, lpage.request.url , 
-            dogs.NO_TXTNODE_VALUE | dogs.NO_TXTNODE_KEY, 
-            idx = 0, 
-            nonstdtags = ['button'],
-            headers = {
-                'referer': lpage.url,
-                'origin': url[0:-1],
-                'cache-control': 'max-age=0'
-                }, 
-            data = ldata, 
-            session = session
-            )
-    
-    propage.raise_for_status()
-    
-    return propage
+        lpage = session.request (
+                ** dogs.click (index.text, button, url, idx = 0), headers = {
+                    'referer': url
+                    })
+
+                lpage.raise_for_status()
+
+        propage = session.request (
+                ** dogs.fill_form (
+                    lpage.text, 
+                    lpage.request.url , 
+                    dogs.NO_TXTNODE_VALUE | dogs.NO_TXTNODE_KEY, 
+                    data = ldata, 
+                    idx = 0),
+                headers = {
+                    'referer': lpage.url,
+                    'origin': url[0:-1],
+                    'cache-control': 'max-age=0'
+                    }
+                )
+
+        propage.raise_for_status()
+
+        return propage
+
+    except:
+        return -1
 
 
 def select_tma (html, **tinfo):
@@ -52,7 +57,7 @@ def select_tma (html, **tinfo):
     tinfo.setdefault('matno', r'nou\d{9}')
 
     tpat = r'>\s*(?P<code>' + tinfo['code'] + r')\s*<.+\bp\b.*?>\s*' + tinfo['title'] + r'\s*</p>.+?<form.+?value\s*=\s*(?:\'|")(?P=code)' + tinfo['matno'] + tinfo['tma'] + r'.+?</form>'
-    
+
     return re.search (tpat, html, flags = re.DOTALL | re.MULTILINE | re.IGNORECASE)
 
 
@@ -80,7 +85,7 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
         req.headers.update (**headers)
 
         res = session.post(url, data = req.data, headers =
-            req.headers)
+                req.headers)
         res.raise_for_status ()
 
         m = dogs.fill_form (res.text, res.url, flags =
@@ -98,9 +103,13 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     headers = kwargs.pop ('headers', None)
 
     if matno and crscode and html:
-        req = dogs.fill_form(html, url = url, flags = dogs.NO_TXTNODE_KEY |
-                dogs.NO_TXTNODE_VALUE, idx=0, nonstdtags =['button'], headers =
-                headers)
+        req = requests.Request(
+                ** dogs.fill_form( 
+                    html, 
+                    url = url, 
+                    flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE, idx=0
+                    ),
+                headers = headers)
         v = ''
         for k in req.data:
             if re.search (r'nou\d{9}', req.data[k], flags = re.IGNORECASE):
@@ -108,9 +117,9 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
                 break
 
         v = re.sub (r'nou\d{9}', matno.upper(), v, flags = re.IGNORECASE)
-        
+
         v = re.sub (r'\w{3}\d{3}(\D)', crscode.upper() + r'\1', v, count =
-                    1, flags = re.IGNORECASE)
+                1, flags = re.IGNORECASE)
 
         v = re.sub (r'tma[1-3]', 'TMA' + str (tma), v, flags = re.IGNORECASE)
         req.data[k] = v
@@ -137,7 +146,7 @@ def get_answer (db, qst, flag):
     conn = sqlite3.connect (db)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor ()
-    
+
     if flag & HACK:
         cur.execute ('''
                 SELECT qdescr AS qdescr, ans AS ans, qid AS qid, opta AS opta,
@@ -149,16 +158,16 @@ def get_answer (db, qst, flag):
                 ''', (
                     qst['crscode'],
                     ))
-        row = cur.fetchone ()
+                row = cur.fetchone ()
 
         conn.close ()
-        
+
         if not set (row.keys ()).issubset (set (qst.keys ())):
             return -1
 
         ans = {k: row[k] for k in row.keys ()}
         ans['ans'] = convert_ans(row)
-        
+
         if not ans['ans']:
             return -1
 
@@ -171,20 +180,20 @@ def setupdb (db):
 
     try:
         conn.executescript ('''
-	CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
-		AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
+        CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
+                AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
 
-	CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
-		AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, dogid INTEGER NOT
+        CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
+                AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, dogid INTEGER NOT
                 NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
                 UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, qid CHAR);
 
-	CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
-		NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
-		CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE DEFAULT NULL
-		REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
-		UPDATE CASCADE);
-	
+        CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
+                NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
+                CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE DEFAULT NULL
+                REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
+                UPDATE CASCADE);
+
         CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL UNIQUE
         REFERENCES courses (cid), 
         opta VARCHAR NOT NULL,
@@ -214,7 +223,7 @@ def update_hacktab (db, data, cursor = None):
     cur = conn.cursor ()
 
     ierr = None
-    
+
     dogid, cid, = None, None
 
     for datum in data:
@@ -225,10 +234,10 @@ def update_hacktab (db, data, cursor = None):
                         datum['qid'], 
                         datum['crscode']
                         )).fetchone ()
-            
-            if not crsref:
-                cid = updatedb (db, [datum], cur)['cid']
-                
+
+                    if not crsref:
+                        cid = updatedb (db, [datum], cur)['cid']
+
             else:
                 cid = crsref['cid']
 
@@ -242,8 +251,8 @@ def update_hacktab (db, data, cursor = None):
                         datum['optc'],
                         datum['optd']
                         ))
-            if cursor:
-                return cursor
+                    if cursor:
+                        return cursor
 
         except sqlite3.OperationalError as err:
             print ('update_hacktab: replace: ', err.args[0])
@@ -256,7 +265,7 @@ def update_hacktab (db, data, cursor = None):
     except sqlite3.OperationalError as err:
         print (err.args[0])
         return conn
-    
+
     return None
 
 
@@ -264,9 +273,9 @@ def update_hacktab (db, data, cursor = None):
 def updatedb (db, data, cursor = None):
 
     repeats = 0
-    
+
     conn = setupdb (db) if not cursor else cursor.connection
-   
+
     conn.row_factory = sqlite3.Row
 
     if not conn:
@@ -304,7 +313,7 @@ def updatedb (db, data, cursor = None):
                         datum.qid
                         ))
 
-            cid = cur.lastrowid            
+                    cid = cur.lastrowid            
             ids['cid'] = cid
 
             cur.execute ('''
@@ -316,11 +325,11 @@ def updatedb (db, data, cursor = None):
                         cid
                         ))
 
-            if cursor:        
-                return ids
+                    if cursor:        
+                        return ids
 
         except sqlite3.IntegrityError as ierr:
-            
+
             repeats += 1
 
             dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
@@ -341,8 +350,8 @@ def updatedb (db, data, cursor = None):
                                 'ready': False,
                                 'qid': None
                                 } 
-    
-            ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
+
+                        ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
                     ? AND cid = ?) OR dogid = ?;''', (
                         dupq['dogid'],
                         crsref['cid'],
@@ -353,7 +362,7 @@ def updatedb (db, data, cursor = None):
                                 'cid': None
                                 }
 
-            cur1 = cur.connection.cursor ()
+                        cur1 = cur.connection.cursor ()
 
             cur1.execute (''' 
                     REPLACE INTO courses (cid, crscode, dogid, ready, qid)
@@ -365,11 +374,11 @@ def updatedb (db, data, cursor = None):
                         True if (ansref['ans'] or datum.ans) and (datum.qid or
                             crsref['qid']) and (crsref['crscode'] or
                                 datum.crscode) else False,
-                        datum.qid or crsref['qid']
-                        ))
+                            datum.qid or crsref['qid']
+                            ))
 
-            cid = cur1.lastrowid
-            
+                    cid = cur1.lastrowid
+
             ids['cid'] = cid
 
             ids['dogid'] = dupq['dogid']
@@ -382,9 +391,9 @@ def updatedb (db, data, cursor = None):
                         dupq['dogid'],
                         cid
                         ))
-            
-            if cursor:
-                return ids
+
+                    if cursor:
+                        return ids
 
         except sqlite3.OperationalError as err:
             print ('insert/replace: ', err.args[0])
@@ -398,7 +407,7 @@ def updatedb (db, data, cursor = None):
     except sqlite3.OperationalError as err:
         print (err.args[0])
         return conn
-    
+
     if not cursor:
         conn.close()
     else:

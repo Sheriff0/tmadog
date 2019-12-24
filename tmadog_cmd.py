@@ -6,7 +6,7 @@ import dogs
 import builtins
 
 
-__all__ = ['submit', 'hack', 'scrape_tma']
+__all__ = ['submit', 'hack', 'scrape_tmaQ']
 
 TMADOGDB = 'tmadogdb'
 
@@ -57,61 +57,66 @@ def hack_submit_tma (url, session, stp = 10, db = TMADOGDB, **kwargs):
         return -1
 
 
-def scrape_tma (db = TMADOGDB, **kwargs):
+def scrapetma_net (db = TMADOGDB, **kwargs):
     rl = kwargs.pop ('rl', None)
 
-    crscode = kwargs.pop ('crscode', None)
+    crscode = kwargs.get ('crscode', None)
 
-    kwargs['crscode'] = crscode
+    dt = []
+    nqst = kwargs.pop ('nqst', 1)
+    try:
+        fetch = tmadog_utils.fetchtma (rl, **kwargs) 
+        while nqst:
+            m = fetch()[0]
+            dt.append (m)
+            nqst -= 1
 
-    if rl and rl.startswith ('http'):
-        dt = []
-        nqst = kwargs.pop ('nqst', 1)
-        try:
-            fetch = tmadog_utils.fetchtma (rl, **kwargs) 
-            while nqst:
-                m = fetch()[0]
-                dt.append (m)
-                nqst -= 1
+        if len (dt):
+            return tmadog_utils.update_hacktab(db, dt)
 
-            if len (dt):
-                return tmadog_utils.update_hacktab(db, dt)
-
-        except builtins.BaseException as err:
-            if len (dt):
-                tmadog_utils.update_hacktab(db, dt)
-            print (err.args[0])
-            return -1
-
-    elif not rl:
-        html = kwargs.pop ('html', None)
-        if html:
-            m = dogs.fill_form (
-                    html, 
-                    'https://foo/foo.html', 
-                    flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
-                    data = { 'ans': None }
-                    )
-            return tmadog_utils.update_hacktab(db, [ m ])
-
-    else:
-        fstr = ''
-        try:
-            with open (rl, 'rt') as f:
-                fstr = f.read ()
-
-        except UnicodeDecodeError:
-            with open (rl, 'rt', encoding = 'utf-16le') as f:
-                fstr = f.read ()
-
-        except :
-            return -1
-
-        fpat = r'qtn\s*:.*?\n(.+?)^\W*ans\s*:.*?\n(.+?)\n' 
+    except builtins.BaseException as err:
+        if len (dt):
+            tmadog_utils.update_hacktab(db, dt)
+        print (err.args[0])
+        return -1
 
 
-        return tmadog_utils.updatedb (db, [ dict (qdescr = m[0], ans = m[1],
-            crscode = crscode, qid = None) for m in
-            re.findall (fpat, fstr, flags = re.MULTILINE | re.IGNORECASE
-                | re.DOTALL ) if not re.fullmatch (r'\s+',m[0]) and not
-            re.fullmatch (r'\s+', m[1]) ])
+
+def scrapetma_regex_f (
+        rl, 
+        fpat =
+        r'qtn\s*:.*?\n(?P<qdescr>.+?)^\W*ans\s*:.*?\n(?P<ans>.+?)(?P<qid>(?P=qdescr))?(?P<crscode>(?P=ans))?\n',
+        db = TMADOGDB,
+        enc = 'utf-8',
+        flags = re.MULTILINE | re.IGNORECASE | re.DOTALL):
+
+    fstr = ''
+
+    try:
+        f = open (rl, 'rt', encoding = enc)
+
+    except UnicodeDecodeError:
+        f = open (rl, 'rt', encoding = 'utf-16le')
+
+    except :
+        return -1
+
+    fstr = f.read ()
+
+    f.close ()
+
+    return tmadog_utils.updatedb (db, [ m.groupdict () for m in re.finditer
+        (fpat, fstr, flags = flags ) if not re.fullmatch (r'\s+',m['qdescr'])
+        and not re.fullmatch (r'\s+', m['ans']) ])
+
+
+
+def scrapetma_f_net (html, db = TMADOGDB):
+        
+    m = dogs.fill_form (
+            html, 
+            'https://foo/foo.html', 
+            flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+            data = { 'ans': None }
+            )
+    return tmadog_utils.update_hacktab(db, [ m ])
