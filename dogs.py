@@ -1,6 +1,7 @@
 import requests_html
 import re
 from urllib.parse import urljoin
+import lxml
 
 requests = requests_html.requests
 
@@ -39,41 +40,42 @@ def getdef_value (form, t, fb = False):
             return None
 
 
-def fill_form (html, url, flags, idx = 0, selector = 'form', **kwargs):
+def fill_form (
+        html,
+        flags = NO_TXTNODE_VALUE | NO_TXTNODE_KEY,
+        url = 'https://machine.com/dir/file.ext',
+        selector = 'form',
+        idx = 0,
+        **kwargs
+        ):
 
     data = kwargs.pop('data', {})
     
-    html = requests_html.HTML (html = html, url = url) if not isinstance (html,
-            requests_html.HTML) else html
+    html = lxml.html.fromstring (html = html, base_url = url) if not isinstance (html,
+            lxml.html.HtmlElement) else html
 
-    tform = html.find (selector)
+    tform = html.cssselect (selector)
 
     if not len (tform):
-        return None
+        raise TypeError ('No form found')
     else:
         tform = tform[idx]
 
     targs = {}
     
-    targs['method'] = tform.element.method
+    targs['method'] = tform.method
 
-    targs['url'] = urljoin (tform.url, tform.element.action)
+    targs['url'] = urljoin (tform.base_url, tform.action)
 
     if flags & URLONLY:
         return targs['url']
 
-    ifields = tform.element.fields
+    ifields = tform.fields
 
     params = kwargs.pop('params', {})
 
     data.update (**params)
 
-    submit = { el.attrs['name']: el.attrs.get ('value', '') for el in tform.find ('[type=submit][name]') }
-
-    # targs['data'].update (**{el.attrs['name']: el.attrs.get ('value', None) for
-    #    el in tform.find ('form button[name]')}) # or maybe 'form :not(input)[name]'
-
-    
     if not flags & NO_TXTNODE_VALUE:
         # unwilling to make sense now. will probe later
         pass
@@ -85,28 +87,24 @@ def fill_form (html, url, flags, idx = 0, selector = 'form', **kwargs):
         # data = {'nm': 'Linus'}
         pass
 
-    try:
-        ifields.update (**data)
-    except KeyError:
-        return None
+    ifields.update (**data)
     
-    targs['data'] = dict (ifields)
+    for k in ifields:
 
-    targs['data'].update (**submit)
-
-    for k in targs['data']:
-
-        if targs['data'][k] is None and not k in data:
-            targs['data'][k] = ''
+        if ifields[k] is None and not k in data:
+            ifields[k] = ''
+    
+    targs['data'] = ifields
 
     if flags & DATAONLY:
         return targs['data']
 
     if targs['method'] in ('GET', 'get'):
-        targs['params'] = targs['data']
+        targs['params'] = ifields
+
         targs['data'] = None
-    
-        return targs
+
+    return targs
 
 #def form_type ():
 

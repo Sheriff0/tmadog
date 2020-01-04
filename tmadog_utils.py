@@ -5,6 +5,7 @@ import collections
 import sqlite3
 import hashlib
 import builtins
+import lxml
 
 QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
@@ -14,18 +15,15 @@ def login (session, url, button = 'Login',**ldata):
 
     if not ldata:
         return -1
-    
+
     try:
         index = session.get (url, headers = {'referer': url})
 
         index.raise_for_status()
 
-        lpage = session.request (
-                ** dogs.click (index.text, button, url, idx = 0), headers = {
-                    'referer': url
-                    })
+        lpage = session.request ( ** dogs.click (index.text, button, url, idx = 0), headers = { 'referer': url })
 
-                lpage.raise_for_status()
+        lpage.raise_for_status()
 
         propage = session.request (
                 ** dogs.fill_form (
@@ -84,18 +82,17 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
 
         req.headers.update (**headers)
 
-        res = session.post(url, data = req.data, headers =
+        res = session.post(url, data = dict (req.data), headers =
                 req.headers)
         res.raise_for_status ()
+        
+        try:
+            m = dogs.fill_form (res.text, res.url, data = { 'ans': None })
 
-        m = dogs.fill_form (res.text, res.url, flags =
-                dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
-                data = { 'ans': None })
-        if 'qdescr' in m:
-            return ( m, dogs.fill_form (res.text, res.url, flags = dogs.URLONLY)
-                    )
-        else:
+        except:
             raise requests.HTTPError ('Not a Question Page', res)
+
+        return ( m['data'], m['url'])
 
 #>>>>>>>>>>>>>>Body<<<<<<<<<<<<<<<<
     session = kwargs.pop ('session', requests)
@@ -103,14 +100,15 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     headers = kwargs.pop ('headers', None)
 
     if matno and crscode and html:
-        req = requests.Request(
-                ** dogs.fill_form( 
+        args = dogs.fill_form( 
                     html, 
-                    url = url, 
-                    flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE, idx=0
-                    ),
-                headers = headers)
+                    url = url
+                    )
+
+        req = requests.Request( ** args , headers = headers)
+
         v = ''
+
         for k in req.data:
             if re.search (r'nou\d{9}', req.data[k], flags = re.IGNORECASE):
                 v = req.data[k]
@@ -123,6 +121,7 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
 
         v = re.sub (r'tma[1-3]', 'TMA' + str (tma), v, flags = re.IGNORECASE)
         req.data[k] = v
+
     else:
         raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
 
@@ -143,6 +142,9 @@ HACK = 0b01
 
 def get_answer (db, qst, flag):
 
+    if not isinstance (qst, lxml.html.FieldsDict):
+        raise TypeError ('question must be a form field')
+
     conn = sqlite3.connect (db)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor ()
@@ -158,20 +160,15 @@ def get_answer (db, qst, flag):
                 ''', (
                     qst['crscode'],
                     ))
-                row = cur.fetchone ()
+        row = cur.fetchone ()
 
         conn.close ()
 
-        if not set (row.keys ()).issubset (set (qst.keys ())):
-            return -1
+        qst.update (** dict (row))
 
-        ans = {k: row[k] for k in row.keys ()}
-        ans['ans'] = convert_ans(row)
+        qst['ans'] = convert_ans(row)
 
-        if not ans['ans']:
-            return -1
-
-        return ans
+        return qst
 
 
 def setupdb (db):
@@ -235,8 +232,8 @@ def update_hacktab (db, data, cursor = None):
                         datum['crscode']
                         )).fetchone ()
 
-                    if not crsref:
-                        cid = updatedb (db, [datum], cur)['cid']
+            if not crsref:
+                cid = updatedb (db, [datum], cur)['cid']
 
             else:
                 cid = crsref['cid']
@@ -251,8 +248,8 @@ def update_hacktab (db, data, cursor = None):
                         datum['optc'],
                         datum['optd']
                         ))
-                    if cursor:
-                        return cursor
+            if cursor:
+                return cursor
 
         except sqlite3.OperationalError as err:
             print ('update_hacktab: replace: ', err.args[0])
@@ -267,7 +264,6 @@ def update_hacktab (db, data, cursor = None):
         return conn
 
     return None
-
 
 
 def updatedb (db, data, cursor = None):
@@ -289,10 +285,10 @@ def updatedb (db, data, cursor = None):
 
     for datum in set (map ( 
         lambda t: QstDbT(
-            re.sub (r'\\[ntr]', ' ', t['qdescr'].strip ()), 
-            '+'.join (re.sub(r'\W', ' ',t['ans'].strip()).split ()) if isinstance (t['ans'], str) else t['ans'], 
-            t['qid'].strip() if isinstance (t['qid'], str) else t['qid'],
-            t['crscode'].strip().upper() if isinstance (t['crscode'], str) else t['crscode']
+            t['qdescr'].strip (), 
+            t['ans'].strip (), 
+            t['qid'].strip (),
+            t['crscode'].strip ()
             ), 
         data)):
 
@@ -313,7 +309,7 @@ def updatedb (db, data, cursor = None):
                         datum.qid
                         ))
 
-                    cid = cur.lastrowid            
+            cid = cur.lastrowid            
             ids['cid'] = cid
 
             cur.execute ('''
@@ -325,8 +321,8 @@ def updatedb (db, data, cursor = None):
                         cid
                         ))
 
-                    if cursor:        
-                        return ids
+            if cursor:        
+                return ids
 
         except sqlite3.IntegrityError as ierr:
 
@@ -351,18 +347,18 @@ def updatedb (db, data, cursor = None):
                                 'qid': None
                                 } 
 
-                        ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
-                    ? AND cid = ?) OR dogid = ?;''', (
-                        dupq['dogid'],
-                        crsref['cid'],
-                        dupq['dogid']
-                        )).fetchone () or {
-                                'ans': None, 
-                                'dogid': None, 
-                                'cid': None
-                                }
+            ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
+        ? AND cid = ?) OR dogid = ?;''', (
+            dupq['dogid'],
+            crsref['cid'],
+            dupq['dogid']
+            )).fetchone () or {
+                    'ans': None, 
+                    'dogid': None, 
+                    'cid': None
+                    }
 
-                        cur1 = cur.connection.cursor ()
+            cur1 = cur.connection.cursor ()
 
             cur1.execute (''' 
                     REPLACE INTO courses (cid, crscode, dogid, ready, qid)
@@ -377,7 +373,7 @@ def updatedb (db, data, cursor = None):
                             datum.qid or crsref['qid']
                             ))
 
-                    cid = cur1.lastrowid
+            cid = cur1.lastrowid
 
             ids['cid'] = cid
 
@@ -392,8 +388,8 @@ def updatedb (db, data, cursor = None):
                         cid
                         ))
 
-                    if cursor:
-                        return ids
+            if cursor:
+                return ids
 
         except sqlite3.OperationalError as err:
             print ('insert/replace: ', err.args[0])
