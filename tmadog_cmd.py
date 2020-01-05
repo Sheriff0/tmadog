@@ -5,6 +5,7 @@ import requests
 import dogs
 import builtins
 import random
+import lxml
 from pathlib import PurePath
 
 
@@ -12,7 +13,13 @@ from pathlib import PurePath
 
 TMADOGDB = 'tmadogdb'
 
-def hack_submit_tma (url, session, stp = 10, db = TMADOGDB, **kwargs):
+def scraper_submitter_net (
+        url,
+        session,
+        stp = 10, 
+        mode = tmadog_utils.NORM, 
+        **kwargs
+        ):
 
     dt = []
 
@@ -21,66 +28,34 @@ def hack_submit_tma (url, session, stp = 10, db = TMADOGDB, **kwargs):
 
         qst, url = fetch()
         dt.append (qst.copy())
-        ansraw = tmadog_utils.get_answer (TMADOGDB, qst, tmadog_utils.HACK)
+        getans = tmadog_utils.get_answer (TMADOGDB, qst, mode)
         qn = int ('0' + qst['qj']) # Just in case it's empty
 
         while 1 <= qn <= stp:
-            qst.update (ansraw)
-            kont = session.post (url, data = dict (qst), headers = {
+            kont = session.post (url, data = dict (getans (qst)), headers = {
                 'referer': url,
                 }) 
             kont.raise_for_status ()
 
-            qpage = session.send (
-                    requests.Request (
-                        ** dogs.click(
-                            kont.text,
-                            ltext = 'continue',
-                            url = kont.url
-                            ),
+            qst, url = fetch()
 
-                        headers = {
-                            'referer': kont.url
-                            }
-                        ).prepare ()
-                    )
+            qn = int ('0' + qst['qj'])
 
-            if isinstance (qpage, requests.Response):
-                qpage.raise_for_status ()
-
-                qarg = dogs.fill_form(
-                        qpage.text,
-                        url = qpage.url, 
-                        data = {'ans': None}
-                        )
-
-                qst = qarg['data']
-
-                qn = int ('0' + qst['qj'])
-
-                dt.append (qst.copy ())
-                url = qarg['url']
-
-            else:
-                break
-
-        if len (dt):
-            return tmadog_utils.update_hacktab(db, dt)
+            dt.append (qst.copy ())
 
     except builtins.BaseException as err:
-        if len (dt):
-            tmadog_utils.update_hacktab(db, dt)
         print (err.args[0])
-        return -1
+    
+    finally:
+        if len (dt):
+            return dt
+        else:
+            return -1
 
 
-def scrapetma_net (db = TMADOGDB, **kwargs):
-    rl = kwargs.pop ('rl', None)
-
-    crscode = kwargs.get ('crscode', None)
+def scraper_net (nqst, **kwargs):
 
     dt = []
-    nqst = kwargs.pop ('nqst', 1)
     try:
         fetch = tmadog_utils.fetchtma (rl, **kwargs) 
         while nqst:
@@ -88,58 +63,16 @@ def scrapetma_net (db = TMADOGDB, **kwargs):
             dt.append (m)
             nqst -= 1
 
-        if len (dt):
-            return tmadog_utils.update_hacktab(db, dt)
-
-    except builtins.BaseException as err:
-        if len (dt):
-            tmadog_utils.update_hacktab(db, dt)
+    except BaseException as err:
         print (err.args[0])
-        return -1
 
-
-def scrapetma_regex_f (
-        fstr, 
-        fpat = r'qtn\s*:.*?\n(?P<qdescr>.+?)^\W*ans\s*:.*?\n(?P<ans>.+?)(?P<qid>)(?P<crscode>)\n',
-        db = TMADOGDB,
-        enc = 'utf-8',
-        flags = re.MULTILINE | re.IGNORECASE | re.DOTALL):
-
-    if isinstance (fstr, PurePath):
-        try:
-            f = open (str (fstr), 'rt', encoding = enc)
-
-            fstr = f.read ()
-
-        except UnicodeDecodeError:
-            f.reconfigure (encoding = 'utf-16le')
-            f.seek (0)
-
-            fstr = f.read ()
-
-        except :
+    finally:
+        if len (dt):
+            return dt
+        else:
             return -1
 
-        f.close ()
 
-    return tmadog_utils.updatedb (db, [ m.groupdict () for m in re.finditer
-        (fpat, fstr, flags = flags ) if not re.fullmatch (r'\s+',m['qdescr'])
-        and not re.fullmatch (r'\s+', m['ans']) ])
-
-
-
-def scrapetma_htmlstr (html, db = TMADOGDB, ans = None):
-    try:    
-        m = dogs.fill_form (
-                html, 
-                'https://foo/foo.html', 
-                flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
-                data = { 'ans': ans }
-                )
-    except:
-        return -1
-
-    return tmadog_utils.update_hacktab(db, [ m ])
 
 
 def prowl_tma (url, session, stp = 10, db = TMADOGDB, **kwargs): # TODO
@@ -182,4 +115,59 @@ def prowl_tma (url, session, stp = 10, db = TMADOGDB, **kwargs): # TODO
     except:
         pass
 
+
+def scraper_regex_f (
+        f_or_str, 
+        regex = r'qtn\s*:.*?\n(?P<qdescr>.+?)^\W*ans\s*:.*?\n(?P<ans>.+?)(?P<qid>)(?P<crscode>)\n',
+        enc = 'utf-8',
+        flags = re.MULTILINE | re.IGNORECASE | re.DOTALL):
+
+    if isinstance (f_or_str, PurePath):
+        try:
+            f = open (str (f_or_str), 'rt', encoding = enc)
+
+            f_or_str = f.read ()
+
+        except UnicodeDecodeError:
+            f.reconfigure (encoding = 'utf-16le')
+            f.seek (0)
+
+            f_or_str = f.read ()
+
+        except :
+            return -1
+
+        f.close ()
+
+    return [ 
+            m.groupdict () for m in re.finditer (regex, f_or_str, flags = flags )
+            if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']) 
+            ]
+
+
+def scraper_html_f_or_str (f_or_str, url = 'https://foo/foo.ext' , ans = None):
+    try:    
+        if isinstance (f_or_str, PurePath):
+            f_or_str = lxml.html.parse (str (f_or_str), base_url = url).getroot ()
+
+        return [
+                dogs.fill_form (
+                    f_or_str, 
+                    url = url, 
+                    flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+                    data = { 'ans': ans }
+                    )
+                ]
+    except:
+        return -1
+
+
+def scrapetma (
+        scraper,
+        updater,
+        db = TMADOGDB,
+        **kwargs
+        ):
+
+    return updater (db, scraper (**kwargs)) 
 

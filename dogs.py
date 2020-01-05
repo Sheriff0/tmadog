@@ -42,8 +42,8 @@ def getdef_value (form, t, fb = False):
 
 def fill_form (
         html,
-        flags = NO_TXTNODE_VALUE | NO_TXTNODE_KEY,
         url = 'https://machine.com/dir/file.ext',
+        flags = NO_TXTNODE_VALUE | NO_TXTNODE_KEY,
         selector = 'form',
         idx = 0,
         **kwargs

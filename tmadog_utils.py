@@ -75,7 +75,7 @@ def get_qid (html):
 #    for opt,v in optdeque.copy():
 #
 
-def fetchtma (url, matno, tma , crscode, html, **kwargs):
+def fetchtma (url, matno, tma , crscode, html, selector = 'form', idx = 0, **kwargs):
 
     def fetcher (url = None, headers = {}):
         url = url if url else req.url
@@ -92,7 +92,7 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
         except:
             raise requests.HTTPError ('Not a Question Page', res)
 
-        return ( m['data'], m['url'])
+        return (m['data'], m['url'])
 
 #>>>>>>>>>>>>>>Body<<<<<<<<<<<<<<<<
     session = kwargs.pop ('session', requests)
@@ -100,27 +100,33 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     headers = kwargs.pop ('headers', None)
 
     if matno and crscode and html:
+        html = lxml.html.fromstring (html, base_url = url)
+        data = {
+                e.get ('name'): e.get ('value', '')
+                for e in html.cssselect (selector)[idx].cssselect (':not(input)[name]')
+                }
+    
         args = dogs.fill_form( 
                     html, 
-                    url = url
+                    url = url,
+                    selector = selector,
+                    idx = idx
                     )
+
+        data.update (**args['data'])
+
+        args['data'], data = data, args['data']
 
         req = requests.Request( ** args , headers = headers)
 
-        v = ''
-
         for k in req.data:
-            if re.search (r'nou\d{9}', req.data[k], flags = re.IGNORECASE):
-                v = req.data[k]
-                break
+            req.data[k] = re.sub (r'nou\d{9}', matno.upper(), req.data[k], flags = re.IGNORECASE)
 
-        v = re.sub (r'nou\d{9}', matno.upper(), v, flags = re.IGNORECASE)
+            req.data[k] = re.sub (r'[^nN1-9][^Oo1-9][^1-9Uu]\d{3}(?!\d+)',
+                    crscode.upper(), req.data[k], flags = re.IGNORECASE)
 
-        v = re.sub (r'\w{3}\d{3}(\D)', crscode.upper() + r'\1', v, count =
-                1, flags = re.IGNORECASE)
+            req.data[k] = re.sub (r'(tma)[1-3]', r'\g<1>' + str (tma), req.data[k], flags = re.IGNORECASE)
 
-        v = re.sub (r'tma[1-3]', 'TMA' + str (tma), v, flags = re.IGNORECASE)
-        req.data[k] = v
 
     else:
         raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
@@ -128,47 +134,117 @@ def fetchtma (url, matno, tma , crscode, html, **kwargs):
     return fetcher
 
 
-def convert_ans (row):
-    a = r'\W+?'.join (row ['ans'].split ('+'))
-    opts = row[3:]
-    t = ('A', 'B', 'C', 'D')
+def convert_ans (
+        row,
+        a,
+        pre = 'opt',
+        optmap = {
+            'opta': 'A',
+            'optb': 'B',
+            'optc': 'C',
+            'optd': 'D'
+            }
+        ):
+    a = re.sub (r'\+', r'\\W+?', a)
 
-    for i, tv in enumerate (t):
-        if re.search (a, opts[i], flags = re.IGNORECASE):
-            return tv
-    return None
+    for k in {k: row[k] for k in row if k.startswith (pre)}:
+
+        if re.match (a, row [k].strip (), flags = re.IGNORECASE):
+            return optmap[k] 
+
+    return 'None'
 
 HACK = 0b01
+NORM = 0b10
 
-def get_answer (db, qst, flag):
+def get_answer (
+        db,
+        qst,
+        mode,
+        ans = 'ans',
+        qdescr = 'qdescr',
+        qid = 'qid',
+        crscode = 'crscode',
+        optmap = {
+            'opta': 'opta',
+            'optb': 'optb',
+            'optc': 'optc',
+            'optd': 'optd'
+            }
+        ):
+    
+    def getter (qst, m):
+        if not isinstance (qst, lxml.html.FieldsDict):
+            raise TypeError ('question must be a form field')
 
-    if not isinstance (qst, lxml.html.FieldsDict):
-        raise TypeError ('question must be a form field')
+        conn = sqlite3.connect (db)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor ()
 
-    conn = sqlite3.connect (db)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor ()
+        if m is NORM:
+            row = {}
+            cur.execute ('''
+            SELECT ans AS %s FROM answers INNER JOIN courses AS
+            c ON (c.crscode LIKE ? AND c.qid IS ? AND c.ready IS NOT FALSE) WHERE answers.cid IS c.cid
+                    ''' % (
+                        ans,
+                        ), 
+                    (
+                        qst [crscode],
+                        qst [qid]
+                        )
+                    )
+            row [ans] = cur.fetchone ()[ans]
 
-    if flag & HACK:
-        cur.execute ('''
-                SELECT qdescr AS qdescr, ans AS ans, qid AS qid, opta AS opta,
-                optb AS optb, optc AS optc, optd AS optd FROM questions
-                AS q INNER JOIN (courses AS c, answers AS a, hacktab AS h) ON
-                (c.dogid == q.dogid AND a.dogid == q.dogid AND a.cid == c.cid
-                AND h.cid == c.cid)
-                WHERE ready == 1 AND crscode LIKE ?
-                ''', (
-                    qst['crscode'],
-                    ))
-        row = cur.fetchone ()
+        elif m is HACK:
+            cur.execute ('''
+                SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
+                %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
+                (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
+                        FALSE AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
+                        c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
+                    ''' % (
+                        qdescr,
+                        ans,
+                        qid,
+                        optmap['opta'],
+                        optmap['optb'],
+                        optmap['optc'],
+                        optmap['optd']
+                        ), 
+                    (
+                        qst[crscode],
+                        )
+                    )
+            
+            row = cur.fetchone ()
+
+            qst.update (
+                    **{
+                        k: row[k] for k in row if k is not ans
+                        }
+                    )
 
         conn.close ()
 
-        qst.update (** dict (row))
-
-        qst['ans'] = convert_ans(row)
+        qst[ans] = convert_ans(qst, row[ans])
 
         return qst
+
+    def fetcher (qst, m = mode):
+        a = None
+
+        if len (lcache):
+            a = lcache.get (qst[qid], None) if m is NORM else lcache.get
+            (qst[crscode], None)
+    
+        if not a:
+            a = getter (qst, m)
+            lcache[qst[crscode]] = a.copy ()
+            lcache[qst[qid]] = lcache[qst[crscode]]
+
+        lcache = {}
+        return fetcher
 
 
 def setupdb (db):
