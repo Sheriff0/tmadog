@@ -11,6 +11,26 @@ from pathlib import PurePath
 
 #__all__ = ['submit', 'hack', 'scrape_tmaQ']
 
+class QMiter (object):
+
+    def __init__ (self, miter):
+        self.miter = miter
+
+    def __iter__ (self):
+
+        for m in self.miter:
+            if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']):
+                yield tmadog_utils.QstDbT (m['qdescr'].strip (), m['ans'].strip (),
+                        m['qid'].strip (), m['crscode'].strip ())
+
+    def __next__ (self):
+        
+        for m in self.miter:
+            if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']):
+                return tmadog_utils.QstDbT (m['qdescr'].strip (), m['ans'].strip (),
+                        m['qid'].strip (), m['crscode'].strip ())
+
+
 TMADOGDB = 'tmadogdb'
 
 def scraper_submitter_net (
@@ -116,7 +136,7 @@ def prowl_tma (url, session, stp = 10, db = TMADOGDB, **kwargs): # TODO
         pass
 
 
-def scraper_regex_f (
+def scraper_regex_f_or_str (
         f_or_str, 
         regex = r'qtn\s*:.*?\n(?P<qdescr>.+?)^\W*ans\s*:.*?\n(?P<ans>.+?)(?P<qid>)(?P<crscode>)\n',
         enc = 'utf-8',
@@ -139,10 +159,7 @@ def scraper_regex_f (
 
         f.close ()
 
-    return [ 
-            m.groupdict () for m in re.finditer (regex, f_or_str, flags = flags )
-            if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']) 
-            ]
+    return QMiter (re.finditer (regex, f_or_str, flags = flags ))
 
 
 def scraper_html_f_or_str (f_or_str, url = 'https://foo/foo.ext' , ans = None):
@@ -166,8 +183,9 @@ def scrapetma (
         scraper,
         updater,
         db = TMADOGDB,
-        **kwargs
+        *ukwargs,
+        **skwargs
         ):
 
-    return updater (db, scraper (**kwargs)) 
+    return updater (db, scraper (**skwargs), *ukwargs)
 

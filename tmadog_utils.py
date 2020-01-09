@@ -359,18 +359,14 @@ def updatedb (db, data, cursor = None):
 
     ids = {}
 
-    for datum in set (map ( 
-        lambda t: QstDbT(
-            t['qdescr'].strip (), 
-            t['ans'].strip (), 
-            t['qid'].strip (),
-            t['crscode'].strip ()
-            ), 
-        data)):
+    for datum in set (data):
 
         try:
+
+            if isinstance (datum, QstDbT):
+                datum = datum._asdict ()
             cur.execute ('''INSERT INTO questions (qdescr)
-                    VALUES (?);''', (datum.qdescr,))
+                    VALUES (?);''', (datum['qdescr'],))
 
             dogid = cur.lastrowid
             ids['dogid'] = dogid
@@ -378,11 +374,11 @@ def updatedb (db, data, cursor = None):
             cur.execute ('''INSERT INTO courses (crscode, dogid, ready,
             qid) VALUES
                     (?, ?, ?, ?)''', (
-                        datum.crscode,
+                        datum['crscode'],
                         dogid,
-                        True if datum.ans and datum.crscode and datum.qid else
+                        True if datum['ans'] and datum['crscode'] and datum['qid'] else
                         False,
-                        datum.qid
+                        datum['qid']
                         ))
 
             cid = cur.lastrowid            
@@ -392,7 +388,7 @@ def updatedb (db, data, cursor = None):
                     INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
                     ?);
                     ''', (
-                        datum.ans,
+                        datum['ans'],
                         dogid,
                         cid
                         ))
@@ -404,14 +400,14 @@ def updatedb (db, data, cursor = None):
 
             repeats += 1
 
-            dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum.qdescr,)).fetchone ()
+            dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum['qdescr'],)).fetchone ()
 
             crsref = cur.execute (''' 
                     SELECT * FROM courses WHERE (crscode = ? AND qid = ? AND
                     dogid = ?) OR (dogid = ? AND ready = ?) LIMIT 1
                     ''', (
-                        datum.crscode,
-                        datum.qid,
+                        datum['crscode'],
+                        datum['qid'],
                         dupq['dogid'],
                         dupq['dogid'],
                         False
@@ -441,12 +437,12 @@ def updatedb (db, data, cursor = None):
                     VALUES (?, ?, ?, ?, ?)
                     ''', (
                         crsref['cid'],
-                        datum.crscode or crsref['crscode'],
+                        datum['crscode'] or crsref['crscode'],
                         crsref['dogid'],
-                        True if (ansref['ans'] or datum.ans) and (datum.qid or
+                        True if (ansref['ans'] or datum['ans']) and (datum['qid'] or
                             crsref['qid']) and (crsref['crscode'] or
-                                datum.crscode) else False,
-                            datum.qid or crsref['qid']
+                                datum['crscode']) else False,
+                            datum['qid'] or crsref['qid']
                             ))
 
             cid = cur1.lastrowid
@@ -459,7 +455,7 @@ def updatedb (db, data, cursor = None):
                     REPLACE INTO answers (ans, dogid, cid) VALUES (?,
                     ?, ?)
                     ''', (
-                        datum.ans or ansref['ans'],
+                        datum['ans'] or ansref['ans'],
                         dupq['dogid'],
                         cid
                         ))
