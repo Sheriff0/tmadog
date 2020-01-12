@@ -4,6 +4,7 @@ import os
 from dogs import *
 #import tmadog_utils
 import argparse
+from submit import Submit
 
 tmadogsess = cfscrape.create_scraper ()
 
@@ -15,42 +16,35 @@ defhdr = {
 
 tmadogsess.headers.update (defhdr)
 
-def main ():
-    tmadogparser = argparse.ArgumentParser(
-            prog = 'tmadog', 
-            
-            description = '''
-                tmadog will not only submit you TMAs faster, it can
-                also hack the TMA database''',
-            
-            usage = '''
-            tmadog [option [...]] [file [...]]''',
-            fromfile_prefix_chars = '@',
-            epilog = 'Author: smeO\n'
-            )
+main_psr = argparse.ArgumentParser (
+        usage = '''
+        tmadog [-h | --help] COMMAND [cmd_args [...]]
+        '''
+        )
 
-    tmadogcmds = tmadogparser.add_mutually_exclusive_group (required = True)
+cmds = main_psr.add_subparsers (
 
-    tmadogcmds.add_argument (
-            '--submit',
-            action = 'store_true',
-            help = '''
-            Submit TMA the normal way
-            '''
-            )
+        required = True,
+        title = 'COMMAND',
+        metavar = '''
+        submit
+        hack
+        '''
+        )
 
-    tmadogcmds.add_argument (
-            '--hack',
-            action = 'store_true',
-            help = '''
-            Submit TMA with some hacks
-            '''
-            )
-    try:
-        tmadogparser.parse_args()
+cmd_submit_psr = cmds.add_parser ( **Submit.cmd_des)
 
-    except argparse.ArgumentError:
-        print ('Errs')
+for p, m in [
+        (cmd_submit_psr, Submit),
+        ]:
+    for opt in m.opt_des:
+        n = opt.pop ('id')
+        p.add_argument (*n, **opt)
 
-if __name__ == '__main__':
-        main ()
+
+
+#def main ():
+#    pass
+#
+#if __name__ == '__main__':
+#        main ()

@@ -7,12 +7,21 @@ requests = requests_html.requests
 
 re.Match = type (re.match (r'foo', 'foo'))
 
+class FDict (lxml.html.FieldsDict):
+    def __init__ (self, *a0, **a1):
+        return super ().__init__ (*a0, **a1)
+
+    def __len__ (self):
+        return len (dict (self))
+    
+
 #__all__ = ['click', 'fill_form', 'getdef_value']
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
 DATAONLY = 0b0100
 URLONLY = 0b1000
+EXTRAS = 0b10000
 
 LastForm = {}
 
@@ -70,7 +79,12 @@ def fill_form (
     if flags & URLONLY:
         return targs['url']
 
-    ifields = tform.fields
+    if flags & EXTRAS:
+        for e in tform.__copy__().cssselect (':not(input)[name]'):
+            tform.append (requests_html.HTML (html = '''<input name = "%s" value =
+                "%s">''' % (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
+
+    ifields = FDict (tform.inputs)
 
     params = kwargs.pop('params', {})
 
@@ -114,11 +128,11 @@ def fill_form (
 #def click_link ():
 
 
-def click (html, ltext, url, idx = 0, **kwargs):
+def click (html, ltext, url, selector = 'a, form', idx = 0, **kwargs):
 
     html = requests_html.HTML (html = html, url = url) if not isinstance (html,
             requests_html.HTML) else html
-    m = html.find ('a, form', containing = ltext)
+    m = html.find (selector, containing = ltext)
     if not len (m):
         return None
     else:
@@ -127,12 +141,22 @@ def click (html, ltext, url, idx = 0, **kwargs):
     t = m.element.tag
 
     if t in ('form', 'FORM'):
-        return fill_form (m, url, NO_TXTNODE_KEY | NO_TXTNODE_VALUE, **kwargs)
+        flags = kwargs.pop ('flags', NO_TXTNODE_KEY | NO_TXTNODE_VALUE)
+        return fill_form (m.html, url, flags = flags, **kwargs)
     elif t in ('a', 'A'):
-        return {
-                'method': 'GET', 
-                'url': urljoin (url, m.attrs['href'])
-                }
+        flags = kwargs.pop ('flags', ~(URLONLY | DATAONLY))
+
+        if flags & URLONLY:
+            return urljoin (url, m.attrs['href'])
+        elif flags & DATAONLY:
+            return {}
+        else:
+            return {
+                    'method': 'GET', 
+                    'url': urljoin (url, m.attrs['href']),
+                    'params': kwargs.get ('params', None),
+                    'data': kwargs.get ('data', None)
+                    }
 
     else:
         return None
