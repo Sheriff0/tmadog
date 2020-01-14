@@ -17,12 +17,12 @@ class Submit (object):
     cmd_des = {
 	    'name' : 'submit',
 
-	    'description' : '''This command simply submits TMA(s) for you. Give it a Matric No / password and go to bed - let it do the hard work for you.
-
+	    'description' : '''This command simply submits TMA(s) for you. Give it a Matric No / password pair and go to bed - let it do the hard work for you.
 	    ''',
 	    'formatter_class' : argparse.RawDescriptionHelpFormatter,
 
 	    'fromfile_prefix_chars' : '@',
+
 	    }
 
     opt_des = [
@@ -31,8 +31,6 @@ class Submit (object):
                     '--matno',
                     ],
 
-                'dest': 'matno',
-
                 'action': 'append',
                 
                 'help': '''The target Matriculation Number. E.g Nou123456789
@@ -40,22 +38,9 @@ class Submit (object):
 
                 'type': str,
 
-                'nargs': '+'
+                #'nargs': '+',
 
-                },
-
-            {
-                'id': [
-                    'matno'
-                    ],
-
-
-                'action': 'append',
-                
-                'help': '''The target Matriculation Number. E.g Nou123456789
-                ''',
-
-                'type': str,
+                'required': True,
 
                 },
 
@@ -64,8 +49,6 @@ class Submit (object):
                     '--pwd',
                     ],
 
-                'dest': 'pwd',
-
                 'action': 'append',
                 
                 'help': '''The accompanying password. E.g 12345.
@@ -73,20 +56,25 @@ class Submit (object):
 
                 'type': str,
 
-                'nargs': '+'
+                #'nargs': '+',
+
+                'required': True,
 
                 },
             {
                 'id': [
-                    'pwd',
+                    '--tma',
                     ],
 
                 'action': 'append',
                 
-                'help': '''The accompanying password. E.g 12345.
+                'help': '''The tma to submit.
                 ''',
 
-                'type': str,
+
+                #'nargs': '+',
+
+                'required': True,
 
                 },
             ]

@@ -17,19 +17,36 @@ defhdr = {
 tmadogsess.headers.update (defhdr)
 
 main_psr = argparse.ArgumentParser (
-        usage = '''
-        tmadog [-h | --help] COMMAND [cmd_args [...]]
-        '''
+        #usage = '''tmadog [-h | --help] COMMAND [cmd_args [...]]
+        #''',
         )
+
+main_psr.add_argument (
+        '--database', '-db', 
+        default = 'tmadogdb',
+        type = str,
+        dest = 'database',
+        help = '''Select the database to use.'''
+        )
+
+
+main_psr.add_argument (
+        '--url', '-U', 
+        default = 'https://www.nouonline.net/',
+        type = str,
+        dest = 'url',
+        help = '''The NOUN website to use.'''
+        )
+
 
 cmds = main_psr.add_subparsers (
 
         required = True,
         title = 'COMMAND',
-        metavar = '''
-        submit
-        hack
-        '''
+       # metavar = '''
+       # submit
+       # hack
+       # ''',
         )
 
 cmd_submit_psr = cmds.add_parser ( **Submit.cmd_des)
@@ -38,8 +55,7 @@ for p, m in [
         (cmd_submit_psr, Submit),
         ]:
     for opt in m.opt_des:
-        n = opt.pop ('id')
-        p.add_argument (*n, **opt)
+        p.add_argument (*opt['id'].copy (), **{k: opt[k] for k in opt if k is not 'id'})
 
 
 

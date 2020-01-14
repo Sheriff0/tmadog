@@ -62,7 +62,7 @@ class TmadogUtils (object):
         return re.search (tpat, html, flags = re.DOTALL | re.MULTILINE | re.IGNORECASE)
 
 
-    def fetchtma (url, matno, tma , crscode, html, button = 'TMA1', idx = 0, **kwargs):
+    def fetchtma (url, matno, tma , crscode, html, button = 'TMA', idx = 0, **kwargs):
 
         def fetcher (url = None, headers = {}):
             url = url if url else req.url
@@ -81,6 +81,14 @@ class TmadogUtils (object):
 
             return (m['data'], m['url'])
 
+    
+        def copycase (repl):
+            def _copycase(m):
+                return repl.upper () if m['cs'].isupper () else repl.lower ()
+
+            return _copycase
+
+
     #>>>>>>>>>>>>>>Body<<<<<<<<<<<<<<<<
         session = kwargs.pop ('session', requests)
 
@@ -96,19 +104,28 @@ class TmadogUtils (object):
                         flags = dogs.EXTRAS
                         )
 
-            if not len (args['data']):
-                raise TypeError ('fetch: Button %s not a form' % (button,), args)
+
+            args['url'] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), args['url'], flags = re.IGNORECASE)
+
+            args['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                    copycase (crscode), args['url'], flags = re.IGNORECASE)
+
+            args['url'] = re.sub (r'(?P<cs>tma)[1-3]', copycase(r'tma' + str
+                (tma)), args['url'], flags = re.IGNORECASE)
+
+            t = 'data' if args['method'] in ('POST', 'post') else 'params'
+
+            for k in args.get(t, {}):
+                args[t][k] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), args[t][k], flags = re.IGNORECASE)
+
+                args[t][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                        copycase (crscode), args[t][k], flags = re.IGNORECASE)
+
+                args[t][k] = re.sub (r'(?P<cs>tma)[1-3]', copycase(r'tma' + str
+                    (tma)), args[t][k], flags = re.IGNORECASE)
+
 
             req = requests.Request( ** args , headers = headers)
-
-            for k in req.data:
-                req.data[k] = re.sub (r'nou\d{9}', matno.upper(), req.data[k], flags = re.IGNORECASE)
-
-                req.data[k] = re.sub (r'[^nN1-9][^Oo1-9][^1-9Uu]\d{3}(?!\d+)',
-                        crscode.upper(), req.data[k], flags = re.IGNORECASE)
-
-                req.data[k] = re.sub (r'(tma)[1-3]', r'\g<1>' + str (tma), req.data[k], flags = re.IGNORECASE)
-
 
         else:
             raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
@@ -166,14 +183,17 @@ class TmadogUtils (object):
             if m is NORM:
                 row = {}
                 cur.execute ('''
-                SELECT ans AS %s FROM answers INNER JOIN courses AS
-                c ON (c.crscode LIKE ? AND c.qid IS ? AND c.ready IS NOT FALSE) WHERE answers.cid IS c.cid
+                SELECT ans AS %s FROM answers INNER JOIN (courses AS c,
+                questions as q) ON ((c.crscode LIKE ? AND c.qid IS ? AND c.ready
+                IS NOT FALSE) OR q.qdescr LIKE ?) WHERE answers.cid IS c.cid OR
+                answers.dogid IS q.dogid
                         ''' % (
                             ans,
                             ),
                         (
                             qst [crscode],
-                            qst [qid]
+                            qst [qid],
+                            qst [qdescr],
                             )
                         )
                 row [ans] = cur.fetchone ()[ans]
