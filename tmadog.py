@@ -5,16 +5,8 @@ from dogs import *
 #import tmadog_utils
 import argparse
 from submit import Submit
+import configparser
 
-tmadogsess = cfscrape.create_scraper ()
-
-defhdr = {
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-user': '?1',
-        'sec-fetch-site': 'same-origin'
-        }
-
-tmadogsess.headers.update (defhdr)
 
 main_psr = argparse.ArgumentParser (
         #usage = '''tmadog [-h | --help] COMMAND [cmd_args [...]]
@@ -38,6 +30,20 @@ main_psr.add_argument (
         help = '''The NOUN website to use.'''
         )
 
+main_psr.add_argument (
+        '--cookie',
+        type = str,
+        help = '''Reuse a session saved in a file''',
+        default = None,
+        )
+
+main_psr.add_argument (
+        '--config-file',
+        '-cf',
+        type = str,
+        help = '''The config file to use aside the default '.tmadogrc' file''',
+        default = '.tmadogrc',
+        )
 
 cmds = main_psr.add_subparsers (
 

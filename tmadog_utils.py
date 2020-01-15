@@ -8,36 +8,48 @@ import builtins
 import lxml
 import random
 from pathlib import PurePath
+from urllib import parse
 
 class TmadogUtils (object):
     QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
     #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
 
-    def login (session, url, button = 'Login',**ldata):
+    def login (html, url, session, buttons = ['Login'], **ldata):
 
         if not ldata:
             return -1
 
         try:
-            index = session.get (url, headers = {'referer': url})
+            url = parse.urlparse (url)
 
-            index.raise_for_status()
+            for b in buttons:
 
-            lpage = session.request ( ** dogs.click (index.text, button, url, idx = 0), headers = { 'referer': url })
+                xpage = session.request (
+                        ** dogs.click (
+                            html,
+                            button = b,
+                            url = url.geturl (),
+                            idx = 0
+                            ), 
+                        headers = { 'referer': url.geturl() }
+                        )
 
-            lpage.raise_for_status()
+                xpage.raise_for_status()
+                html = xpage.text
+                url = parse.urlparse (xpage.request.url)
 
             propage = session.request (
                     ** dogs.fill_form (
-                        lpage.text,
-                        lpage.request.url ,
+                        html,
+                        url.geturl () ,
                         flags = dogs.NO_TXTNODE_VALUE | dogs.NO_TXTNODE_KEY,
                         data = ldata,
-                        idx = 0),
+                        idx = 0
+                        ),
                     headers = {
-                        'referer': lpage.url,
-                        'origin': url[0:-1],
+                        'referer': url.geturl (),
+                        'origin': url.scheme + '://' + url.hostname,
                         'cache-control': 'max-age=0'
                         }
                     )

@@ -12,6 +12,7 @@ import cfscrape
 import os
 import sys
 import argparse
+import configparser
 
 class Submit (object):
     cmd_des = {
@@ -79,8 +80,10 @@ class Submit (object):
                 },
             ]
 
+
     def submit (
-            args: argparse.Namespace
+            args: argparse.Namespace,
+            config: configparser.SectionProxy
             ) -> None :
         ''' Submit your TMAs faster and efficiently.
 
@@ -96,3 +99,25 @@ class Submit (object):
               cookie-persistence. The session object must be an instance of
               requests.Session or its subclass.
         '''
+        
+        tmadogsess = cfscrape.create_scraper ()
+
+        defhdr = {
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-user': '?1',
+                'sec-fetch-site': 'same-origin'
+                }
+
+        tmadogsess.headers.update (defhdr)
+        if args.cookie:
+            cookie = configparser.ConfigParser ()
+            cookie.read (args.cookie)
+
+            requests.utils.add_dict_to_cookiejar (tmadogsess, cookie.get
+                    ('cookies', {}))
+        
+        profile = TmadogUtils.login ()
+            
+            index = session.get (url, headers = {'referer': url})
+
+            index.raise_for_status()
