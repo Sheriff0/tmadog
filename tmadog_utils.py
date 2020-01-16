@@ -15,7 +15,7 @@ class TmadogUtils (object):
 
     #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
 
-    def login (html, url, session, buttons = ['Login'], **ldata):
+    def login (html, url, session, buttons = [], **ldata):
 
         if not ldata:
             return -1

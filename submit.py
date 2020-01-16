@@ -13,6 +13,7 @@ import os
 import sys
 import argparse
 import configparser
+from urllib import parse
 
 class Submit (object):
     cmd_des = {
@@ -116,8 +117,39 @@ class Submit (object):
             requests.utils.add_dict_to_cookiejar (tmadogsess, cookie.get
                     ('cookies', {}))
         
-        profile = TmadogUtils.login ()
-            
-            index = session.get (url, headers = {'referer': url})
+        url = parse.urlparse (args.url)
 
-            index.raise_for_status()
+        index = tmadogsess.get (url.geturl (), headers = {'referer': url.geturl ()})
+
+        index.raise_for_status()
+        
+        buttons = eval (config['login-page']['hops'])
+        
+        html = index.text
+
+        url = parse.urlparse (index.requests.url)
+
+        for b in buttons:
+
+            xpage = tmadogsess.request (
+                    ** dogs.click (
+                        html,
+                        button = b,
+                        url = url.geturl (),
+                        idx = 0
+                        ), 
+                    headers = { 'referer': url.geturl() }
+                    )
+
+            xpage.raise_for_status()
+            html = xpage.text
+            url = parse.urlparse (xpage.request.url)
+
+        for i, m in enumerate (args.matno):
+            profile = TmadogUtils.login (
+                    html,
+                    url.geturl (),
+                    session = tmadogsess,
+                    matno = m,
+                    pwd = args.pwd[i]
+                    )

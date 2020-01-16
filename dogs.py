@@ -8,12 +8,66 @@ requests = requests_html.requests
 re.Match = type (re.match (r'foo', 'foo'))
 
 class FDict (lxml.html.FieldsDict):
-    def __init__ (self, *a0, **a1):
+    def __init__ (self, form, *a0, **a1):
+        if isinstance (form, requests_html.Element):
+            self.form_ref = form
+
+        else:
+            raise TypeError ('''Fdict: form must be instance of class
+                    requests_html.HTML.''', type (form))
+
         return super ().__init__ (*a0, **a1)
 
     def __len__ (self):
         return len (dict (self))
     
+    def resolve_key (self, s):
+
+        if s.startswith ('['):
+            ele = self.form_ref.find (
+                    'input[placeholder="%s"]' % (s.strip ('[]'),),
+                first = True
+                )
+            if not ele:
+                raise KeyError ('%s does not exist in form' % (s,))
+            
+            s = ele.attrs['name']
+
+        elif s.startswith ('<'):
+            p_ele = self.form_ref.find (
+                    'form *',
+                    containing = s.strip ('<>'),
+                    first = True
+                    )
+            if not p_ele:
+                raise KeyError ('%s does not exist in form' % (s,))
+
+            ele = p_ele.find ('input', first = True)
+
+            s = ele.attrs['name']
+
+        return s
+
+    def update (self, E, **F):
+        if getattr (E, 'keys', None):
+            for k in E:
+                v = E[k]
+                k = self.resolve_key (k)
+                self[k] = v
+        else:
+            for k, v in E:
+                k = self.resolve_key (k)
+                self[k] = v
+
+        for k in F:
+            v = F[k]
+            k = self.resolve_key (k)
+            self[k] = v
+
+        return self
+
+
+
 
 #__all__ = ['click', 'fill_form', 'getdef_value']
 
@@ -60,15 +114,16 @@ def fill_form (
 
     data = kwargs.pop('data', {})
     
-    html = lxml.html.fromstring (html = html, base_url = url) if not isinstance (html,
-            lxml.html.HtmlElement) else html
+    s = html
 
-    tform = html.cssselect (selector)
+    html = lxml.html.fromstring (html = s, base_url = url) 
+
+    tform, s = html.cssselect (selector), requests_html.HTML (html = s).find (selector)
 
     if not len (tform):
         raise TypeError ('No form found')
     else:
-        tform = tform[idx]
+        tform, s = tform[idx], s[idx]
 
     targs = {}
     
@@ -80,28 +135,17 @@ def fill_form (
         return targs['url']
 
     if flags & EXTRAS:
-        for e in tform.__copy__().cssselect (':not(input)[name]'):
+        for e in tform.__copy__().cssselect ('form :not(input)[name]'):
             tform.append (requests_html.HTML (html = '''<input name = "%s" value =
                 "%s">''' % (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
 
-    ifields = FDict (tform.inputs)
+    ifields = FDict (s, tform.inputs)
 
     params = kwargs.pop('params', {})
 
     data.update (**params)
 
-    if not flags & NO_TXTNODE_VALUE:
-        # unwilling to make sense now. will probe later
-        pass
-    if not flags & NO_TXTNODE_KEY:
-        # Handle cases like:
-        # html = '<label> Name <input name = "nm"> </label>'
-        # data = {'Name': 'Linus'}
-        ## make:
-        # data = {'nm': 'Linus'}
-        pass
-
-    ifields.update (**data)
+    ifields.update (data)
     
     for k in ifields:
 
@@ -143,6 +187,7 @@ def click (html, ltext, url, selector = 'a, form', idx = 0, **kwargs):
     if t in ('form', 'FORM'):
         flags = kwargs.pop ('flags', NO_TXTNODE_KEY | NO_TXTNODE_VALUE)
         return fill_form (m.html, url, flags = flags, **kwargs)
+
     elif t in ('a', 'A'):
         flags = kwargs.pop ('flags', ~(URLONLY | DATAONLY))
 
