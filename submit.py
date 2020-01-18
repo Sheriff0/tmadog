@@ -106,7 +106,7 @@ class Submit (object):
         defhdr = {
                 'sec-fetch-mode': 'navigate',
                 'sec-fetch-user': '?1',
-                'sec-fetch-site': 'same-origin'
+                #'sec-fetch-site': 'same-origin'
                 }
 
         tmadogsess.headers.update (defhdr)
@@ -117,39 +117,92 @@ class Submit (object):
             requests.utils.add_dict_to_cookiejar (tmadogsess, cookie.get
                     ('cookies', {}))
         
-        url = parse.urlparse (args.url)
 
-        index = tmadogsess.get (url.geturl (), headers = {'referer': url.geturl ()})
+        xpage = tmadogsess.get (
+                url.geturl (),
+                headers = {
+                    'referer': args.url,
+                    'host': parse.urlparse (args.url).hostname
+                    }
+                )
 
-        index.raise_for_status()
+        xpage.raise_for_status()
         
-        buttons = eval (config['login-page']['hops'])
+        buttons = config['login_form']['home_page'].strip ().split (',')
         
-        html = index.text
+        tb = config['question-form']['tma_page'].strip ().split (',')[0]
 
-        url = parse.urlparse (index.requests.url)
+        qn = config[configparser.DEFAULTSECT]['qn_name'].strip ()
 
-        for b in buttons:
+        pgcache = {}
 
-            xpage = tmadogsess.request (
-                    ** dogs.click (
-                        html,
-                        button = b,
-                        url = url.geturl (),
-                        idx = 0
-                        ), 
-                    headers = { 'referer': url.geturl() }
-                    )
+        xpage = nav_to (
+                session = tmadogsess,
+                html = xpage.text,
+                url = xpage.url,
+                buttons = buttons
+                )
 
-            xpage.raise_for_status()
-            html = xpage.text
-            url = parse.urlparse (xpage.request.url)
+        pgcache['login_form'] = xpage
 
-        for i, m in enumerate (args.matno):
-            profile = TmadogUtils.login (
-                    html,
-                    url.geturl (),
+        for midx, matno in enumerate (args.matno):
+            ppage = TmadogUtils.login (
+                    pgcache['login_form'].text,
+                    pgcache['login_form'].request.url,
                     session = tmadogsess,
-                    matno = m,
-                    pwd = args.pwd[i]
+                    matno = matno,
+                    pwd = args.pwd[midx]
                     )
+
+            if 'tma-page' is not in pgcache:
+                buttons = config['tma_page']['profile_page'].strip ().split (',')
+                xpage = nav_to (
+                        session = tmadogsess,
+                        buttons = buttons,
+                        html = ppage.text,
+                        url = ppage.url
+                        )
+                pgcache['tma_page'] = xpage
+
+            tmas = args.tma[midx].strip ().split (',')
+
+            for tma in range (int (tmas[0]), int (tmas[-1]) + 1):
+                qfetcher = TmadogUtils.mkqst_fetcher (
+                        
+                        session = tmadogsess,
+                        url = pgcache['tma_page'].request.url,
+                        matno = matno,
+                        tma = tma,
+                        crscode = args.crscode[midx],
+                        html = pgcache['tma_page'].text,
+                        button = tb,
+                        qnref = qn,
+                        mode = TmadogUtils.SUB_MODE_NORM,
+                        ans = ans,
+                        idx = 0,
+                        )
+
+                db_data = TmadogUtils.scraper_submitter_net (
+                        session = tmadogsess,
+                        fetcher = qfetcher,
+                        stp = 10,
+                        mode = SUB_MODE_NORM,
+                        qnref = 'qj',
+                        ans = 'ans',
+                        db = TMADOGDB,
+                        )
+
+                session = tmadogsess,
+                url = pgcache['tma_page'].request.url,
+                matno = matno,
+                tma = tma,
+                crscode = args.crscode[midx],
+                html = pgcache['tma_page'].text,
+                button = tb,
+                qnref = qn,
+                mode = TmadogUtils.SUB_MODE_NORM,
+                idx = 0,
+
+                TmadogUtils.update_hacktab,
+
+                print ('success: TMA%i for %s has been submitted' % (tma, matno))

@@ -9,35 +9,25 @@ import lxml
 import random
 from pathlib import PurePath
 from urllib import parse
+import configparser
 
 class TmadogUtils (object):
     QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
     #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
 
-    def login (html, url, session, buttons = [], **ldata):
+    def login (
+            html,
+            url,
+            session,
+            **ldata
+            ):
 
         if not ldata:
             return -1
 
         try:
             url = parse.urlparse (url)
-
-            for b in buttons:
-
-                xpage = session.request (
-                        ** dogs.click (
-                            html,
-                            button = b,
-                            url = url.geturl (),
-                            idx = 0
-                            ), 
-                        headers = { 'referer': url.geturl() }
-                        )
-
-                xpage.raise_for_status()
-                html = xpage.text
-                url = parse.urlparse (xpage.request.url)
 
             propage = session.request (
                     ** dogs.fill_form (
@@ -62,6 +52,31 @@ class TmadogUtils (object):
             return -1
 
 
+    def nav_to (html, url, buttons, session):
+
+        for b in buttons:
+
+            xpage = session.request (
+                    ** dogs.click (
+                        html,
+                        button = b,
+                        url = url,
+                        idx = 0
+                        ), 
+                    headers = {
+                        'referer': url,
+                        'host': parse.urlparse (url).hostname
+                        }
+                    )
+
+            xpage.raise_for_status()
+
+            url = xpage.request.url
+            html = xpage.text
+
+        return xpage
+
+
     def select_tma (html, **tinfo):
         tinfo.setdefault('code', r'\w{3}\d{3}')
         tinfo.setdefault('title', r'\w.+?')
@@ -74,24 +89,19 @@ class TmadogUtils (object):
         return re.search (tpat, html, flags = re.DOTALL | re.MULTILINE | re.IGNORECASE)
 
 
-    def fetchtma (url, matno, tma , crscode, html, button = 'TMA', idx = 0, **kwargs):
+    def mkqst_fetcher (html, url, matno, tma , crscode, button = 'TMA', idx = 0, **kwargs):
 
         def fetcher (url = None, headers = {}):
             url = url if url else req.url
 
-            req.headers.update (**headers)
+            headers.update (**headers)
 
-            res = session.post(url, data = dict (req.data), headers =
-                    req.headers)
+            res = session.request( ** args , headers = headers)
+
             res.raise_for_status ()
 
-            try:
-                m = dogs.fill_form (res.text, res.url, data = { 'ans': None })
+            return [res.text, res.url]
 
-            except:
-                raise TypeError ('Not a Question Page', res)
-
-            return (m['data'], m['url'])
 
     
         def copycase (repl):
@@ -111,9 +121,9 @@ class TmadogUtils (object):
             args = dogs.click (
                         html,
                         url = url,
-                        ltext = button,
+                        button = button,
                         idx = idx,
-                        flags = dogs.EXTRAS
+                        flags = dogs.FILL_FLG_EXTRAS
                         )
 
 
@@ -137,7 +147,6 @@ class TmadogUtils (object):
                     (tma)), args[t][k], flags = re.IGNORECASE)
 
 
-            req = requests.Request( ** args , headers = headers)
 
         else:
             raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
@@ -165,8 +174,8 @@ class TmadogUtils (object):
 
         return 'None'
 
-    HACK = 0b01
-    NORM = 0b10
+    SUB_MODE_HACK = 0b01
+    SUB_MODE_NORM = 0b10
 
     def get_answer (
             db,
@@ -192,7 +201,7 @@ class TmadogUtils (object):
             conn.row_factory = sqlite3.Row
             cur = conn.cursor ()
 
-            if m is NORM:
+            if m is SUB_MODE_NORM:
                 row = {}
                 cur.execute ('''
                 SELECT ans AS %s FROM answers INNER JOIN (courses AS c,
@@ -210,7 +219,7 @@ class TmadogUtils (object):
                         )
                 row [ans] = cur.fetchone ()[ans]
 
-            elif m is HACK:
+            elif m is SUB_MODE_HACK:
                 cur.execute ('''
                     SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
                     %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
@@ -249,7 +258,7 @@ class TmadogUtils (object):
             a = None
 
             if len (lcache):
-                a = lcache.get (qst[qid], None) if m is NORM else lcache.get
+                a = lcache.get (qst[qid], None) if m is SUB_MODE_NORM else lcache.get
                 (qst[crscode], None)
 
             if not a:
@@ -257,8 +266,11 @@ class TmadogUtils (object):
                 lcache[qst[crscode]] = a.copy ()
                 lcache[qst[qid]] = lcache[qst[crscode]]
 
-            lcache = {}
-            return fetcher
+            return a
+
+
+        lcache = {}
+        return fetcher
 
 
     def setupdb (db):
@@ -526,34 +538,55 @@ class TmadogUtils (object):
     TMADOGDB = 'tmadogdb'
 
     def scraper_submitter_net (
-            url,
             session,
+            fetcher,
             stp = 10,
-            mode = NORM,
-            **kwargs
+            mode = SUB_MODE_NORM,
+            qnref = 'qj',
+            ans = 'ans',
+            db = TMADOGDB,
             ):
 
         dt = []
 
         try:
-            fetch = fetchtma (url, session = session, **kwargs)
+            preq = dogs.fill_form (
+                    *fetcher (),
+                    flags = FILL_FLG_EXTRAS,
+                    data = {
+                        ans: None
+                        }
+                    )
 
-            qst, url = fetch()
+            qst = preq['data'] if preq['method'] in ('post', 'POST') else preq['params']
+
             dt.append (qst.copy())
-            getans = get_answer (TMADOGDB, qst, mode)
-            qn = int ('0' + qst['qj']) # Just in case it's empty
 
-            while 1 <= qn <= stp:
-                kont = session.post (url, data = dict (getans (qst)), headers = {
-                    'referer': url,
+            getans = get_answer (db, qst, mode)
+            qn = int ('0' + qst[qnref]) # Just in case it's empty
+
+            while qn <= stp:
+                preq['data'] = getans (qst)
+                kont = session.request (
+                        **preq,
+                        headers = {
+                            'referer': preq['url'],
+                            'host': parse.urlparse (preq['url']).hostname
                     })
+
                 kont.raise_for_status ()
+                preq = dogs.fill_form (
+                        *fetcher (),
+                        flags = dogs.FILL_FLG_EXTRAS,
+                        data = {
+                            ans: None
+                            }
+                        )
 
-                qst, url = fetch()
+                qst = preq['data']
+                dt.append (qst.copy())
 
-                qn = int ('0' + qst['qj'])
-
-                dt.append (qst.copy ())
+                qn += 1
 
         except builtins.BaseException as err:
             print (err.args[0])
@@ -565,13 +598,19 @@ class TmadogUtils (object):
                 return -1
 
 
-    def scraper_net (nqst, **kwargs):
+    def scraper_net (nqst, ans = 'ans', **kwargs):
 
         dt = []
         try:
-            fetch = fetchtma (rl, **kwargs)
+            fetch = mkqst_fetcher (rl, **kwargs)
             while nqst:
-                m = fetch()[0]
+                m = dogs.fill_form (
+                        *fetch(),
+                        flags = dogs.FILL_RET_DATAONLY
+                        data = {
+                            ans: None,
+                            }
+                        )
                 dt.append (m)
                 nqst -= 1
 
@@ -593,7 +632,7 @@ class TmadogUtils (object):
         dt = []
 
         try:
-            fetch = fetchtma (url, session = session, **kwargs)
+            fetch = mkqst_fetcher (url, session = session, **kwargs)
 
             qst, url = fetch()
             qn = 1
@@ -664,7 +703,7 @@ class TmadogUtils (object):
                     dogs.fill_form (
                         f_or_str,
                         url = url,
-                        flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.DATAONLY,
+                        flags = dogs.NO_TXTNODE_KEY | dogs.NO_TXTNODE_VALUE | dogs.FILL_RET_DATAONLY,
                         data = { 'ans': ans }
                         )
                     ]
@@ -680,5 +719,5 @@ class TmadogUtils (object):
             **skwargs
             ):
 
-        return updater (db, scraper (**skwargs), *ukwargs)
+        return updater (db, *ukwargs, data = scraper (**skwargs))
 

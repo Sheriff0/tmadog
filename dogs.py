@@ -73,9 +73,9 @@ class FDict (lxml.html.FieldsDict):
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
-DATAONLY = 0b0100
+FILL_RET_DATAONLY = 0b0100
 URLONLY = 0b1000
-EXTRAS = 0b10000
+FILL_FLG_EXTRAS = 0b10000
 
 LastForm = {}
 
@@ -109,10 +109,9 @@ def fill_form (
         flags = NO_TXTNODE_VALUE | NO_TXTNODE_KEY,
         selector = 'form',
         idx = 0,
-        **kwargs
+        data = {}
         ):
 
-    data = kwargs.pop('data', {})
     
     s = html
 
@@ -134,16 +133,12 @@ def fill_form (
     if flags & URLONLY:
         return targs['url']
 
-    if flags & EXTRAS:
-        for e in tform.__copy__().cssselect ('form :not(input)[name]'):
+    if flags & FILL_FLG_EXTRAS:
+        for e in tform.__copy__().cssselect ('form button[name]'):
             tform.append (requests_html.HTML (html = '''<input name = "%s" value =
                 "%s">''' % (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
 
     ifields = FDict (s, tform.inputs)
-
-    params = kwargs.pop('params', {})
-
-    data.update (**params)
 
     ifields.update (data)
     
@@ -154,13 +149,11 @@ def fill_form (
     
     targs['data'] = ifields
 
-    if flags & DATAONLY:
+    if flags & FILL_RET_DATAONLY:
         return targs['data']
 
     if targs['method'] in ('GET', 'get'):
-        targs['params'] = ifields
-
-        targs['data'] = None
+        targs['params'] = targs.pop ('data')
 
     return targs
 
@@ -172,11 +165,11 @@ def fill_form (
 #def click_link ():
 
 
-def click (html, ltext, url, selector = 'a, form', idx = 0, **kwargs):
+def click (html, button, url, selector = 'a, form', idx = 0, **kwargs):
 
     html = requests_html.HTML (html = html, url = url) if not isinstance (html,
             requests_html.HTML) else html
-    m = html.find (selector, containing = ltext)
+    m = html.find (selector, containing = button)
     if not len (m):
         return None
     else:
@@ -189,11 +182,11 @@ def click (html, ltext, url, selector = 'a, form', idx = 0, **kwargs):
         return fill_form (m.html, url, flags = flags, **kwargs)
 
     elif t in ('a', 'A'):
-        flags = kwargs.pop ('flags', ~(URLONLY | DATAONLY))
+        flags = kwargs.pop ('flags', ~(URLONLY | FILL_RET_DATAONLY))
 
         if flags & URLONLY:
             return urljoin (url, m.attrs['href'])
-        elif flags & DATAONLY:
+        elif flags & FILL_RET_DATAONLY:
             return {}
         else:
             return {
