@@ -20,6 +20,9 @@ class FDict (lxml.html.FieldsDict):
 
     def __len__ (self):
         return len (dict (self))
+
+    def copy (self):
+        return dict (self)
     
     def resolve_key (self, s):
 

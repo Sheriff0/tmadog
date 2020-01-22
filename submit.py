@@ -167,42 +167,25 @@ class Submit (object):
             tmas = args.tma[midx].strip ().split (',')
 
             for tma in range (int (tmas[0]), int (tmas[-1]) + 1):
-                qfetcher = TmadogUtils.mkqst_fetcher (
+                qfetcher = TmadogUtils.QstMgr (
                         
                         session = tmadogsess,
-                        url = pgcache['tma_page'].request.url,
+                        url = pgcache['tma_page'].url,
                         matno = matno,
                         tma = tma,
                         crscode = args.crscode[midx],
                         html = pgcache['tma_page'].text,
                         button = tb,
-                        qnref = qn,
-                        mode = TmadogUtils.SUB_MODE_NORM,
-                        ans = ans,
-                        idx = 0,
                         )
 
-                db_data = TmadogUtils.scraper_submitter_net (
+                db_data = TmadogUtils.submitter(
                         session = tmadogsess,
-                        fetcher = qfetcher,
+                        tma_handle = qfetcher,
+                        qhandler,
                         stp = 10,
-                        mode = SUB_MODE_NORM,
                         qnref = 'qj',
                         ans = 'ans',
-                        db = TMADOGDB,
+                        #NOTE: **qhandler_args,
                         )
-
-                session = tmadogsess,
-                url = pgcache['tma_page'].request.url,
-                matno = matno,
-                tma = tma,
-                crscode = args.crscode[midx],
-                html = pgcache['tma_page'].text,
-                button = tb,
-                qnref = qn,
-                mode = TmadogUtils.SUB_MODE_NORM,
-                idx = 0,
-
-                TmadogUtils.update_hacktab,
 
                 print ('success: TMA%i for %s has been submitted' % (tma, matno))

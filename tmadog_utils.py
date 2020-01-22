@@ -62,7 +62,7 @@ class TmadogUtils (object):
                         button = b,
                         url = url,
                         idx = 0
-                        ), 
+                        ),
                     headers = {
                         'referer': url,
                         'host': parse.urlparse (url).hostname
@@ -77,48 +77,268 @@ class TmadogUtils (object):
         return xpage
 
 
-    def select_tma (html, **tinfo):
-        tinfo.setdefault('code', r'\w{3}\d{3}')
-        tinfo.setdefault('title', r'\w.+?')
-        tinfo.setdefault('tma', r'tma[1-3]')
+    class AnsMgr (object):
 
-        tinfo.setdefault('matno', r'nou\d{9}')
+        def __init__(
+                self,
+                qmap,
+                database,
+                opt_names,
+                pseudo_ans = [
+                    'A',
+                    'B',
+                    'C',
+                    'D'
+                    ],
+                mode = ANS_MODE_NORM,
+                interactive = True,
+                ):
 
-        tpat = r'>\s*(?P<code>' + tinfo['code'] + r')\s*<.+\bp\b.*?>\s*' + tinfo['title'] + r'\s*</p>.+?<form.+?value\s*=\s*(?:\'|")(?P=code)' + tinfo['matno'] + tinfo['tma'] + r'.+?</form>'
+            self.opt_map = {
+                    a: b for a, b in zip (['a', 'b', 'c', 'd'], opt_names.sort ())
+                    }
 
-        return re.search (tpat, html, flags = re.DOTALL | re.MULTILINE | re.IGNORECASE)
+            self.pseudos = pseudo_ans.sort ()
+            self.interactive = interactive
+            self.mode = mode
+            self.database = database
+            self._cache = {}
+            self._cur = None
+            self.qdescr = qmap['qdescr']
+            self.ans = qmap['ans']
+            self.prefix = qmap['prefix']
+            self.crscode = qmap['crscode']
+            self.qid = qmap['qid']
+            self.qn = qmap ['qn']
+            self.score = qmap ['score']
+        hints = [
+                '''Help: The answer to this question is not in the database, can you answer it ?
+        Type '%s' if answer corresponds to row %s or type 'self.hack' to switch to hack mode.''',
+
+            '''Help: I currently can't hack questions for this course, can you answer this question please ?
+            Type '%s' if answer corresponds to row %s.'''
+        ]
+
+        def _copycase (self, t, i):
+            return i.upper () if t.isupper () else i.lower ()
+        
+        def _qpromt (self, qst, epilog = None, prolog = None):
+
+            x = input ('''%s:
+            %s. %s
+
+            %s. %s 
+            %s. %s 
+            %s. %s 
+            %s. %s 
+
+%s
+                    (tmadog) --> ''' % (
+                        prolog or '(tmadog)',
+                        qst [self.qn],
+                        qst [self.qdescr],
+                        self.pseudos [0],
+                        qst [self.opt_map ['a']],
+                        self.pseudos [1],
+                        qst [self.opt_map ['b']],
+                        self.pseudos [2],
+                        qst [self.opt_map ['c']],
+                        self.pseudos [3],
+                        qst [self.opt_map ['d']],
+                        epilog or '(tmadog)',
+                        )
+                    )
+
+            return x
 
 
-    def mkqst_fetcher (html, url, matno, tma , crscode, button = 'TMA', idx = 0, **kwargs):
+        def qprompt (self, qst, epilog = None, prolog = None, max_retry = 1,
+                err_msg = None):
 
-        def fetcher (url = None, headers = {}):
-            url = url if url else req.url
+            x = self._qpromt (qst, epilog, prolog)
+            try:
+                qst [self.ans] = self._copycase (pseudos[0], x) if len (x) else None
 
-            headers.update (**headers)
+            except ValueError:
 
-            res = session.request( ** args , headers = headers)
+                while max_retry:
+                    x = self._qpromt (
+                            qst,
+                            epilog,
+                            (err_msg or '''Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry, )
+                            )
+                    try:
+                        qst [self.ans] = self._copycase (pseudos[0], x) if len (x) else None
+                        break
 
-            res.raise_for_status ()
+                    except ValueError:
+                        pass
 
-            return [res.text, res.url]
-
-
-    
-        def copycase (repl):
-            def _copycase(m):
-                return repl.upper () if m['cs'].isupper () else repl.lower ()
-
-            return _copycase
+                    max_retry -= 1
 
 
-    #>>>>>>>>>>>>>>Body<<<<<<<<<<<<<<<<
-        session = kwargs.pop ('session', requests)
+            finally:
+                self.update (qst)
 
-        headers = kwargs.pop ('headers', None)
+        def failed (self, qst):
 
-        if matno and crscode and html:
 
-            args = dogs.click (
+        def answer (self, qst):
+
+            if not isinstance (qst, lxml.html.FieldsDict):
+                raise TypeError ('Question must be a form', type (qst))
+
+            if self.mode is ANS_MODE_NORM:
+                x = self._cache.get ( qst [self.crscode].upper (), None)
+
+                if x:
+                    x = x.get (self.qid, None)
+                    if x and x[self.ans]:
+                        return x
+                    else:
+                        x = None
+
+                if not x:
+
+                    x = self._fetch (qst)
+                    if x:
+                        x = self.convert_ans (qst, x[self.ans])
+                        if x:
+                            qst [self.ans] = x
+                            self.update (qst.copy ())
+                            return qst
+
+                        else:
+                            return self.resolve (qst)
+
+
+            if self.mode is ANS_MODE_HACK:
+                x = self._cache.get (qst [self.crscode].lower (), None) or self._hack (qst)
+
+                if x and x.get (qst [self.crscode], None):
+                    return x
+
+                elif x and x.get (self.ans, None):
+                    x[self.ans] = self.convert_ans (
+                            {
+                                k: x[k] for k in x if k.startswith (self.prefix)
+                                },
+                            x[self.ans]
+                            )
+
+                    if x[self.ans]:
+                        qst.update (x)
+                        self.update (qst.copy ())
+                        return qst
+
+                if not x or not x.get (self.ans, None):
+                    return self.resolve (qst)
+
+        def update (self, qst):
+
+            self._cache.setdefault (qst [self.crscode].upper (), {})
+
+            self._cache[qst [self.crscode].upper ()].setdefault (qst [self.qid],
+                    qst)
+
+            self._cache.setdefault (qst [self.crscode].lower (), qst)
+
+        def resolve (self, qst):
+
+            if not self.interactive:
+                return None
+
+            x = input ('''%s: %s
+
+            %s: %s 
+            %s: %s 
+            %s: %s 
+            %s: %s 
+
+                    (tmadog) --> ''') 
+
+        def convert_ans (self, qst, ans):
+            ans = re.sub (r'\+', r'\\W+?', ans)
+
+            for a, p in zip (self.opt_map.values ().sort (), self.pseudos):
+
+                if re.match (ans, qst[a].strip (), flags = re.IGNORECASE):
+                    return p
+
+            return None
+
+
+        def flush (self, database = None):
+
+        def _hack (self, qst):
+
+            if not self._cur:
+                conn = sqlite3.connect (self.database)
+                conn.row_factory = sqlite3.Row
+                self._cur = conn.cursor ()
+
+            self._cur.execute ('''
+                SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
+                %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
+                (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
+                        FALSE AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
+                        c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
+                    ''' % (
+                        self.qdescr,
+                        self.ans,
+                        self.qid,
+                        self.opt_map['a'],
+                        self.opt_map['b'],
+                        self.opt_map['c'],
+                        self.opt_map['d']
+                        ),
+                    (
+                        qst[self.crscode],
+                        )
+                    )
+
+            return self._cur.fetchone ()
+
+        def _fetch (self, qst):
+
+            if not self._cur:
+                conn = sqlite3.connect (self.database)
+                conn.row_factory = sqlite3.Row
+                self._cur = conn.cursor ()
+
+            self._cur.execute ('''
+            SELECT ans AS %s FROM answers INNER JOIN (courses AS c,
+            questions as q) ON ((c.crscode LIKE ? AND c.qid IS ? AND c.ready
+            IS NOT FALSE) OR q.qdescr LIKE ?) WHERE answers.cid IS c.cid OR
+            answers.dogid IS q.dogid
+                    ''' % (
+                        self.ans,
+                        ),
+                    (
+                        qst [self.crscode],
+                        qst [self.qid],
+                        qst [self.qdescr],
+                        )
+                    )
+
+            return self._cur.fetchone ()
+
+
+
+
+
+    class QstMgr (object):
+
+        def __init__ (self, html, url, matno, tma , crscode, button = 'TMA', idx
+                = 0, session = requests, submitable = None):
+
+            self.session = session
+
+            self.referer = url
+
+            self.submitable = submitable
+
+            self.fargs = dogs.click (
                         html,
                         url = url,
                         button = button,
@@ -127,150 +347,97 @@ class TmadogUtils (object):
                         )
 
 
-            args['url'] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), args['url'], flags = re.IGNORECASE)
+            self.fargs['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs['url'], flags = re.IGNORECASE)
 
-            args['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                    copycase (crscode), args['url'], flags = re.IGNORECASE)
+            self.fargs['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                    self._copycase (crscode), self.fargs['url'], flags = re.IGNORECASE)
 
-            args['url'] = re.sub (r'(?P<cs>tma)[1-3]', copycase(r'tma' + str
-                (tma)), args['url'], flags = re.IGNORECASE)
+            self.fargs['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                (tma)), self.fargs['url'], flags = re.IGNORECASE)
 
-            t = 'data' if args['method'] in ('POST', 'post') else 'params'
+            self.data = 'data' if self.fargs['method'] in ('POST', 'post') else 'params'
 
-            for k in args.get(t, {}):
-                args[t][k] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), args[t][k], flags = re.IGNORECASE)
+            for k in self.fargs.get(self.data, {}):
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs[self.data][k], flags = re.IGNORECASE)
 
-                args[t][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                        copycase (crscode), args[t][k], flags = re.IGNORECASE)
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                        self._copycase (crscode), self.fargs[self.data][k], flags = re.IGNORECASE)
 
-                args[t][k] = re.sub (r'(?P<cs>tma)[1-3]', copycase(r'tma' + str
-                    (tma)), args[t][k], flags = re.IGNORECASE)
-
-
-
-        else:
-            raise requests.HTTPError ('Incomplete TMA details', requests.Response ())
-
-        return fetcher
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                    (tma)), self.fargs[self.data][k], flags = re.IGNORECASE)
 
 
-    def convert_ans (
-            row,
-            a,
-            pre = 'opt',
-            optmap = {
-                'opta': 'A',
-                'optb': 'B',
-                'optc': 'C',
-                'optd': 'D'
-                }
-            ):
-        a = re.sub (r'\+', r'\\W+?', a)
 
-        for k in {k: row[k] for k in row if k.startswith (pre)}:
+        def fetch (self, url1 = None, **kwargs):
 
-            if re.match (a, row [k].strip (), flags = re.IGNORECASE):
-                return optmap[k]
+            self.fargs.update (url = url1 or self.fargs['url'])
 
-        return 'None'
+            res = self.session.request( ** self.fargs , **kwargs)
 
-    SUB_MODE_HACK = 0b01
-    SUB_MODE_NORM = 0b10
+            res.raise_for_status ()
 
-    def get_answer (
-            db,
-            qst,
-            mode,
-            ans = 'ans',
-            qdescr = 'qdescr',
-            qid = 'qid',
-            crscode = 'crscode',
-            optmap = {
-                'opta': 'opta',
-                'optb': 'optb',
-                'optc': 'optc',
-                'optd': 'optd'
-                }
-            ):
-
-        def getter (qst, m):
-            if not isinstance (qst, lxml.html.FieldsDict):
-                raise TypeError ('question must be a form field')
-
-            conn = sqlite3.connect (db)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor ()
-
-            if m is SUB_MODE_NORM:
-                row = {}
-                cur.execute ('''
-                SELECT ans AS %s FROM answers INNER JOIN (courses AS c,
-                questions as q) ON ((c.crscode LIKE ? AND c.qid IS ? AND c.ready
-                IS NOT FALSE) OR q.qdescr LIKE ?) WHERE answers.cid IS c.cid OR
-                answers.dogid IS q.dogid
-                        ''' % (
-                            ans,
-                            ),
-                        (
-                            qst [crscode],
-                            qst [qid],
-                            qst [qdescr],
-                            )
-                        )
-                row [ans] = cur.fetchone ()[ans]
-
-            elif m is SUB_MODE_HACK:
-                cur.execute ('''
-                    SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
-                    %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
-                    (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
-                            FALSE AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
-                            c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
-                        ''' % (
-                            qdescr,
-                            ans,
-                            qid,
-                            optmap['opta'],
-                            optmap['optb'],
-                            optmap['optc'],
-                            optmap['optd']
-                            ),
-                        (
-                            qst[crscode],
-                            )
-                        )
-
-                row = cur.fetchone ()
-
-                qst.update (
-                        **{
-                            k: row[k] for k in row if k is not ans
-                            }
-                        )
-
-            conn.close ()
-
-            qst[ans] = convert_ans(qst, row[ans])
-
-            return qst
-
-        def fetcher (qst, m = mode):
-            a = None
-
-            if len (lcache):
-                a = lcache.get (qst[qid], None) if m is SUB_MODE_NORM else lcache.get
-                (qst[crscode], None)
-
-            if not a:
-                a = getter (qst, m)
-                lcache[qst[crscode]] = a.copy ()
-                lcache[qst[qid]] = lcache[qst[crscode]]
-
-            return a
+            return [res.text, res.url]
+    
+        def is_correct (self):
 
 
-        lcache = {}
-        return fetcher
+        def _copycase (self, repl):
+            def __copycase(m):
+                return repl.upper () if m['cs'].isupper () else repl.lower ()
+
+            return __copycase
+
+
+        def reconfigure (self, matno, tma , crscode, session = None, url =
+                None, referer = None, submitable = None):
+
+            self.fargs['url'] = url if url else self.fargs['url']
+
+
+            self.referer = referer if referer else self.referer
+
+            self.session = session if session else self.session
+
+            self.submitable = submitable if submitable else self.submitable
+
+
+            self.fargs['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs['url'], flags = re.IGNORECASE)
+
+            self.fargs['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                    self._copycase (crscode), self.fargs['url'], flags = re.IGNORECASE)
+
+            self.fargs['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                (tma)), self.fargs['url'], flags = re.IGNORECASE)
+
+            self.data = 'data' if self.fargs['method'] in ('POST', 'post') else 'params'
+
+            for k in self.fargs.get(self.data, {}):
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs[self.data][k], flags = re.IGNORECASE)
+
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                        self._copycase (crscode), self.fargs[self.data][k], flags = re.IGNORECASE)
+
+                self.fargs[self.data][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                    (tma)), self.fargs[self.data][k], flags = re.IGNORECASE)
+
+                return self
+
+
+        def submit (self, submitable = None, **kwargs):
+
+            if not submitable and not self.submitable:
+                raise BaseException ('Nothing to submit')
+
+            else:
+                self.submitable = submitable if submitable else self.submitable
+
+            return self.session.request (**self.submitable, **kwargs)
+
+
+
+    ANS_MODE_HACK = 0b01
+    ANS_MODE_NORM = 0b10
+
 
 
     def setupdb (db):
@@ -537,76 +704,90 @@ class TmadogUtils (object):
 
     TMADOGDB = 'tmadogdb'
 
-    def scraper_submitter_net (
+    def submitter (
             session,
-            fetcher,
+            tma_handle,
+            qhandler,
             stp = 10,
-            mode = SUB_MODE_NORM,
             qnref = 'qj',
             ans = 'ans',
-            db = TMADOGDB,
+            **qhandler_args,
             ):
-
-        dt = []
 
         try:
             preq = dogs.fill_form (
-                    *fetcher (),
+                    *tma_handle.fetch(
+                        headers = {
+                            'referer': tma_handle.referer,
+                            }
+                        ),
                     flags = FILL_FLG_EXTRAS,
                     data = {
                         ans: None
                         }
                     )
 
-            qst = preq['data'] if preq['method'] in ('post', 'POST') else preq['params']
+            data = 'data' if preq['method'] in ('post', 'POST') else 'params'
+            qst = preq[data]
 
-            dt.append (qst.copy())
-
-            getans = get_answer (db, qst, mode)
             qn = int ('0' + qst[qnref]) # Just in case it's empty
 
-            while qn <= stp:
-                preq['data'] = getans (qst)
-                kont = session.request (
-                        **preq,
-                        headers = {
-                            'referer': preq['url'],
-                            'host': parse.urlparse (preq['url']).hostname
-                    })
+            kont = None
 
-                kont.raise_for_status ()
+            while qn <= stp:
+                preq[data] = qhandler(qst, **qhandler_args)
+
+                purl = parse.urlparse (preq['url'])
+                if preq[data] is None:
+                    kont = tma_handle.submit (
+                            preq,
+                            headers = {
+                                'referer': preq['url'],
+                                'host': '%s://%s' % (purl.scheme, purl.hostname)
+                        })
+
+                elif preq[data] is False:
+                    return False
+
+                purl = parse.urlparse (kont.url if kont else tma_handle.referer)
                 preq = dogs.fill_form (
-                        *fetcher (),
+                        *tma_handle.fetch (
+                            headers = {
+                                'referer': purl.geturl (),
+                                'host': '%s://%s' % (purl.scheme, purl.hostname)
+                                }
+                            ),
                         flags = dogs.FILL_FLG_EXTRAS,
                         data = {
                             ans: None
                             }
                         )
 
-                qst = preq['data']
-                dt.append (qst.copy())
+                qst = preq[data]
 
                 qn += 1
 
         except builtins.BaseException as err:
             print (err.args[0])
 
-        finally:
-            if len (dt):
-                return dt
-            else:
-                return -1
+            return -1
 
 
-    def scraper_net (nqst, ans = 'ans', **kwargs):
+    def scraper_net (nqst, fetcher, ans = 'ans'):
 
         dt = []
         try:
-            fetch = mkqst_fetcher (rl, **kwargs)
+            purl = parse.urlparse (fetcher.referer)
+
             while nqst:
                 m = dogs.fill_form (
-                        *fetch(),
-                        flags = dogs.FILL_RET_DATAONLY
+                        *fetcher.fetch(
+                            headers = {
+                                'referer': purl.geturl (),
+                                'host': '%s://%s' % (purl.scheme, purl.hostname)
+                                }
+                            ),
+                        flags = dogs.FILL_RET_DATAONLY,
                         data = {
                             ans: None,
                             }
@@ -632,7 +813,7 @@ class TmadogUtils (object):
         dt = []
 
         try:
-            fetch = mkqst_fetcher (url, session = session, **kwargs)
+            fetch = QstMgr (url, session = session, **kwargs)
 
             qst, url = fetch()
             qn = 1
