@@ -7,11 +7,16 @@ import hashlib
 import builtins
 import lxml
 import random
+import parse as _parse
 from pathlib import PurePath
 from urllib import parse
 import configparser
 
+ANS_MODE_HACK = 0b01
+ANS_MODE_NORM = 0b10
+
 class TmadogUtils (object):
+    
     QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
     #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
@@ -79,7 +84,7 @@ class TmadogUtils (object):
 
     class AnsMgr (object):
 
-        def __init__(
+        def __init__ (
                 self,
                 qmap,
                 database,
@@ -111,12 +116,41 @@ class TmadogUtils (object):
             self.qid = qmap['qid']
             self.qn = qmap ['qn']
             self.score = qmap ['score']
-        hints = [
-                '''Help: The answer to this question is not in the database, can you answer it ?
-        Type '%s' if answer corresponds to row %s or type 'self.hack' to switch to hack mode.''',
 
-            '''Help: I currently can't hack questions for this course, can you answer this question please ?
-            Type '%s' if answer corresponds to row %s.'''
+        class CacheIter (object):
+            def __init__ (self, cache):
+                self.cache = cache
+
+            def __iter__ (self):
+
+                for k in self.cache:
+                    if k.isupper ():
+                        for k1 in self.cache [k]:
+                            yield self.cache[k][k1]
+
+            def __next__ (self):
+
+                for k in self.cache:
+                    if k.isupper ():
+                        for k1 in self.cache [k]:
+                            return self.cache[k][k1]
+
+
+
+        hints = [
+                (
+                    '''Submit: The answer to this question is not in the database, can you answer it ?''',
+                    '''Type '%s' if answer corresponds to row %s or type ':hack' to switch to hack mode.'''
+                    ),
+
+                (
+                    '''Hack: I currently can't hack questions for this course, can you answer this question please ?''',
+                    '''Type '%s' if answer corresponds to row %s and so on.'''
+                    ),
+
+                (
+                    '''Fail: I failed the answer to this question. Please can you answer it ?''',
+                    )
         ]
 
         def _copycase (self, t, i):
@@ -124,7 +158,7 @@ class TmadogUtils (object):
         
         def _qpromt (self, qst, epilog = None, prolog = None):
 
-            x = input ('''%s:
+            x = input ('''%s
             %s. %s
 
             %s. %s 
@@ -133,7 +167,7 @@ class TmadogUtils (object):
             %s. %s 
 
 %s
-                    (tmadog) --> ''' % (
+                    (type ':quit' to quit and leave question unanswered) --> ''' % (
                         prolog or '(tmadog)',
                         qst [self.qn],
                         qst [self.qdescr],
@@ -145,19 +179,20 @@ class TmadogUtils (object):
                         qst [self.opt_map ['c']],
                         self.pseudos [3],
                         qst [self.opt_map ['d']],
-                        epilog or '(tmadog)',
+                        epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (pseudos[0], pseudos[0])
+,
                         )
                     )
 
             return x
 
 
-        def qprompt (self, qst, epilog = None, prolog = None, max_retry = 1,
+        def qprompt (self, qst, epilog = None, prolog = None, max_retry = 0,
                 err_msg = None):
 
             x = self._qpromt (qst, epilog, prolog)
             try:
-                qst [self.ans] = self._copycase (pseudos[0], x) if len (x) else None
+                qst [self.ans] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
 
             except ValueError:
 
@@ -168,7 +203,7 @@ class TmadogUtils (object):
                             (err_msg or '''Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry, )
                             )
                     try:
-                        qst [self.ans] = self._copycase (pseudos[0], x) if len (x) else None
+                        qst [self.ans] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
                         break
 
                     except ValueError:
@@ -178,10 +213,17 @@ class TmadogUtils (object):
 
 
             finally:
-                self.update (qst)
+                self.update (qst.copy ())
+                return x
 
-        def failed (self, qst):
-
+        def check (self, qst, mark):
+            if mark is 0:
+                if not self.interactive:
+                    qst[self.ans] = None
+                    self.update (qst.copy ())
+                else:
+                    msg = self.hints [-1]
+                    self.qprompt (qst, prolog = msg[0], max_retry = 3)
 
         def answer (self, qst):
 
@@ -241,21 +283,32 @@ class TmadogUtils (object):
             self._cache[qst [self.crscode].upper ()].setdefault (qst [self.qid],
                     qst)
 
-            self._cache.setdefault (qst [self.crscode].lower (), qst)
+            if qst [self.ans]:
+                self._cache.setdefault (qst [self.crscode].lower (), qst)
+
+            else:
+                x = self._cache.get (qst [self.crscode].lower (), None)
+                if x and x [self.qid] is qst [self.qid]:
+                    self._cache.pop (qst [self.crscode].lower ())
 
         def resolve (self, qst):
 
             if not self.interactive:
                 return None
 
-            x = input ('''%s: %s
+            msg = self.hints [self.mode]
+            x = self.qprompt (
+                    qst,
+                    prolog = msg[0],
+                    epilog = msg[1] % (pseudos[0], pseudos[0]),
+                    max_retry = 3
+                    )
 
-            %s: %s 
-            %s: %s 
-            %s: %s 
-            %s: %s 
+            if x in (':hack', ':Hack', ':HACK'):
+                self.mode = ANS_MODE_HACK
+            return None if not qst[self.ans] else qst
+            
 
-                    (tmadog) --> ''') 
 
         def convert_ans (self, qst, ans):
             ans = re.sub (r'\+', r'\\W+?', ans)
@@ -268,7 +321,13 @@ class TmadogUtils (object):
             return None
 
 
-        def flush (self, database = None):
+        def iter_cache (self):
+
+            return CacheIter (self._cache)
+
+        def close (self):
+
+            self._cur.connection.close ()
 
         def _hack (self, qst):
 
@@ -325,18 +384,30 @@ class TmadogUtils (object):
 
 
 
-
-
     class QstMgr (object):
 
-        def __init__ (self, html, url, matno, tma , crscode, button = 'TMA', idx
-                = 0, session = requests, submitable = None):
+        def __init__ (self, html, url, matno, tma , crscode, qmap, fb, stop = 10, button = 'TMA', idx
+                = 0, session = requests):
 
             self.session = session
 
             self.referer = url
 
-            self.submitable = submitable
+            self.referer1 = None
+
+            self.score = 0
+
+            self.data = None
+
+            self.qn = qmap['qn']
+
+            self.ans = qmap ['ans']
+
+            self.nextq = None
+
+            self.stop = stop
+
+            self.count = 0
 
             self.fargs = dogs.click (
                         html,
@@ -346,40 +417,68 @@ class TmadogUtils (object):
                         flags = dogs.FILL_FLG_EXTRAS
                         )
 
+            self.fargs = self._transform_req (self.fargs, matno, tma, crscode)
 
-            self.fargs['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs['url'], flags = re.IGNORECASE)
+        def _transform_req (self, req, matno, tma , crscode):
+            
+            req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
 
-            self.fargs['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                    self._copycase (crscode), self.fargs['url'], flags = re.IGNORECASE)
+            req['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                    self._copycase (crscode), req['url'], flags = re.IGNORECASE)
 
-            self.fargs['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                (tma)), self.fargs['url'], flags = re.IGNORECASE)
+            req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                (tma)), req['url'], flags = re.IGNORECASE)
+            
+            self.data = 'data' if req['method'] in ('POST', 'post') else 'params'
 
-            self.data = 'data' if self.fargs['method'] in ('POST', 'post') else 'params'
+            for k in req.get(self.data, {}):
+                req[self.data][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.data][k], flags = re.IGNORECASE)
 
-            for k in self.fargs.get(self.data, {}):
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs[self.data][k], flags = re.IGNORECASE)
+                req[self.data][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                        self._copycase (crscode), req[self.data][k], flags = re.IGNORECASE)
 
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                        self._copycase (crscode), self.fargs[self.data][k], flags = re.IGNORECASE)
+                req[self.data][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
+                    (tma)), req[self.data][k], flags = re.IGNORECASE)
 
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                    (tma)), self.fargs[self.data][k], flags = re.IGNORECASE)
-
+                return req
 
 
         def fetch (self, url1 = None, **kwargs):
+            if self.count is self.stop:
+                return False
 
             self.fargs.update (url = url1 or self.fargs['url'])
+            
+            x = parse.urlparse (self.fargs ['url'])
 
-            res = self.session.request( ** self.fargs , **kwargs)
+            kwargs.setdefault (
+                    'headers',
+                    {
+                        'referer': self.referer,
+                        'host': '%s://%s' % (x.scheme, x.hostname),
+                        }
+                    )
+
+            res = self.session.request(**self.fargs , **kwargs)
 
             res.raise_for_status ()
 
-            return [res.text, res.url]
-    
-        def is_correct (self):
+            self.referer1 = res.url
+            
+            x = dogs.fill_form (
+                    res.text,
+                    res.url,
+                    flags = FILL_FLG_EXTRAS,
+                    data = {
+                        self.ans: None
+                        }
+                    )
 
+            self.count = int (x [self.data][self.qn])
+            self.nextq = x
+
+            return True
+            
 
         def _copycase (self, repl):
             def __copycase(m):
@@ -388,56 +487,34 @@ class TmadogUtils (object):
             return __copycase
 
 
-        def reconfigure (self, matno, tma , crscode, session = None, url =
-                None, referer = None, submitable = None):
-
-            self.fargs['url'] = url if url else self.fargs['url']
+        def reconfigure (self, matno, tma , crscode):
 
 
-            self.referer = referer if referer else self.referer
+            self.fargs = self._transform_req (self.fargs, matno, tma, crscode)
+            return self
 
-            self.session = session if session else self.session
+        def submit (self, req, **kwargs):
+            x = parse.urlparse (req ['url'])
+            kwargs.setdefault (
+                    'headers',
+                    {
+                        'referer': self.referer1,
+                        'host': '%s://%s' % (x.scheme, x.hostname),
 
-            self.submitable = submitable if submitable else self.submitable
+                        }
+                    )
 
+            res = self.session.request (**req, **kwargs)
 
-            self.fargs['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs['url'], flags = re.IGNORECASE)
+            res.raise_for_status ()
 
-            self.fargs['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                    self._copycase (crscode), self.fargs['url'], flags = re.IGNORECASE)
+            self.referer = res.url
 
-            self.fargs['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                (tma)), self.fargs['url'], flags = re.IGNORECASE)
+            res = _parse.search (self.fb, res.text)['result']
 
-            self.data = 'data' if self.fargs['method'] in ('POST', 'post') else 'params'
-
-            for k in self.fargs.get(self.data, {}):
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), self.fargs[self.data][k], flags = re.IGNORECASE)
-
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
-                        self._copycase (crscode), self.fargs[self.data][k], flags = re.IGNORECASE)
-
-                self.fargs[self.data][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                    (tma)), self.fargs[self.data][k], flags = re.IGNORECASE)
-
-                return self
-
-
-        def submit (self, submitable = None, **kwargs):
-
-            if not submitable and not self.submitable:
-                raise BaseException ('Nothing to submit')
-
-            else:
-                self.submitable = submitable if submitable else self.submitable
-
-            return self.session.request (**self.submitable, **kwargs)
-
-
-
-    ANS_MODE_HACK = 0b01
-    ANS_MODE_NORM = 0b10
-
+            self.score = int (res['score'])
+            return int (res['mark'])
+            
 
 
     def setupdb (db):
@@ -661,7 +738,6 @@ class TmadogUtils (object):
                 conn.close ()
                 return -1
 
-
         try:
             conn.commit ()
 
@@ -705,67 +781,31 @@ class TmadogUtils (object):
     TMADOGDB = 'tmadogdb'
 
     def submitter (
-            session,
-            tma_handle,
-            qhandler,
-            stp = 10,
-            qnref = 'qj',
-            ans = 'ans',
-            **qhandler_args,
+            ans_mgr: AnsMgr,
+            qst_mgr: QstMgr
             ):
 
         try:
-            preq = dogs.fill_form (
-                    *tma_handle.fetch(
-                        headers = {
-                            'referer': tma_handle.referer,
-                            }
-                        ),
-                    flags = FILL_FLG_EXTRAS,
-                    data = {
-                        ans: None
-                        }
-                    )
 
-            data = 'data' if preq['method'] in ('post', 'POST') else 'params'
-            qst = preq[data]
+            while qst_mgr.fetch():
+                
+                preq = qst_mgr.nextq
 
-            qn = int ('0' + qst[qnref]) # Just in case it's empty
+                qst = preq[qst_mgr.data]
 
-            kont = None
+                preq[qst_mgr.data] = ans_mgr.answer (qst)
 
-            while qn <= stp:
-                preq[data] = qhandler(qst, **qhandler_args)
-
-                purl = parse.urlparse (preq['url'])
-                if preq[data] is None:
-                    kont = tma_handle.submit (
-                            preq,
-                            headers = {
-                                'referer': preq['url'],
-                                'host': '%s://%s' % (purl.scheme, purl.hostname)
-                        })
-
-                elif preq[data] is False:
-                    return False
-
-                purl = parse.urlparse (kont.url if kont else tma_handle.referer)
-                preq = dogs.fill_form (
-                        *tma_handle.fetch (
-                            headers = {
-                                'referer': purl.geturl (),
-                                'host': '%s://%s' % (purl.scheme, purl.hostname)
-                                }
-                            ),
-                        flags = dogs.FILL_FLG_EXTRAS,
-                        data = {
-                            ans: None
-                            }
+                if preq[qst_mgr.data]:
+                    ans_mgr.check (
+                            preq[qst_mgr.data],
+                            qst_mgr.submit (preq)
                         )
 
-                qst = preq[data]
+                elif preq[qst_mgr.data] is False:
+                    return False
 
-                qn += 1
+                elif preq[qst_mgr.data] is None:
+                    pass
 
         except builtins.BaseException as err:
             print (err.args[0])
