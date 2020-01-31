@@ -34,7 +34,7 @@ class Submit (object):
                     ],
 
                 'action': 'append',
-                
+
                 'help': '''The target Matriculation Number. E.g Nou123456789
                 ''',
 
@@ -52,7 +52,7 @@ class Submit (object):
                     ],
 
                 'action': 'append',
-                
+
                 'help': '''The accompanying password. E.g 12345.
                 ''',
 
@@ -69,7 +69,7 @@ class Submit (object):
                     ],
 
                 'action': 'append',
-                
+
                 'help': '''The tma to submit.
                 ''',
 
@@ -100,13 +100,13 @@ class Submit (object):
               cookie-persistence. The session object must be an instance of
               requests.Session or its subclass.
         '''
-        
+
         tmadogsess = cfscrape.create_scraper ()
 
         defhdr = {
                 'sec-fetch-mode': 'navigate',
                 'sec-fetch-user': '?1',
-                #'sec-fetch-site': 'same-origin'
+                #FIXME: 'sec-fetch-site': 'same-origin'
                 }
 
         tmadogsess.headers.update (defhdr)
@@ -116,20 +116,21 @@ class Submit (object):
 
             requests.utils.add_dict_to_cookiejar (tmadogsess, cookie.get
                     ('cookies', {}))
-        
+
+        xurl = parse.urlparse (args.url)
 
         xpage = tmadogsess.get (
                 url.geturl (),
                 headers = {
                     'referer': args.url,
-                    'host': parse.urlparse (args.url).hostname
+                    'host': '%s://%s' % (xurl.scheme, xurl.hostname)
                     }
                 )
 
         xpage.raise_for_status()
-        
-        buttons = config['login_form']['home_page'].strip ().split (',')
-        
+
+        buttons = config['login_form']['from_home_page'].strip ().split (',')
+
         tb = config['question-form']['tma_page'].strip ().split (',')[0]
 
         qn = config[configparser.DEFAULTSECT]['qn_name'].strip ()
@@ -168,7 +169,7 @@ class Submit (object):
 
             for tma in range (int (tmas[0]), int (tmas[-1]) + 1):
                 qfetcher = TmadogUtils.QstMgr (
-                        
+
                         session = tmadogsess,
                         url = pgcache['tma_page'].url,
                         matno = matno,

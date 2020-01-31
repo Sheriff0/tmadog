@@ -82,13 +82,13 @@ class TmadogUtils (object):
         return xpage
 
 
+
     class AnsMgr (object):
 
         def __init__ (
                 self,
                 qmap,
                 database,
-                opt_names,
                 pseudo_ans = [
                     'A',
                     'B',
@@ -99,9 +99,6 @@ class TmadogUtils (object):
                 interactive = True,
                 ):
 
-            self.opt_map = {
-                    a: b for a, b in zip (['a', 'b', 'c', 'd'], opt_names.sort ())
-                    }
 
             self.pseudos = pseudo_ans.sort ()
             self.interactive = interactive
@@ -122,18 +119,14 @@ class TmadogUtils (object):
                 self.cache = cache
 
             def __iter__ (self):
-
-                for k in self.cache:
-                    if k.isupper ():
-                        for k1 in self.cache [k]:
-                            yield self.cache[k][k1]
+                yield from self.__next__ ()
 
             def __next__ (self):
 
                 for k in self.cache:
                     if k.isupper ():
                         for k1 in self.cache [k]:
-                            return self.cache[k][k1]
+                            yield self.cache[k][k1]
 
 
 
@@ -172,13 +165,13 @@ class TmadogUtils (object):
                         qst [self.qn],
                         qst [self.qdescr],
                         self.pseudos [0],
-                        qst [self.opt_map ['a']],
+                        qst [self.qmap ['a']],
                         self.pseudos [1],
-                        qst [self.opt_map ['b']],
+                        qst [self.qmap ['b']],
                         self.pseudos [2],
-                        qst [self.opt_map ['c']],
+                        qst [self.qmap ['c']],
                         self.pseudos [3],
-                        qst [self.opt_map ['d']],
+                        qst [self.qmap ['d']],
                         epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (pseudos[0], pseudos[0])
 ,
                         )
@@ -280,8 +273,8 @@ class TmadogUtils (object):
 
             self._cache.setdefault (qst [self.crscode].upper (), {})
 
-            self._cache[qst [self.crscode].upper ()].setdefault (qst [self.qid],
-                    qst)
+            self._cache[qst [self.crscode].upper ()].update ([(qst [self.qid],
+                    qst)])
 
             if qst [self.ans]:
                 self._cache.setdefault (qst [self.crscode].lower (), qst)
@@ -312,8 +305,9 @@ class TmadogUtils (object):
 
         def convert_ans (self, qst, ans):
             ans = re.sub (r'\+', r'\\W+?', ans)
+            x = [self.qmap [k] for k in ['a', 'b', 'c', 'd']]
 
-            for a, p in zip (self.opt_map.values ().sort (), self.pseudos):
+            for a, p in zip (x, self.pseudos):
 
                 if re.match (ans, qst[a].strip (), flags = re.IGNORECASE):
                     return p
@@ -346,10 +340,10 @@ class TmadogUtils (object):
                         self.qdescr,
                         self.ans,
                         self.qid,
-                        self.opt_map['a'],
-                        self.opt_map['b'],
-                        self.opt_map['c'],
-                        self.opt_map['d']
+                        self.qmap['a'],
+                        self.qmap['b'],
+                        self.qmap['c'],
+                        self.qmap['d']
                         ),
                     (
                         qst[self.crscode],
@@ -554,7 +548,7 @@ class TmadogUtils (object):
         return conn
 
 
-    def update_hacktab (db, data, cursor = None):
+    def update_hacktab (db, data, qmap, cursor = None):
 
         conn = setupdb (db) if not cursor else cursor.connection
 
@@ -574,12 +568,12 @@ class TmadogUtils (object):
                 crsref = cur.execute ('''
                         SELECT * FROM courses WHERE qid = ? AND crscode = ?
                         ;''', (
-                            datum['qid'],
-                            datum['crscode']
+                            datum[qmap ['qid']],
+                            datum[qmap ['crscode']]
                             )).fetchone ()
 
                 if not crsref:
-                    cid = updatedb (db, [datum], cur)['cid']
+                    cid = updatedb (db, [datum], qmap, cur)['cid']
 
                 else:
                     cid = crsref['cid']
@@ -589,10 +583,10 @@ class TmadogUtils (object):
                         ?, ?, ?);
                         ''', (
                             cid,
-                            datum['opta'],
-                            datum['optb'],
-                            datum['optc'],
-                            datum['optd']
+                            datum[qmap ['a']],
+                            datum[qmap ['b']],
+                            datum[qmap ['c']],
+                            datum[qmap ['d']]
                             ))
                 if cursor:
                     return cursor
@@ -612,7 +606,7 @@ class TmadogUtils (object):
         return None
 
 
-    def updatedb (db, data, cursor = None):
+    def updatedb (db, data, qmap, cursor = None):
 
         repeats = 0
 
@@ -636,7 +630,7 @@ class TmadogUtils (object):
                 if isinstance (datum, QstDbT):
                     datum = datum._asdict ()
                 cur.execute ('''INSERT INTO questions (qdescr)
-                        VALUES (?);''', (datum['qdescr'],))
+                        VALUES (?);''', (datum[qmap ['qdescr']],))
 
                 dogid = cur.lastrowid
                 ids['dogid'] = dogid
@@ -644,11 +638,11 @@ class TmadogUtils (object):
                 cur.execute ('''INSERT INTO courses (crscode, dogid, ready,
                 qid) VALUES
                         (?, ?, ?, ?)''', (
-                            datum['crscode'],
+                            datum[qmap ['crscode']],
                             dogid,
-                            True if datum['ans'] and datum['crscode'] and datum['qid'] else
+                            True if datum[qmap ['ans']] and datum[qmap ['crscode']] and datum[qmap ['qid']] else
                             False,
-                            datum['qid']
+                            datum[qmap ['qid']]
                             ))
 
                 cid = cur.lastrowid
@@ -658,7 +652,7 @@ class TmadogUtils (object):
                         INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
                         ?);
                         ''', (
-                            datum['ans'],
+                            datum[qmap ['ans']],
                             dogid,
                             cid
                             ))
@@ -670,14 +664,14 @@ class TmadogUtils (object):
 
                 repeats += 1
 
-                dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum['qdescr'],)).fetchone ()
+                dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum[qmap ['qdescr']],)).fetchone ()
 
                 crsref = cur.execute ('''
                         SELECT * FROM courses WHERE (crscode = ? AND qid = ? AND
                         dogid = ?) OR (dogid = ? AND ready = ?) LIMIT 1
                         ''', (
-                            datum['crscode'],
-                            datum['qid'],
+                            datum[qmap ['crscode']],
+                            datum[qmap ['qid']],
                             dupq['dogid'],
                             dupq['dogid'],
                             False
@@ -707,12 +701,12 @@ class TmadogUtils (object):
                         VALUES (?, ?, ?, ?, ?)
                         ''', (
                             crsref['cid'],
-                            datum['crscode'] or crsref['crscode'],
+                            datum[qmap ['crscode']] or crsref['crscode'],
                             crsref['dogid'],
-                            True if (ansref['ans'] or datum['ans']) and (datum['qid'] or
+                            True if (ansref['ans'] or datum[qmap ['ans']]) and (datum[qmap ['qid']] or
                                 crsref['qid']) and (crsref['crscode'] or
-                                    datum['crscode']) else False,
-                                datum['qid'] or crsref['qid']
+                                    datum[qmap ['crscode']]) else False,
+                                datum[qmap ['qid']] or crsref['qid']
                                 ))
 
                 cid = cur1.lastrowid
@@ -725,7 +719,7 @@ class TmadogUtils (object):
                         REPLACE INTO answers (ans, dogid, cid) VALUES (?,
                         ?, ?)
                         ''', (
-                            datum['ans'] or ansref['ans'],
+                            datum[qmap ['ans']] or ansref['ans'],
                             dupq['dogid'],
                             cid
                             ))
@@ -765,16 +759,13 @@ class TmadogUtils (object):
 
         def __iter__ (self):
 
-            for m in self.miter:
-                if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']):
-                    yield QstDbT (m['qdescr'].strip (), m['ans'].strip (),
-                            m['qid'].strip (), m['crscode'].strip ())
+            yield from self.__next__ ()
 
         def __next__ (self):
 
             for m in self.miter:
                 if not re.fullmatch (r'\s+',m['qdescr']) and not re.fullmatch (r'\s+', m['ans']):
-                    return QstDbT (m['qdescr'].strip (), m['ans'].strip (),
+                    yield QstDbT (m['qdescr'].strip (), m['ans'].strip (),
                             m['qid'].strip (), m['crscode'].strip ())
 
 

@@ -1,6 +1,6 @@
 import requests_html
 import re
-from urllib.parse import urljoin
+from urllib import parse
 import lxml
 
 requests = requests_html.requests
@@ -9,12 +9,7 @@ re.Match = type (re.match (r'foo', 'foo'))
 
 class FDict (lxml.html.FieldsDict):
     def __init__ (self, form, *a0, **a1):
-        if isinstance (form, requests_html.Element):
-            self.form_ref = form
-
-        else:
-            raise TypeError ('''Fdict: form must be instance of class
-                    requests_html.HTML.''', type (form))
+        self.form_ref = requests_html.HTML (html = form)
 
         return super ().__init__ (*a0, **a1)
 
@@ -120,28 +115,28 @@ def fill_form (
 
     html = lxml.html.fromstring (html = s, base_url = url) 
 
-    tform, s = html.cssselect (selector), requests_html.HTML (html = s).find (selector)
+    tform = html.cssselect (selector)
 
     if not len (tform):
         raise TypeError ('No form found')
     else:
-        tform, s = tform[idx], s[idx]
+        tform = tform[idx]
 
     targs = {}
     
     targs['method'] = tform.method
 
-    targs['url'] = urljoin (tform.base_url, tform.action)
+    targs['url'] = parse.urljoin (tform.base_url, tform.action)
 
     if flags & URLONLY:
         return targs['url']
 
     if flags & FILL_FLG_EXTRAS:
         for e in tform.__copy__().cssselect ('form button[name]'):
-            tform.append (requests_html.HTML (html = '''<input name = "%s" value =
-                "%s">''' % (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
+            tform.append (requests_html.HTML (html = '''<input name = "%s" value = "%s">''' % 
+                (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
 
-    ifields = FDict (s, tform.inputs)
+    ifields = FDict (lxml.html.tostring (tform, with_tail = False, encoding = 'unicode'), tform.inputs)
 
     ifields.update (data)
     
@@ -160,43 +155,49 @@ def fill_form (
 
     return targs
 
-#def form_type ():
 
+def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
 
-#def click_form ():
+    html = lxml.html.fromstring (html = html, base_url = url)
 
-#def click_link ():
-
-
-def click (html, button, url, selector = 'a, form', idx = 0, **kwargs):
-
-    html = requests_html.HTML (html = html, url = url) if not isinstance (html,
-            requests_html.HTML) else html
-    m = html.find (selector, containing = button)
-    if not len (m):
-        return None
-    else:
-        m = m[idx]
+    x = html.cssselect (selector)
     
-    t = m.element.tag
+    c = -1
+
+    for m in x:
+        if re.match (m.text.strip (), button.strip (), flags = re.I):
+            c += 1
+
+        if c == idx:
+            break
+
+    if c != idx:
+        return None
+        
+    t = m.tag
 
     if t in ('form', 'FORM'):
         flags = kwargs.pop ('flags', NO_TXTNODE_KEY | NO_TXTNODE_VALUE)
-        return fill_form (m.html, url, flags = flags, **kwargs)
+        return fill_form (lxml.html.tostring (m, with_tail = False, encoding = 'unicode'), url, flags = flags, **kwargs)
 
     elif t in ('a', 'A'):
         flags = kwargs.pop ('flags', ~(URLONLY | FILL_RET_DATAONLY))
 
         if flags & URLONLY:
-            return urljoin (url, m.attrs['href'])
+            return parse.urljoin (url, m.get('href'))
+
         elif flags & FILL_RET_DATAONLY:
-            return {}
+            return dict (
+                    map (
+                        lambda a: (a.split ('=')[0], parse.unquote_plus (a.split ('=')[-1])), 
+                        parse.urlparse (parse.urljoin (url, m.get('href'))).query.split ('&')
+                        )
+                    )
+
         else:
             return {
                     'method': 'GET', 
-                    'url': urljoin (url, m.attrs['href']),
-                    'params': kwargs.get ('params', None),
-                    'data': kwargs.get ('data', None)
+                    'url': parse.urljoin (url, m.get('href')),
                     }
 
     else:
