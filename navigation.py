@@ -1,63 +1,70 @@
 import configparser
 import dogs
 import requests
+    
+class InvalidPath (TypeError):
+    def __init__ (self, *pargs, **kwargs):
+        return super ().__init__ (*pargs, **kwargs)
 
-class Navigation (object):
-    class Recipe (object):
-        def __init__ (self, steps, indices, keys, start, name):
+
+class Recipe (object):
+    def __init__ (self, steps, indices, keys, start, name):
+        if not isinstance (start, requests.models.Response):
+            raise TypeError ('Recipe: start must of type requests.models.Response', start)
+
+        self.steps = steps.split (',')
+        self.indices = indices.split (',')
+        self.start = start
+        self.keys = keys
+        self.name = name
+        self.len = len (self.steps)
+
+    def __call__ (self, start):
+        if start:
             if not isinstance (start, requests.models.Response):
                 raise TypeError ('Recipe: start must of type requests.models.Response', start)
 
-            self.steps = steps.split (',')
-            self.indices = indices.split (',')
-            self.start = start
-            self.keys = keys
-            self.name = name
-            self.len = len (self.steps)
+            else: 
+                self.start = start
 
-        def __call__ (self, start):
-            if start:
-                if not isinstance (start, requests.models.Response):
-                    raise TypeError ('Recipe: start must of type requests.models.Response', start)
+        return self
 
-                else: 
-                    self.start = start
+    def __repr__ (self):
+        return '<Recipe for %s>' % (self.name,)
 
-            return self
+    def __iter__ (self):
+        return self.__next__()
 
-        def __repr__ (self):
-            return '<Recipe for %s>' % (self.name,)
+    def __next__ (self):
+        
+        for s,i in zip (self.steps, self.indices):
+            s = s.strip ()
+            if s.startswith (('[', '<')):
+                data = {
+                        k: self.keys[k] for k in s.split ('/')
+                        }
 
-        def __iter__ (self):
-            return self.__next__()
+                yield dogs.fill_form (
+                        url = self.start.url,
+                        idx = int (i),
+                        html = self.start.text,
+                        data = data,
+                        flags = dogs.FILL_FLG_EXTRAS
+                        )
 
-        def __next__ (self):
-            
-            for s,i in zip (self.steps, self.indices):
-                s = s.strip ()
-                if s.startswith (('[', '<')):
-                    data = {
-                            k: self.keys[k] for k in s.split ('/')
-                            }
+            else:
+                yield dogs.click (
+                        url = self.start.url,
+                        idx = int (i),
+                        html = self.start.text,
+                        button = s,
+                        flags = dogs.FILL_FLG_EXTRAS
+                        
+                        )
 
-                    yield dogs.fill_form (
-                            url = self.start.url,
-                            idx = int (i),
-                            html = self.start.text,
-                            data = data,
-                            flags = dogs.FILL_FLG_EXTRAS
-                            )
 
-                else:
-                    yield dogs.click (
-                            url = self.start.url,
-                            idx = int (i),
-                            html = self.start.text,
-                            button = s,
-                            flags = dogs.FILL_FLG_EXTRAS
-                            
-                            )
 
+class Navigation (object):
 
     class Navigator (object):
         def __init__ (self, home_url, webmap, keys, session = requests):
@@ -100,17 +107,33 @@ class Navigation (object):
 
         def __goto__ (self, lp = None, sl = slice (None, None)):
             lp = lp if lp else self.lp
-            req_gen = Recipe (webmap [lp]['path'], webmap[lp]['indices'],
-                    self.cache['home'], lp)
+            req_gen = Recipe (self.webmap [lp]['path'], self.webmap[lp]['indices'],
+                    self.keys, self.cache['home'], lp)
 
             gen = next (req_gen)
 
-            for i, r in zip (range (req_gen.len)[sl], gen):
-                res = self.session.request (*r)
-                req_gen (res)
+            res = None
 
             try:
-                 return next (gen)
+
+                for i, r in zip (range (req_gen.len)[sl], gen):
+                    res = self.session.request (**r)
+                    res.raise_for_status ()
+                    req_gen (res)
+
+            except:
+                raise InvalidPath ('Navigator: step %s can\'t be taken for destination %s' % (
+                            req_gen.steps[i],
+                            req_gen.name
+                            ),
+                        req_gen
+                        )
+
+            try:
+                 return (
+                         next (gen),
+                         res
+                         )
 
             except StopIteration:
                 self.cache [lp] = res

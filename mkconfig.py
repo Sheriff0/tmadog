@@ -24,6 +24,29 @@ rc.read_dict ({
         'profile_page': {
 
             'path': '${login_form:path},${login_form:keys}'
+            },
+
+        'qmap': {
+            'qdescr': 'qdescr',
+
+            'ans': 'ans',
+
+            'score': 'totscore',
+
+            'qn': 'qj',
+
+            'crscode': 'crscode',
+
+            'qid': 'qid',
+
+            'opta': 'opta',
+
+            'optb': 'optb',
+
+            'optc': 'optc',
+
+            'optd': 'optd',
+
             }
         })
 

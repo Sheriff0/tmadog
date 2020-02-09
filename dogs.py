@@ -165,7 +165,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
     c = -1
 
     for m in x:
-        if re.match (m.text.strip (), button.strip (), flags = re.I):
+        if re.match (button.strip (), m.text_content ().strip (), flags = re.I):
             c += 1
 
         if c == idx:
