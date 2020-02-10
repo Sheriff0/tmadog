@@ -17,6 +17,28 @@ class QstMgt (object):
 
     class QstMgr (object):
 
+        class StrCList (list):
+            def __init__ (self, iter):
+
+                for x in iter:
+                    self.append (x)
+
+            def append (self, value):
+                
+                v = str (value).lower ()
+                try:
+                    i = self.index (v)
+                    self [i+1] += 1
+
+                except ValueError:
+                    super ().extend ([v, 1])
+
+                return
+            
+            def extend (self, iter):
+                return self.__init__ (iter)
+
+
         def __init__ (self, fargs, url, matno, tma , crscode, qmap,
                 stop = 10, session = requests):
 
@@ -48,26 +70,26 @@ class QstMgt (object):
 
         def _transform_req (self, req, matno, tma , crscode):
             
+            self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
             req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
 
-            req['url'] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+            req['url'] = re.sub (r'(?P<cs>(?![A-Za-z]+)[A-Za-z]{3})\d{3}(?!\d+)',
                     self._copycase (crscode), req['url'], flags = re.IGNORECASE)
 
             req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
                 (tma)), req['url'], flags = re.IGNORECASE)
             
-            self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
 
             for k in req.get(self.dt0, {}):
                 req[self.dt0][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.dt0][k], flags = re.IGNORECASE)
 
-                req[self.dt0][k] = re.sub (r'(?P<cs>[^nN1-9][^Oo1-9][^1-9Uu])\d{3}(?!\d+)',
+                req[self.dt0][k] = re.sub (r'(?P<cs>(?![A-Za-z]+)[A-Za-z]{3})\d{3}(?!\d+)',
                         self._copycase (crscode), req[self.dt0][k], flags = re.IGNORECASE)
 
                 req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
                     (tma)), req[self.dt0][k], flags = re.IGNORECASE)
 
-                return req
+            return req
 
 
         def fetch (self, url1 = None, **kwargs):
@@ -83,7 +105,7 @@ class QstMgt (object):
                         'headers',
                         {
                             'referer': self.referer,
-                            'host': '%s://%s' % (x.scheme, x.hostname),
+                            'host': x.hostname,
                             }
                         )
 
@@ -142,7 +164,7 @@ class QstMgt (object):
                     'headers',
                     {
                         'referer': self.referer1,
-                        'host': '%s://%s' % (x.scheme, x.hostname),
+                        'host': x.hostname,
 
                         }
                     )

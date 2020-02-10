@@ -9,7 +9,8 @@ import threading
 from navigation import Navigation 
 import configparser
 import http.server
-from qstmgt import QstMgt  
+from qstmgt import QstMgt
+from ansmgt import AnsMgt
 
 class ServerTest (unittest.TestCase):
 
@@ -32,6 +33,8 @@ class ServerTest (unittest.TestCase):
 
         cl.qmap = cl.map ['qmap']
 
+        cl.sess = requests.Session ()
+
         try:
             cl.std_nav = Navigation.Navigator (
                     cl.url,
@@ -39,7 +42,8 @@ class ServerTest (unittest.TestCase):
                     {
                         '[Matric Number]': cl.std_cred [0],
                         '[Password]': cl.std_cred [1] 
-                        }
+                        },
+                    session = cl.sess
                     )
             
             t = cl.std_nav ('tma_page')[:-1]
@@ -50,6 +54,7 @@ class ServerTest (unittest.TestCase):
                     fargs = t[0],
                     url = t[1].url,
                     qmap = cl.qmap,
+                    session = cl.sess
 
                     )
 
@@ -97,15 +102,30 @@ class ServerTest (unittest.TestCase):
 
         return
 
-    def test_qstmgr (self):
+    def test_QA_mgrs (self):
         qst = self.std_qmgr.fetch ()
 
-        assertTrue (hasattr (qst, 'keys'))
+        ansmgr = AnsMgt.AnsMgr (
+                qmap = self.qmap,
+                pseudo_ans = self.qmap ['pseudo_ans'].split (','),
+                database = 'pg/olddb',
+                mode = AnsMgt.ANS_MODE_NORM,
+                )
+
+        self.assertTrue (hasattr (qst, 'keys'), 'Question should be dictionary-like')
         
+        x = (self.qmap [k] for k in self.qmap if k not in ('indices', 'volatile', 'pseudo_ans'))
 
+        for k in x:
+            with self.subTest ('Qmap should be valid', k = k):
+                self.assertIn (k, qst, '%s should be in qst' % (k,))
 
-    def test_ans (self):
-        pass
+        qst = ansmgr.answer (qst)
+
+        p = self.std_qmgr.submit (qst)
+
+        self.assertTrue (0 <= p <= 1, 'QstMgr can give feedback on submits')
+
 
 def main (argv = []):
 

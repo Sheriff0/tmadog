@@ -189,7 +189,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
         elif flags & FILL_RET_DATAONLY:
             return dict (
                     map (
-                        lambda a: (a.split ('=')[0], parse.unquote_plus (a.split ('=')[-1])), 
+                        lambda a: (parse.unquote_plus (a.split ('=')[0]), parse.unquote_plus (a.split ('=')[-1])), 
                         parse.urlparse (parse.urljoin (url, m.get('href'))).query.split ('&')
                         )
                     )

@@ -12,11 +12,13 @@ from pathlib import PurePath
 from urllib import parse
 import configparser
 
-
 ANS_MODE_HACK = 0b01
 ANS_MODE_NORM = 0b10
 
-class AnsMgt (object):
+class AnsMgt:
+
+    ANS_MODE_HACK = 0b01
+    ANS_MODE_NORM = 0b10
 
     class AnsMgr (object):
 
@@ -25,29 +27,20 @@ class AnsMgt (object):
                 qmap,
                 database,
                 mode,
-                pseudo_ans = [
-                    'A',
-                    'B',
-                    'C',
-                    'D'
-                    ],
+                pseudo_ans,
                 interactive = True,
+                max_retry = 3,
                 ):
 
 
-            self.pseudos = pseudo_ans.sort ()
+            self.pseudos = pseudo_ans
             self.interactive = interactive
             self.mode = mode
             self.database = database
             self._cache = {}
             self._cur = None
-            self.qdescr = qmap['qdescr']
-            self.ans = qmap['ans']
-            self.prefix = qmap['prefix']
-            self.crscode = qmap['crscode']
-            self.qid = qmap['qid']
-            self.qn = qmap ['qn']
-            self.score = qmap ['score']
+            self.qmap = qmap
+            self.max_retry = max_retry
 
         class CacheIter (object):
             def __init__ (self, cache):
@@ -84,33 +77,33 @@ class AnsMgt (object):
         def _copycase (self, t, i):
             return i.upper () if t.isupper () else i.lower ()
         
+        def _mkprompt (self):
+            txt = '''{prolog}
+            {%s}. {%s}
+
+            ''' % (self.qmap ['qn'], self.qmap ['qdescr'])
+
+            for i in range (len (self.pseudos)):
+                k = 'opt' + bytes ([65+i]).decode ()
+                txt += '{%s}: {%s}\n' % (self.pseudos [i], self.qmap [k])
+
+            txt += '''
+            {epilog}
+            (type ':quit' to quit and leave question unanswered) --> '''
+
+            return txt
+
         def _qpromt (self, qst, epilog = None, prolog = None):
+            
+            if not hasattr (self, 'p_text'): 
+                self.p_text = self._mkprompt ()
 
-            x = input ('''%s
-            %s. %s
-
-            %s. %s 
-            %s. %s 
-            %s. %s 
-            %s. %s 
-
-    %s
-                    (type ':quit' to quit and leave question unanswered) --> ''' % (
-                        prolog or '(tmadog)',
-                        qst [self.qn],
-                        qst [self.qdescr],
-                        self.pseudos [0],
-                        qst [self.qmap ['a']],
-                        self.pseudos [1],
-                        qst [self.qmap ['b']],
-                        self.pseudos [2],
-                        qst [self.qmap ['c']],
-                        self.pseudos [3],
-                        qst [self.qmap ['d']],
-                        epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (pseudos[0], pseudos[0])
-    ,
-                        )
-                    )
+            x = input (self.p_text.format (
+                prolog = prolog or '(tmadog)',
+                epilog = epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (pseudos[0], pseudos[0]), 
+                **qst
+                )
+                )
 
             return x
 
@@ -120,7 +113,7 @@ class AnsMgt (object):
 
             x = self._qpromt (qst, epilog, prolog)
             try:
-                qst [self.ans] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
+                qst [self.qmap ['ans']] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
 
             except ValueError:
 
@@ -131,7 +124,7 @@ class AnsMgt (object):
                             (err_msg or '''Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry, )
                             )
                     try:
-                        qst [self.ans] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
+                        qst [self.qmap ['ans']] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
                         break
 
                     except ValueError:
@@ -147,11 +140,11 @@ class AnsMgt (object):
         def check (self, qst, mark):
             if mark is 0:
                 if not self.interactive:
-                    qst[self.ans] = None
+                    qst[self.qmap ['ans']] = None
                     self.update (qst.copy ())
                 else:
                     msg = self.hints [-1]
-                    self.qprompt (qst, prolog = msg[0], max_retry = 3)
+                    self.qprompt (qst, prolog = msg[0], max_retry = self.max_retry)
 
         def answer (self, qst):
 
@@ -159,11 +152,11 @@ class AnsMgt (object):
                 raise TypeError ('Question must be a form', type (qst))
 
             if self.mode is ANS_MODE_NORM:
-                x = self._cache.get ( qst [self.crscode].upper (), None)
+                x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
                     x = x.get (self.qid, None)
-                    if x and x[self.ans]:
+                    if x and x[self.qmap ['ans']]:
                         return x
                     else:
                         x = None
@@ -172,9 +165,9 @@ class AnsMgt (object):
 
                     x = self._fetch (qst)
                     if x:
-                        x = self.convert_ans (qst, x[self.ans])
+                        x = self.convert_ans (qst, x[self.qmap ['ans']])
                         if x:
-                            qst [self.ans] = x
+                            qst [self.qmap ['ans']] = x
                             self.update (qst.copy ())
                             return qst
 
@@ -183,41 +176,36 @@ class AnsMgt (object):
 
 
             if self.mode is ANS_MODE_HACK:
-                x = self._cache.get (qst [self.crscode].lower (), None) or self._hack (qst)
+                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
-                if x and x.get (qst [self.crscode], None):
+                if x and x.get (qst [self.qmap ['crscode']], None):
                     return x
 
-                elif x and x.get (self.ans, None):
-                    x[self.ans] = self.convert_ans (
-                            {
-                                k: x[k] for k in x if k.startswith (self.prefix)
-                                },
-                            x[self.ans]
-                            )
+                elif x and x.get (self.qmap ['ans'], None):
+                    x[self.qmap ['ans']] = self.convert_ans (qst, x[self.qmap ['ans']])
 
-                    if x[self.ans]:
+                    if x[self.qmap ['ans']]:
                         qst.update (x)
                         self.update (qst.copy ())
                         return qst
 
-                if not x or not x.get (self.ans, None):
+                if not x or not x.get (self.qmap ['ans'], None):
                     return self.resolve (qst)
 
         def update (self, qst):
 
-            self._cache.setdefault (qst [self.crscode].upper (), {})
+            self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
 
             self._cache[qst [self.crscode].upper ()].update ([(qst [self.qid],
                     qst)])
 
-            if qst [self.ans]:
-                self._cache.setdefault (qst [self.crscode].lower (), qst)
+            if qst [self.qmap ['ans']]:
+                self._cache.setdefault (qst [self.qmap ['crscode']].lower (), qst)
 
             else:
-                x = self._cache.get (qst [self.crscode].lower (), None)
-                if x and x [self.qid] is qst [self.qid]:
-                    self._cache.pop (qst [self.crscode].lower ())
+                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None)
+                if x and x [self.qid] is qst [self.qmap ['qid']]:
+                    self._cache.pop (qst [self.qmap ['crscode']].lower ())
 
         def resolve (self, qst):
 
@@ -229,23 +217,22 @@ class AnsMgt (object):
                     qst,
                     prolog = msg[0],
                     epilog = msg[1] % (pseudos[0], pseudos[0]),
-                    max_retry = 3
+                    max_retry = self.max_retry
                     )
 
             if x in (':hack', ':Hack', ':HACK'):
                 self.mode = ANS_MODE_HACK
-            return None if not qst[self.ans] else qst
+            return None if not qst[self.qmap ['ans']] else qst
             
 
 
         def convert_ans (self, qst, ans):
             ans = re.sub (r'\+', r'\\W+?', ans)
-            x = [self.qmap [k] for k in ['a', 'b', 'c', 'd']]
 
-            for a, p in zip (x, self.pseudos):
-
-                if re.match (ans, qst[a].strip (), flags = re.IGNORECASE):
-                    return p
+            for i in range (len (self.pseudos)):
+                k = 'opt' + bytes ([65+i]).decode ()
+                if re.match (ans, qst[self.qmap [k]].strip (), flags = re.IGNORECASE):
+                    return self.pseudos [i]
 
             return None
 
@@ -273,7 +260,7 @@ class AnsMgt (object):
                         c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
                     ''' % (
                         self.qdescr,
-                        self.ans,
+                        self.qmap ['ans'],
                         self.qid,
                         self.qmap['a'],
                         self.qmap['b'],
@@ -300,12 +287,12 @@ class AnsMgt (object):
             IS NOT FALSE) OR q.qdescr LIKE ?) WHERE answers.cid IS c.cid OR
             answers.dogid IS q.dogid
                     ''' % (
-                        self.ans,
+                        self.qmap ['ans'],
                         ),
                     (
-                        qst [self.crscode],
-                        qst [self.qid],
-                        qst [self.qdescr],
+                        qst [self.qmap ['crscode']],
+                        qst [self.qmap ['qid']],
+                        qst [self.qmap ['qdescr']],
                         )
                     )
 
