@@ -103,14 +103,24 @@ class ServerTest (unittest.TestCase):
         return
 
     def test_QA_mgrs (self):
+       
+        fargs = self.std_qmgr.fargs.copy ()
+        fargs [self.std_qmgr.dt0] = self.std_qmgr.fargs [self.std_qmgr.dt0].copy ()
+
+        qstmgr = QstMgt.QstMgr (
+                matno = self.std_cred [0],
+                crscode = 'CSS133',
+                tma = 2,
+                fargs = fargs,
+                stop = 7,
+                url = self.std_qmgr.referer,
+                qmap = self.qmap,
+                session = self.std_qmgr.session
+
+                )
+
         qst = self.std_qmgr.fetch ()
 
-        ansmgr = AnsMgt.AnsMgr (
-                qmap = self.qmap,
-                pseudo_ans = self.qmap ['pseudo_ans'].split (','),
-                database = 'pg/olddb',
-                mode = AnsMgt.ANS_MODE_NORM,
-                )
 
         self.assertTrue (hasattr (qst, 'keys'), 'Question should be dictionary-like')
         
@@ -119,12 +129,52 @@ class ServerTest (unittest.TestCase):
         for k in x:
             with self.subTest ('Qmap should be valid', k = k):
                 self.assertIn (k, qst, '%s should be in qst' % (k,))
+        
+        norm_ansmgr = AnsMgt.AnsMgr (
+                qmap = self.qmap,
+                pseudo_ans = self.qmap ['pseudo_ans'].split (','),
+                database = 'pg/olddb',
+                mode = AnsMgt.ANS_MODE_NORM,
+                )
 
-        qst = ansmgr.answer (qst)
+        hack_ansmgr = AnsMgt.AnsMgr (
+                qmap = self.qmap,
+                pseudo_ans = self.qmap ['pseudo_ans'].split (','),
+                database = 'pg/olddb',
+                mode = AnsMgt.ANS_MODE_HACK,
+                )
 
-        p = self.std_qmgr.submit (qst)
+        qst1 = qstmgr.fetch ()
+        
+        self.assertTrue (hasattr (qst1, 'keys'), 'Question should be dictionary-like')
 
-        self.assertTrue (0 <= p <= 1, 'QstMgr can give feedback on submits')
+        while True:
+
+            t = self.std_qmgr.fetch ()
+            if t:
+                q = norm_ansmgr.answer (t)
+                p = self.std_qmgr.submit (q)
+                norm_ansmgr.check (q, p)
+
+            t1 = qstmgr.fetch ()
+            if t1:
+                q1 = hack_ansmgr.answer (t1)
+                p1 = qstmgr.submit (q1)
+
+                hack_ansmgr.check (q1, p1)
+
+            if t is False and t1 is False:
+                break
+
+            for k, r, amgr in zip (
+                    [q, q1],
+                    [p, p1],
+                    [norm_ansmgr, hack_ansmgr]
+                    ):
+                with self.subTest ('Feedback Time', r = r, k = k, amgr = amgr):
+                    self.assertTrue (
+                            (r is 1 and k ['ans'] == amgr (k, 'ans')) or (r is 0 and k ['ans'] != amgr (k, 'ans')),
+                            'QstMgr can give feedback on submits')
 
 
 def main (argv = []):

@@ -13,12 +13,12 @@ from urllib import parse
 import configparser
 
 ANS_MODE_HACK = 0b01
-ANS_MODE_NORM = 0b10
+ANS_MODE_NORM = 0b00
 
 class AnsMgt:
 
     ANS_MODE_HACK = 0b01
-    ANS_MODE_NORM = 0b10
+    ANS_MODE_NORM = 0b00
 
     class AnsMgr (object):
 
@@ -60,7 +60,7 @@ class AnsMgt:
 
         hints = [
                 (
-                    '''Submit: The answer to this question is not in the database, can you answer it ?''',
+                    '''Norm: The answer to this question is not in the database, can you answer it ?''',
                     '''Type '%s' if answer corresponds to row %s or type ':hack' to switch to hack mode.'''
                     ),
 
@@ -71,21 +71,26 @@ class AnsMgt:
 
                 (
                     '''Fail: I failed the answer to this question. Please can you answer it ?''',
+                    '''Type '%s' if answer corresponds to row %s and so on.'''
                     )
         ]
 
+        def __call__ (self, qstlike, d = None):
+            return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
+        
         def _copycase (self, t, i):
             return i.upper () if t.isupper () else i.lower ()
         
         def _mkprompt (self):
             txt = '''{prolog}
-            {%s}. {%s}
 
-            ''' % (self.qmap ['qn'], self.qmap ['qdescr'])
+{%s}. {%s}
+
+''' % (self.qmap ['qn'], self.qmap ['qdescr'])
 
             for i in range (len (self.pseudos)):
                 k = 'opt' + bytes ([65+i]).decode ()
-                txt += '{%s}: {%s}\n' % (self.pseudos [i], self.qmap [k])
+                txt += '%s: {%s}\n' % (self.pseudos [i], self.qmap [k])
 
             txt += '''
             {epilog}
@@ -100,7 +105,7 @@ class AnsMgt:
 
             x = input (self.p_text.format (
                 prolog = prolog or '(tmadog)',
-                epilog = epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (pseudos[0], pseudos[0]), 
+                epilog = epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (self.pseudos[0], self.pseudos[0]), 
                 **qst
                 )
                 )
@@ -113,7 +118,7 @@ class AnsMgt:
 
             x = self._qpromt (qst, epilog, prolog)
             try:
-                qst [self.qmap ['ans']] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
+                qst [self.qmap ['ans']] = self._copycase (self.pseudos[0], x) if len (x) and not x.startswith (':') else None
 
             except ValueError:
 
@@ -121,10 +126,11 @@ class AnsMgt:
                     x = self._qpromt (
                             qst,
                             epilog,
-                            (err_msg or '''Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry, )
+                            (err_msg or '''
+Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry, )
                             )
                     try:
-                        qst [self.qmap ['ans']] = self._copycase (pseudos[0], x) if len (x) and not x.startswith (':') else None
+                        qst [self.qmap ['ans']] = self._copycase (self.pseudos[0], x) if len (x) and not x.startswith (':') else None
                         break
 
                     except ValueError:
@@ -134,17 +140,22 @@ class AnsMgt:
 
 
             finally:
-                self.update (qst.copy ())
+
                 return x
 
         def check (self, qst, mark):
             if mark is 0:
+                qst = qst.copy ()
+
                 if not self.interactive:
                     qst[self.qmap ['ans']] = None
-                    self.update (qst.copy ())
                 else:
                     msg = self.hints [-1]
-                    self.qprompt (qst, prolog = msg[0], max_retry = self.max_retry)
+                    x = self.qprompt (qst, prolog = msg[0], max_retry = self.max_retry)
+                    if x in (':hack', ':Hack', ':HACK'):
+                        self.mode = ANS_MODE_HACK
+                
+                return self.update (qst.copy ())
 
         def answer (self, qst):
 
@@ -155,7 +166,7 @@ class AnsMgt:
                 x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
-                    x = x.get (self.qid, None)
+                    x = x.get (self.qmap ['qid'], None)
                     if x and x[self.qmap ['ans']]:
                         return x
                     else:
@@ -164,7 +175,7 @@ class AnsMgt:
                 if not x:
 
                     x = self._fetch (qst)
-                    if x:
+                    if x and x [self.qmap ['ans']]:
                         x = self.convert_ans (qst, x[self.qmap ['ans']])
                         if x:
                             qst [self.qmap ['ans']] = x
@@ -174,29 +185,45 @@ class AnsMgt:
                         else:
                             return self.resolve (qst)
 
+                    else:
+                        return self.resolve (qst)
+
 
             if self.mode is ANS_MODE_HACK:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
-                if x and x.get (qst [self.qmap ['crscode']], None):
-                    return x
+                if x and self.qmap ['crscode'] in x:
+                    qst.update (x)
+                    return qst
 
-                elif x and x.get (self.qmap ['ans'], None):
-                    x[self.qmap ['ans']] = self.convert_ans (qst, x[self.qmap ['ans']])
+                elif x and x[self.qmap ['ans']]:
+                    x = dict (x)
+                    x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
 
-                    if x[self.qmap ['ans']]:
+                    if x [self.qmap ['ans']]:
                         qst.update (x)
                         self.update (qst.copy ())
                         return qst
+                    else:
+                        return self.resolve (qst)
 
-                if not x or not x.get (self.qmap ['ans'], None):
+                else:
                     return self.resolve (qst)
 
         def update (self, qst):
+            
+            i = 0
+            while True:
+                try:
+                    qst.pop (self.qmap ['id' + str (i)])
+                    i += 1
+                except KeyError:
+                    break
 
             self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
 
-            self._cache[qst [self.crscode].upper ()].update ([(qst [self.qid],
+            self._cache[qst [self.qmap ['crscode']].upper ()].update ([(qst
+                [self.qmap ['qid']],
                     qst)])
 
             if qst [self.qmap ['ans']]:
@@ -204,7 +231,7 @@ class AnsMgt:
 
             else:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None)
-                if x and x [self.qid] is qst [self.qmap ['qid']]:
+                if x and x [self.qmap ['qid']] is qst [self.qmap ['qid']]:
                     self._cache.pop (qst [self.qmap ['crscode']].lower ())
 
         def resolve (self, qst):
@@ -216,12 +243,14 @@ class AnsMgt:
             x = self.qprompt (
                     qst,
                     prolog = msg[0],
-                    epilog = msg[1] % (pseudos[0], pseudos[0]),
+                    epilog = msg[1] % (self.pseudos[0], self.pseudos[0]),
                     max_retry = self.max_retry
                     )
 
             if x in (':hack', ':Hack', ':HACK'):
                 self.mode = ANS_MODE_HACK
+            self.update (qst.copy ())
+
             return None if not qst[self.qmap ['ans']] else qst
             
 
@@ -230,7 +259,7 @@ class AnsMgt:
             ans = re.sub (r'\+', r'\\W+?', ans)
 
             for i in range (len (self.pseudos)):
-                k = 'opt' + bytes ([65+i]).decode ()
+                k = 'opt' + bytes ([97+i]).decode ()
                 if re.match (ans, qst[self.qmap [k]].strip (), flags = re.IGNORECASE):
                     return self.pseudos [i]
 
@@ -259,16 +288,16 @@ class AnsMgt:
                         FALSE AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
                         c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
                     ''' % (
-                        self.qdescr,
+                        self.qmap ['qdescr'],
                         self.qmap ['ans'],
-                        self.qid,
-                        self.qmap['a'],
-                        self.qmap['b'],
-                        self.qmap['c'],
-                        self.qmap['d']
+                        self.qmap ['qid'],
+                        self.qmap['opta'],
+                        self.qmap['optb'],
+                        self.qmap['optc'],
+                        self.qmap['optd']
                         ),
                     (
-                        qst[self.crscode],
+                        qst[self.qmap ['crscode']],
                         )
                     )
 
@@ -282,18 +311,32 @@ class AnsMgt:
                 self._cur = conn.cursor ()
 
             self._cur.execute ('''
-            SELECT ans AS %s FROM answers INNER JOIN (courses AS c,
-            questions as q) ON ((c.crscode LIKE ? AND c.qid IS ? AND c.ready
-            IS NOT FALSE) OR q.qdescr LIKE ?) WHERE answers.cid IS c.cid OR
-            answers.dogid IS q.dogid
+            SELECT ans AS %s FROM answers INNER JOIN (courses) ON (courses.crscode LIKE ? AND courses.qid IS ? AND courses.ready
+            IS NOT FALSE) WHERE answers.cid IS courses.cid
                     ''' % (
                         self.qmap ['ans'],
                         ),
                     (
                         qst [self.qmap ['crscode']],
                         qst [self.qmap ['qid']],
-                        qst [self.qmap ['qdescr']],
                         )
                     )
 
-            return self._cur.fetchone ()
+            r = self._cur.fetchone ()
+
+            if not r:
+
+                self._cur.execute ('''
+                SELECT ans AS %s FROM answers INNER JOIN questions ON qdescr LIKE ? WHERE answers.dogid IS questions.dogid
+                        ''' % (
+                            self.qmap ['ans'],
+                            ),
+
+                        (
+                            qst [self.qmap ['qdescr']],
+                            )
+                        )
+
+                r = self._cur.fetchone ()
+
+            return r

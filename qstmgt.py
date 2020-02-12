@@ -64,7 +64,7 @@ class QstMgt (object):
 
             self.stop = stop
 
-            self.count = 0
+            self.count = True
 
             self.fargs = self._transform_req (fargs, matno, tma, crscode)
 
@@ -73,7 +73,7 @@ class QstMgt (object):
             self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
             req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
 
-            req['url'] = re.sub (r'(?P<cs>(?![A-Za-z]+)[A-Za-z]{3})\d{3}(?!\d+)',
+            req['url'] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
                     self._copycase (crscode), req['url'], flags = re.IGNORECASE)
 
             req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
@@ -83,7 +83,7 @@ class QstMgt (object):
             for k in req.get(self.dt0, {}):
                 req[self.dt0][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.dt0][k], flags = re.IGNORECASE)
 
-                req[self.dt0][k] = re.sub (r'(?P<cs>(?![A-Za-z]+)[A-Za-z]{3})\d{3}(?!\d+)',
+                req[self.dt0][k] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
                         self._copycase (crscode), req[self.dt0][k], flags = re.IGNORECASE)
 
                 req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
@@ -93,8 +93,8 @@ class QstMgt (object):
 
 
         def fetch (self, url1 = None, **kwargs):
-            if self.count is self.stop:
-                return False
+            if not self.count:
+                return self.count
 
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
@@ -125,13 +125,16 @@ class QstMgt (object):
                         )
 
                 self.count = int ('' + x [self.dt0][self.qn])
+                
+                if self.count is self.stop:
+                    self.count = False
 
                 self.nextq = x
            
             if not self.dt1:
                 self.dt1 = 'data' if x['method'] in ('POST', 'post') else 'params'
 
-            return x.pop (self.dt1)
+            return self.nextq.pop (self.dt1)
             
 
         def _copycase (self, repl):
@@ -159,6 +162,8 @@ class QstMgt (object):
             x = parse.urlparse (self.nextq ['url'])
 
             self.nextq [self.dt1 or self.dt0] = qst
+            
+            self.totscore = int ('0' + qst [self.score])
 
             kwargs.setdefault (
                     'headers',
@@ -169,9 +174,11 @@ class QstMgt (object):
                         }
                     )
 
-            res = self.session.request (**nextq, **kwargs)
+            res = self.session.request (**self.nextq, **kwargs)
 
             res.raise_for_status ()
+
+            self.nextq.pop (self.dt1 or self.dt0)
 
             self.referer = res.url
 
@@ -179,9 +186,9 @@ class QstMgt (object):
 
             self.nextq [self.dt1 or self.dt0] = res
 
-            s = (int ('' + res[self.score]) - self.totscore) == 1
+            s = (int ('0' + res[self.score]) - self.totscore) == 1
 
-            self.totscore = int ('' + res[self.score])
+            self.totscore = int ('0' + res[self.score])
 
             return int (s)
             

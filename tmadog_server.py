@@ -50,6 +50,12 @@ qtemplate ='''<html>
 </body>
 </html>'''
 
+atemplate = '''<html>
+<body>
+You have scored {mark:d}. Your total score is {totscore:d}
+</body>
+</html>'''
+
 class RequestHandler (http.server.BaseHTTPRequestHandler):
 
     _cookies = (x for x in range (20))
@@ -85,7 +91,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
 	    {'qdescr': 'One trillionth of a second is', 'opta': 'millisecond', 'crscode': 'CIT701', 'qid': '63249', 'ans': 'D', 'optb': 'microsecond', 'optc': 'nanosecond', 'optd': 'picoseconds'},
 
-	    {'qdescr': 'Which of the following signs is not a logical operation', 'opta': '', 'crscode': 'CIT701', 'qid': '63243', 'ans': 'A', 'optb': '<', 'optc': '=', 'optd': '/'},
+	    {'qdescr': 'Which of the following signs is not a logical operation', 'opta': '||', 'crscode': 'CIT701', 'qid': '63243', 'ans': 'A', 'optb': '<', 'optc': '=', 'optd': '/'},
 
 	    {'qdescr': 'A circuit that generates electronic impulses at a fixed rate to synchronize processing activities is called', 'opta': 'System Clock', 'crscode': 'CIT701', 'qid': '63245', 'ans': 'A', 'optb': 'Bus Width', 'optc': 'Word Size', 'optd': 'Memory'},
 
@@ -128,6 +134,39 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
         elif self.path.endswith ('qsak3_ynz.php'):
             self.getans ()
 
+    
+    def getans (self):
+
+        m, s = self.active_st.get (self.headers.get ('cookie', 'xx'), (None, None))
+        if not hasattr (self, 'data'):
+            self.data = self.rfile.read (int (self.headers.get ('content-length', 0))).decode ()
+
+        if not m or not self.data:
+            self.send_error (400)
+            return
+
+        d = self.parse_data (self.data)
+        for q in self.qsts:
+            if q ['qid'] == d ['qid']:
+
+                self.send_response (200)
+                self.send_header ('Content-Type', 'text/html')
+                self.end_headers ()
+
+                mark = 1 if q ['ans'] == d ['ans'] else 0
+
+                s [d ['crscode']]['totscore'] = int (s [d ['crscode']]['totscore']) + mark
+
+                s [d ['crscode']]['qj'] = int (s [d ['crscode']]['qj']) + 1
+
+                self.active_st [self.headers ['cookies']] = (m, s)
+
+                self.wfile.write (bytes (atemplate.format (totscore = s [d ['crscode']]['totscore'], mark = mark), encoding = 'utf8'))
+                return
+
+        self.send_error (400)
+        return
+
     def getqst (self):
 
         m, s = self.active_st.get (self.headers.get ('cookie', 'xx'), (None, None))
@@ -143,13 +182,14 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
         qst = random.choice (self.qsts).copy ()
 
-        s.update (qst)
+        s.setdefault (g[0], {})
+        s [g[0]].update (qst)
 
-        s.setdefault ('qj', 1)
-        s.setdefault ('totscore', 0)
-        s['crscode'] = g[0]
-        s['tma'] = g[1]
-        s['matno'] = m
+        s [g[0]].setdefault ('qj', 1)
+        s [g[0]].setdefault ('totscore', 0)
+        s [g[0]]['crscode'] = g[0]
+        s [g[0]]['tma'] = g[1]
+        s [g[0]]['matno'] = m
             
         self.send_response (200)
 
@@ -157,7 +197,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
         self.end_headers ()
 
-        self.wfile.write (bytes (qtemplate.format (**s), encoding = 'utf8')) 
+        self.wfile.write (bytes (qtemplate.format (**s [g[0]]), encoding = 'utf8')) 
 
         return
 
