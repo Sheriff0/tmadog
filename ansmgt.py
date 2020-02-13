@@ -118,7 +118,7 @@ class AnsMgt:
 
             x = self._qpromt (qst, epilog, prolog)
             try:
-                qst [self.qmap ['ans']] = self._copycase (self.pseudos[0], x) if len (x) and not x.startswith (':') else None
+                qst [self.qmap ['ans']] = self._copycase (self.pseudos[0], x) if not re.fullmatch (r'\s*', x) and not x.startswith (':') else None
 
             except ValueError:
 
@@ -166,9 +166,10 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
-                    x = x.get (self.qmap ['qid'], None)
+                    x = x.get (qst [self.qmap ['qid']], None)
                     if x and x[self.qmap ['ans']]:
-                        return x
+                        self.download (x, qst)
+                        return qst
                     else:
                         x = None
 
@@ -193,7 +194,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
-                    qst.update (x)
+                    self.download (x, qst)
                     return qst
 
                 elif x and x[self.qmap ['ans']]:
@@ -212,14 +213,6 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
         def update (self, qst):
             
-            i = 0
-            while True:
-                try:
-                    qst.pop (self.qmap ['id' + str (i)])
-                    i += 1
-                except KeyError:
-                    break
-
             self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
 
             self._cache[qst [self.qmap ['crscode']].upper ()].update ([(qst
@@ -227,11 +220,11 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     qst)])
 
             if qst [self.qmap ['ans']]:
-                self._cache.setdefault (qst [self.qmap ['crscode']].lower (), qst)
+                self._cache [qst [self.qmap ['crscode']].lower ()] =  qst
 
             else:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None)
-                if x and x [self.qmap ['qid']] is qst [self.qmap ['qid']]:
+                if x and x [self.qmap ['qid']] == qst [self.qmap ['qid']]:
                     self._cache.pop (qst [self.qmap ['crscode']].lower ())
 
         def resolve (self, qst):
@@ -257,10 +250,11 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
         def convert_ans (self, qst, ans):
             ans = re.sub (r'\+', r'\\W+?', ans)
+            if not hasattr (self, 'opts'):
+                self.opts = [ 'opt' + bytes ([97 + a]).decode () for a in range (len (self.pseudos))]
 
             for i in range (len (self.pseudos)):
-                k = 'opt' + bytes ([97+i]).decode ()
-                if re.match (ans, qst[self.qmap [k]].strip (), flags = re.IGNORECASE):
+                if re.match (ans, qst[self.qmap [self.opts [i]]].strip (), flags = re.IGNORECASE):
                     return self.pseudos [i]
 
             return None
@@ -340,3 +334,16 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 r = self._cur.fetchone ()
 
             return r
+
+        def download (self, x, qst):
+            
+            if not hasattr (self, 'opts'):
+                self.opts = [ 'opt' + bytes ([97 + a]).decode () for a in range (len (self.pseudos))]
+
+            qst.update (
+                    {
+                        y: x [y] for y in (self.qmap [z] for z in self.qmap if z in ['qdescr', 'qid', 'ans'] + self.opts)
+                        }
+                    )
+
+            return qst

@@ -93,8 +93,8 @@ class QstMgt (object):
 
 
         def fetch (self, url1 = None, **kwargs):
-            if not self.count:
-                return self.count
+            if not self.stop:
+                return self.stop
 
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
@@ -124,13 +124,14 @@ class QstMgt (object):
                             }
                         )
 
-                self.count = int ('' + x [self.dt0][self.qn])
-                
-                if self.count is self.stop:
-                    self.count = False
 
                 self.nextq = x
            
+            self.count = int ('' + self.nextq [self.dt0][self.qn])
+            
+            if self.count is self.stop:
+                self.stop = False
+
             if not self.dt1:
                 self.dt1 = 'data' if x['method'] in ('POST', 'post') else 'params'
 

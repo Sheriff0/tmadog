@@ -177,6 +177,12 @@ class ServerTest (unittest.TestCase):
                             'QstMgr can give feedback on submits')
 
 
+        self.assertTrue (
+                self.std_qmgr.count == 10 and qstmgr.count == 7,
+                'Qstmgr can stop fetching questions after fetching "stop" (server side numbering) number of questions'
+                )
+
+
 def main (argv = []):
 
     parser = argparse.ArgumentParser ()
