@@ -21,12 +21,10 @@ BREAK = 0
 CONT = 1
 
 class ScrMgr:
-    def __init__ (self, qscr, ascr, qmgr, qmap, pseudos):
+    def __init__ (self, qscr, ascr, qmgr):
         self.qbdr = qscr
         self.qmgr = qmgr
         self.abdr = ascr
-        self.qmap = qmap
-        self.pseudos = pseudos
         cord, dim = self.qbdr.getbegyx (), self.qbdr.getmaxyx ()
         self.qcord, self.qdim = (cord [0] + 1, cord [1] + 1), (dim [0] - 2, dim [1] - 2) 
 
@@ -40,8 +38,11 @@ class ScrMgr:
         self.atextscr.keypad (True)
         self.qtextscr.keypad (True)
 
-        self.qbdr.attrset (curses.A_REVERSE)
-        self.abdr.attrset (curses.A_REVERSE)
+        self.qbdr.attrset (curses.A_NORMAL)
+        self.abdr.attrset (curses.A_NORMAL)
+        curses.curs_set (0)
+        
+        self.qmgr.interactive = True
 
         self.is_qscr = False
         self.qst = None
@@ -65,7 +66,53 @@ class ScrMgr:
         return BREAK
 
     def key_up259 (self):
-        pass
+        if self.is_qscr and self.optmap:
+            cur = self.qtextscr.getyx ()
+            n = [i for i,t in enumerate (self.optmap) if t[0] == cur [0]]
+
+            if not n:
+                return
+
+            try:
+                t = n [0] - 1
+                
+                if t < 0:
+                    raise IndexError (t)
+                t = self.optmap [t]
+
+                if self.isseen (self.optmap [n [0]], 1):
+                    self.paint (undo = True)
+
+
+                    if self.isseen (t, 1):
+                        pass
+
+                    elif self.isseen (t, 0):
+                        self.qline -= 1
+
+                    else:
+                        self.qline -= t[0]
+
+                    self.qtextscr.move (t[0], 0)
+
+                else:
+                    self.qline -= 1
+
+                self.paint ()
+
+            except IndexError:
+                if self.isseen ((0, self.qdim[1] - 1), 1):
+                    pass
+                else:
+                    self.qline -= 1
+
+
+            finally:
+                self.qtextscr.refresh (self.qline, 0, self.qcord[0], self.qcord [1],
+                (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
+                    [1]) - 1)
+                        
+
 
     def key_down258 (self):
         if self.is_qscr and self.optmap:
@@ -76,27 +123,58 @@ class ScrMgr:
                 return
 
             try:
-                if self.isseen (self.optmap [n [0]]):
-                    self.paint (True)
+                t = self.optmap [n [0] + 1]
 
-                    t = self.optmap [n [0]+ 1]
-                    if self.isseen (t):
+                if self.isseen (self.optmap [n [0]]):
+                    self.paint (undo = True)
+
+
+                    if self.isseen (t, 0):
                         pass
+
+                    elif self.isseen (t, 1):
+                        self.qline += 1
+
                     else:
-                        offset = math.ceil (t [1]/self.qdim [1]) 
-                        self.qline += offset
+                        offset = t[0] - (self.qline + self.qdim[0] - 1)
+                        self.qline += offset if offset >= 0 else 1
 
                     self.qtextscr.move (t[0], 0)
-                    self.paint ()
+
+                elif self.isseen (self.optmap [n [0]], 1):
+                    self.qline += 1
+
+                else:
+                    t = self.optmap [n [0]]
+                    offset = t[0] - (self.qline + self.qdim[0] - 1)
+                    self.qline += offset if offset >= 0 else 0
+
+
+                self.paint ()
 
             except IndexError:
-                pass
+                if self.isseen (self.optmap [n [0]]):
+                    pass
+                else:
+                    self.qline += 1
+
+            finally:
+                self.qtextscr.refresh (self.qline, 0, self.qcord[0], self.qcord [1],
+                (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
+                    [1]) - 1)
+                        
 
 
-    def isseen (self, coord):
-        x = math.floor (coord [1] / self.qdim [1]) + coord [0]
-        y = (self.qline + self.qdim [0])
-        return y >= x
+    def isseen (self, coord, dir = 0):
+        if not dir:
+            x = math.floor (coord [1] / self.qdim [1]) + coord [0]
+            y = (self.qline + self.qdim [0]) - 1
+            return y >= x >= self.qline
+        
+        else:
+            x = coord [0]
+            y = (self.qline + self.qdim [0]) - 1
+            return self.qline <= x <= y
 
     def ctrl_w23 (self):
         c = self ['getch'] ()
@@ -121,12 +199,16 @@ class ScrMgr:
         if self.is_qscr:
             if self.qst: 
                 c = chr (self ['inch'] () & 0xff)
-                self.qst [self.qmap ['ans']] = c
-                
-                self.pq.append ((self.qst, self.qmgr.submit (self.qst)))
+                self.qst [self.qmgr.qmap ['ans']] = c
+               
+                x = self.qmgr.submit (self.qst)
+
+                if x != None:
+                    self.pq.append ((self.qst, x))
 
 
             self.qst = self.qmgr.fetch ()
+
             return self.update_qscr ()
         else:
             return
@@ -134,7 +216,7 @@ class ScrMgr:
     
     def update_qscr (self, qst = None):
 
-        self.optmap = self.pseudos.copy ()
+        self.optmap = []
         self.qline = 0
         self.qtextscr.move (0, 0)
         self.qtextscr.clear ()
@@ -143,22 +225,40 @@ class ScrMgr:
             self.qst = qst if qst else self.qst
 
 
-            for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.pseudos))]:
+            for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.qmgr.pseudos))]:
                 if f.startswith ('opt'):
                     i = (ord (f[-1]) & 0x1f) - 1
+                    x = self.qtextscr.getyx ()
+                    
+                    if isinstance (self.qmgr.pseudos [i], int):
+                        self.qtextscr.addch (self.qmgr.pseudos [i])
+                        pre = ''
+                    else:
+                        pre = self.qmgr.pseudos [i] + ': '
+
+                    self.qtextscr.addstr (pre + self.qst [self.qmgr.qmap [f]].strip ())
                     cur = self.qtextscr.getyx ()
-                    self.optmap [i] = cur
-                    pre = self.pseudos [i] + ': '
-                    self.qtextscr.addstr (pre + self.qst [self.qmap [f]])
-                    cur = self.qtextscr.getyx ()
-                    self.optmap [i] = (self.optmap [i][0], (cur [0] - self.optmap [i][0]) * (self.qdim [1]) + cur [1])
+                    self.optmap.append ((
+                        x[0],
+                        (cur [0] - x[0]) * (self.qdim [1]) + cur [1],
+                        self.qmgr.pseudos [i] if isinstance (self.qmgr.pseudos [i], int) else None
+                        ))
+                    self.qtextscr.addch ('\n')
 
                 elif f == 'qdescr':
-                    pre = str (self.qst [self.qmap ['qn']]) + '. '
+                    if isinstance (self.qst [self.qmgr.qmap ['qn']], int):
+                        self.qtextscr.addch (self.qmgr.pseudos [i])
+                        pre = ''
+                    else:
+                        pre = str (self.qst [self.qmgr.qmap ['qn']]) + '. '
 
-                    self.qtextscr.addstr (pre + self.qst [self.qmap [f]] + '\n')
+                    self.qtextscr.addstr (pre + self.qst [self.qmgr.qmap [f]].strip () + '\n')
 
                 self.qtextscr.addch ('\n')
+
+            if not self.optmap:
+                pass #NOTE: Draw a textbox for fill-in-the-gap answer
+
             self.qtextscr.move (self.optmap [0][0], 0)
 
         else:
@@ -198,13 +298,18 @@ class ScrMgr:
                 x = c[0]
 
                 while x:
-                    self.qtextscr.chgat (l, 0, curses.A_UNDERLINE if not undo
+                    self.qtextscr.chgat (l, 0, (curses.A_BOLD |
+                        curses.A_REVERSE) if not undo
                             else curses.A_NORMAL)
                     l += 1
                     x -= 1
 
-                self.qtextscr.chgat (l, 0, c [1], curses.A_UNDERLINE if not undo
+                self.qtextscr.chgat (l, 0, c [1], (curses.A_BOLD |
+                    curses.A_REVERSE) if not undo
                         else curses.A_NORMAL)
+                
+                if t [0][2]:
+                    self.qtextscr.addch (t[0][0], 0, t[0][2])
 
                 self.qtextscr.move (t[0][0], 0)
 
@@ -274,18 +379,16 @@ def main (stdscr, args):
 
     crsscr.refresh ()
 
-    qstscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS/2), 1, 0)
+    qstscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS * (3/4)), 1, 0)
 
-    resscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS/2), 1,
-            math.trunc (curses.COLS/2))
+    resscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS * (1/4)), 1,
+            curses.COLS - math.trunc (curses.COLS * (1/4)))
     
 
     qa_scrmgr = ScrMgr (
             qscr = qstscr,
             ascr = resscr,
             qmgr = qstmgr,
-            qmap = qmap,
-            pseudos = pseudos
             ) 
 
     while True:

@@ -11,6 +11,8 @@ import parse as _parse
 from pathlib import PurePath
 from urllib import parse
 import configparser
+import sys
+import curses
 
 
 class QstMgt (object):
@@ -52,11 +54,9 @@ class QstMgt (object):
 
             self.dt1 = None
 
-            self.score = qmap['score']
+            self.qmap = qmap
 
-            self.qn = qmap['qn']
-
-            self.ans = qmap ['ans']
+            self.pseudos = self.qmap ['pseudo_ans'].split (',')
 
             self.totscore = 0
 
@@ -65,6 +65,8 @@ class QstMgt (object):
             self.stop = stop
 
             self.count = True
+
+            self.interactive = False
 
             self.fargs = self._transform_req (fargs, matno, tma, crscode)
 
@@ -94,7 +96,7 @@ class QstMgt (object):
 
         def fetch (self, url1 = None, **kwargs):
             if not self.stop:
-                return self.nextq.pop (self.dt1, None)
+                return self.nextq.pop (self.dt1 or self.dt0, None)
 
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
@@ -120,14 +122,14 @@ class QstMgt (object):
                         res.url,
                         flags = dogs.FILL_FLG_EXTRAS,
                         data = {
-                            self.ans: None
+                            self.qmap ['ans']: None
                             }
                         )
 
 
                 self.nextq = x
            
-            self.count = int ('' + self.nextq [self.dt0][self.qn])
+            self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
             
             if self.count == self.stop:
                 self.stop = False
@@ -160,11 +162,19 @@ class QstMgt (object):
             return self
 
         def submit (self, qst, **kwargs):
+
+            if qst [self.qmap ['qid']] == 'submit':
+                if qst [self.qmap ['ans']] == '1':
+                    self.stop = True
+                    self.pseudos = self.bkpseudo
+
+                return None
+
             x = parse.urlparse (self.nextq ['url'])
 
             self.nextq [self.dt1 or self.dt0] = qst
             
-            self.totscore = int ('0' + qst [self.score])
+            self.totscore = int ('0' + qst [self.qmap ['score']])
 
             kwargs.setdefault (
                     'headers',
@@ -179,20 +189,39 @@ class QstMgt (object):
 
             res.raise_for_status ()
 
-            self.nextq.pop (self.dt1 or self.dt0)
+            x = self.nextq.pop (self.dt1 or self.dt0)
+
+            y = res
 
             self.referer = res.url
 
             res = self.fetch ()
 
             if not res:
-                return res
+                if self.interactive:
+                    res = lxml.html.fromstring (y.text).text_content ()
+                    self.bkpseudo = self.pseudos
+                    self.pseudos = [ curses.A_INVIS | ord (o) for o in ('1', '0') ] if sys.stdout.isatty () else ('1', '0')
+
+                    qst = {
+                            self.qmap ['qdescr']: res,
+                            self.qmap ['ans']: None,
+                            self.qmap ['opta']: 'ask forever',
+                            self.qmap ['optb']: 'exit',
+                            self.qmap ['qid']: 'submit',
+                            self.qmap ['qn']: 'X',
+                            }
+
+                    self.nextq [self.dt1] = qst
+
+                return None
+
 
             self.nextq [self.dt1 or self.dt0] = res
 
-            s = (int ('0' + res[self.score]) - self.totscore) == 1
+            s = (int ('0' + res[self.qmap ['score']]) - self.totscore) == 1
 
-            self.totscore = int ('0' + res[self.score])
+            self.totscore = int ('0' + res[self.qmap ['score']])
 
             return int (s)
             
