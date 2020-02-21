@@ -137,7 +137,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
     
     def getans (self):
 
-        m, s = self.active_st.get (self.headers.get ('cookie', 'xx'), (None, None))
+        m, s = self.active_st.get (self.headers.get ('cookie', 'xx').split ('=')[-1], (None, None))
         if not hasattr (self, 'data'):
             self.data = self.rfile.read (int (self.headers.get ('content-length', 0))).decode ()
 
@@ -169,7 +169,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
     def getqst (self):
 
-        m, s = self.active_st.get (self.headers.get ('cookie', 'xx'), (None, None))
+        m, s = self.active_st.get (self.headers.get ('cookie', 'xx').split ('=')[-1], (None, None))
         if not hasattr (self, 'data'):
             self.data = self.rfile.read (int (self.headers.get ('content-length', 0))).decode ()
 
@@ -181,7 +181,6 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
         g = re.findall (r'([a-zA-Z]{3}\d{3}).+TMA([1-3])', d ['krs3id'], flags = re.I)[0]
 
         qst = random.choice (self.qsts).copy ()
-
         s.setdefault (g[0], {})
         s [g[0]].update (qst)
 
@@ -235,7 +234,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
             self.send_header ('Content-Type', 'text/html')
 
-            self.send_header ('Set-Cookie', cookie + '; path=/')
+            self.send_header ('Set-Cookie', 'id=' + cookie + '; path=/')
 
             self.end_headers ()
 

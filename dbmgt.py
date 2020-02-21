@@ -2,6 +2,7 @@ class DbMgt (object):
 
     TMADOGDB = 'tmadogdb'
 
+    @staticmethod
     def setupdb (db):
 
         conn = sqlite3.connect (db)
@@ -39,6 +40,7 @@ class DbMgt (object):
         return conn
 
 
+    @staticmethod
     def update_hacktab (db, data, qmap, cursor = None):
 
         conn = setupdb (db) if not cursor else cursor.connection
@@ -74,10 +76,10 @@ class DbMgt (object):
                         ?, ?, ?);
                         ''', (
                             cid,
-                            datum[qmap ['a']],
-                            datum[qmap ['b']],
-                            datum[qmap ['c']],
-                            datum[qmap ['d']]
+                            datum[qmap ['opta']],
+                            datum[qmap ['optb']],
+                            datum[qmap ['optc']],
+                            datum[qmap ['optd']]
                             ))
                 if cursor:
                     return cursor
@@ -97,6 +99,7 @@ class DbMgt (object):
         return None
 
 
+    @staticmethod
     def updatedb (db, data, qmap, cursor = None):
 
         repeats = 0

@@ -127,7 +127,7 @@ class ServerTest (unittest.TestCase):
         x = (self.qmap [k] for k in self.qmap if k not in ('indices', 'volatile', 'pseudo_ans'))
 
         for k in x:
-            with self.subTest ('Qmap should be valid', k = k):
+            with self.subTest ('Qmap integrity check', k = k):
                 self.assertIn (k, qst, '%s should be in qst' % (k,))
         
         norm_ansmgr = AnsMgt.AnsMgr (
