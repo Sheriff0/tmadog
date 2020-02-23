@@ -14,6 +14,7 @@ import http.server
 from qstmgt import QstMgt
 from ansmgt import AnsMgt
 import curses
+import cfscrape
 
 
 BREAK = 0
@@ -44,26 +45,29 @@ class ScrMgr:
         
         self.qmgr.interactive = True
 
-        self.is_qscr = False
+        self.is_qscr = True
         self.qst = None
         self.pq = []
         self.pqidx = 0
+        self.qbdr.box ()
+        self.qbdr.noutrefresh ()
+        self.abdr.box (' ', ' ')
+        self.abdr.noutrefresh ()
         self.update_qscr ()
         self.update_ascr ()
+        curses.doupdate ()
 
     
     def __getitem__ (self, attr):
         return getattr (self.qtextscr if self.is_qscr else self.atextscr, attr)
 
     def __call__ (self, key):
-        cmd = (getattr (self, k) for k in type (self).__dict__ if k.endswith (str (key)))
+        cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
+                (r'(?<!\d)' + str (key) + r'(?!\d)', k))
         try:
-            next (cmd)()
+            return next (cmd)()
         except StopIteration:
             raise NotImplementedError ('code %d not available' % (key,), key)
-
-    def ctrl_c3 (self):
-        return BREAK
 
     def key_up259 (self):
         if self.is_qscr and self.optmap:
@@ -108,10 +112,10 @@ class ScrMgr:
 
 
             finally:
-                self.qtextscr.refresh (self.qline, 0, self.qcord[0], self.qcord [1],
-                (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
-                    [1]) - 1)
-                        
+                qst = self.qst
+                self.qst = None
+                self.update_qscr () 
+                self.qst = qst
 
 
     def key_down258 (self):
@@ -180,16 +184,23 @@ class ScrMgr:
         c = self ['getch'] ()
 
         if c == curses.KEY_RIGHT or c == curses.KEY_LEFT:
-            self ['box'] (' ', ' ')
-            self ['noutrefresh'] ()
-            self.is_qscr = not self.is_qscr
-            if not self.is_qscr:
-                curses.curs_set (0)
+            if self.is_qscr:
+                self.qbdr.box (' ', ' ')
+                self.qbdr.noutrefresh ()
+                self.abdr.box ()
+                self.abdr.noutrefresh ()
             else:
-                curses.curs_set (1)
+                self.qbdr.box ()
+                self.qbdr.noutrefresh ()
+                self.abdr.box (' ', ' ')
+                self.abdr.noutrefresh ()
 
-            self ['box'] ()
-            self ['noutrefresh'] ()
+            self.is_qscr = not self.is_qscr
+            qst = self.qst
+            self.qst = None
+            self.update_qscr ()
+            self.update_ascr ()
+            self.qst = qst
             curses.doupdate ()
 
         else:
@@ -216,14 +227,15 @@ class ScrMgr:
     
     def update_qscr (self, qst = None):
 
-        self.optmap = []
-        self.qline = 0
-        self.qtextscr.move (0, 0)
-        self.qtextscr.clear ()
+        self.qst = qst if qst else self.qst
+        x = self.qtextscr.getyx ()
 
         if self.qst: 
-            self.qst = qst if qst else self.qst
 
+            self.optmap = []
+            self.qline = 0
+            self.qtextscr.move (0, 0)
+            self.qtextscr.clear ()
 
             for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.qmgr.pseudos))]:
                 if f.startswith ('opt'):
@@ -261,13 +273,15 @@ class ScrMgr:
 
             self.qtextscr.move (self.optmap [0][0], 0)
 
+            self.paint ()
+
+        elif x[0] >= 1:
+            pass
+
         else:
+            self.qline = 0
             self.qtextscr.addstr (0, 0, 'Hit Enter to start')
 
-        self.qbdr.box ()
-        self.is_qscr = True
-        self.paint ()
-        self.qbdr.noutrefresh ()
 
         self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
                 (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
@@ -317,19 +331,166 @@ class ScrMgr:
 
 def main (stdscr, args):
 
+    class LoopMgr:
+        def __init__ (self, matno, crscode):
+            self.scroll_status = True
+            self.pad = curses.newpad (1, 10000)
+            self.mkscrollscr (matno, crscode)
 
-    def mkprompt (qmap, pseudos):
-        txt = '''{%s}. {%s}
+        def mkscrollscr (self, matno, crscode):
+            self.crsscr_dim = crsscr.getmaxyx ()
+            self.cord = crsscr.getbegyx ()
+            self.pad.clear ()
+            self.pad.bkgdset (0, curses.A_REVERSE)
 
-''' % (qmap ['qn'], qmap ['qdescr'])
+            self.pad.addstr (0, 0, matno + '  ' + crscode)
 
-        for i in range (len (pseudos)):
-            k = 'opt' + chr (65+i)
-            txt += '%s: {%s}\n' % (pseudos [i], qmap [k])
+            self.pwrite_len = self.pad.getyx ()[1]
 
-        return txt
+        def stop_scroll (self):
+            self.scroll_status = False
+            return
 
-    
+        def scroll (self, t = 0.05):
+
+            right = crsscr.derwin (1, math.ceil (self.crsscr_dim [1] * (2/3)), 0, self.crsscr_dim [1] - math.ceil (self.crsscr_dim [1] * (2/3)))
+            left = crsscr.derwin (1, math.floor (self.crsscr_dim [1] * (1/3)), 0, 0)
+
+            rcord = right.getbegyx ()
+            lcord = left.getbegyx ()
+
+            rdim = right.getmaxyx ()
+            ldim = left.getmaxyx ()
+            
+            rparam = [0, 0, rcord [0], rcord [1] + rdim [1] - 1, rcord [0],
+                    rcord [1] + rdim [1] - 1]
+            lparam = [0, self.pwrite_len, lcord [0], lcord [1], lcord [0], lcord [1]]
+
+            curses.curs_set (0)
+
+            while self.scroll_status:
+                self.pad.noutrefresh (*rparam)
+                self.pad.noutrefresh (*lparam)
+                time.sleep (t)
+                curses.doupdate ()
+                
+                if rparam [3] > rcord [1]:
+                    rparam [3] -= 1
+
+                elif rparam [3] == rcord [1]:
+                    if rparam [1] == self.pwrite_len:
+                        rparam = [0, 0, rcord [0], rcord [1] + rdim [1] - 1, rcord [0], rcord [1] + rdim [1] - 1]
+
+                    elif rparam [1] < self.pwrite_len:
+                        rparam [1] += 1
+
+
+                
+                if rparam [3] > rcord [1]:
+                    if lparam[3] > lcord [1]:
+                        lparam [3] -= 1
+                    elif lparam[3] == lcord [1]:
+                        if lparam [1] <= (self.pwrite_len - 1):
+                            lparam[1] += 1
+
+                elif rparam [3] == rcord [1]:
+                    if rparam [1] == 1:
+                        lparam = [0, 0, lcord [0], lcord [1] + ldim [1] - 1, lcord [0],
+                        lcord [1] + ldim [1] - 1]
+
+                    elif rparam [1] > 1:
+                        if lparam[3] > lcord [1]:
+                            lparam [3] -= 1
+                        elif lparam[3] == lcord [1]:
+                            if lparam [1] <= (self.pwrite_len - 1):
+                                lparam[1] += 1
+
+                
+
+        def __call__ (self, key):
+            cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
+                (r'(?<!\d)' + str (key) + r'(?!\d)', k))
+            try:
+                return next (cmd)()
+            except StopIteration:
+                return
+
+        def ctrl_c3 (self):
+            return BREAK
+
+        def retrofit_114 (self):
+            
+            ipt = []
+            
+            curses.echo ()
+            curses.noraw ()
+
+            for f in ('Matric No', 'Password', 'Course code', 'Tma No', 'url'):
+                inputscr.clear ()
+                inputscr.addstr (0, 0, f + ': ')
+                inputscr.refresh ()
+                s = inputscr.getstr ()
+                
+                if not s:
+                    curses.noecho ()
+                    curses.raw ()
+                    inputscr.clear ()
+                    inputscr.refresh ()
+                    return
+
+                ipt.append (s.decode ().strip ())
+
+            curses.noecho ()
+            curses.raw ()
+            inputscr.clear ()
+            inputscr.refresh ()
+
+            url = ipt [4]
+
+            if not url.startswith ('http'):
+                url = 'https://' + url
+
+
+            farg = qstmgr.fargs.copy ()
+
+            farg ['url'] = re.sub (r'https?://.+(?=/)', url,
+                    farg ['url'], flags = re.I)
+
+            referer = re.sub (r'https?://.+(?=/)', url,
+                    qstmgr.referer, flags = re.I)
+
+
+            qmgr = QstMgt.QstMgr (
+                    fargs = farg,
+                    url = referer,
+                    qmap = qmap,
+                    matno = ipt [0],
+                    crscode = ipt [2],
+                    tma = ipt [3]
+                    )
+
+            try:
+                nav = Navigation.Navigator (
+                        url + '/',
+                        mp, 
+                        {
+                            '[Matric Number]': ipt [0],
+                            '[Password]': ipt [1] 
+                            },
+                        session = cfscrape.create_scraper ()
+                        )
+
+                nav ('profile_page')
+
+                self.mkscrollscr (ipt [0], ipt [2])
+                qstmgr = qmgr
+                qa_scrmgr.qmgr = qstmgr
+                qa_scrmgr.qst = None
+                qa_scrmgr.update_qscr ()
+
+            except:
+                return
+
 
     mp = configparser.ConfigParser (interpolation =
         configparser.ExtendedInterpolation ())
@@ -340,9 +501,8 @@ def main (stdscr, args):
     
     pseudos = qmap ['pseudo_ans'].split (',')
 
-    ptext = mkprompt (qmap, pseudos)
 
-    session = requests.Session ()
+    session = cfscrape.create_scraper ()
 
     nav = Navigation.Navigator (
             args.url,
@@ -374,16 +534,20 @@ def main (stdscr, args):
    
     crsscr = stdscr.derwin (1, curses.COLS, 0, 0)
     
-    crsscr.addstr (0, math.trunc (curses.COLS/2) - math.trunc (len
-        (args.crscode) / 2), args.crscode, curses.A_REVERSE)
 
-    crsscr.refresh ()
+    qstscr = stdscr.derwin (curses.LINES - 2, math.trunc (curses.COLS * (3/4)), 1, 0)
 
-    qstscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS * (3/4)), 1, 0)
-
-    resscr = stdscr.derwin (curses.LINES - 1, math.trunc (curses.COLS * (1/4)), 1,
+    resscr = stdscr.derwin (curses.LINES - 2, math.trunc (curses.COLS * (1/4)), 1,
             curses.COLS - math.trunc (curses.COLS * (1/4)))
-    
+
+    inputscr = stdscr.derwin (1, curses.COLS, curses.LINES - 1, 0)
+
+
+    handler = LoopMgr (args.matno, args.crscode)
+
+    sthread = threading.Thread (target = handler.scroll)
+
+    sthread.start ()
 
     qa_scrmgr = ScrMgr (
             qscr = qstscr,
@@ -394,13 +558,21 @@ def main (stdscr, args):
     while True:
         curses.raw ()
         c = qa_scrmgr ['getch'] ()
-
-        c = qa_scrmgr (c)
+        
+        try:
+            c = qa_scrmgr (c)
+        except NotImplementedError:
+            c = handler (c)
 
         if c == BREAK:
-            return
+            break
 
 
+    curses.raw ()
+    curses.echo ()
+    handler.stop_scroll ()
+    stdscr.clear ()
+    stdscr.refresh ()
 
 if __name__ == '__main__':
 
@@ -421,16 +593,16 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-    
+   
+
     try:
         
         stdscr = curses.initscr ()
 
         main (stdscr, args)
-
-    except BaseException as err:
-
         curses.endwin ()
 
+    except BaseException as err:
+        curses.endwin ()
         raise err
 

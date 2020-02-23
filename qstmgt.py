@@ -113,21 +113,21 @@ class QstMgt (object):
 
                 res = self.session.request(**self.fargs , **kwargs)
 
-                res.raise_for_status ()
-
-                self.referer1 = res.url
+                try:
+                   res.raise_for_status ()
+                   self.referer1 = res.url
+                   x = dogs.fill_form (
+                           res.text,
+                           res.url,
+                           flags = dogs.FILL_FLG_EXTRAS,
+                           data = {
+                               self.qmap ['ans']: None
+                               }
+                           )
+                   self.nextq = x
                 
-                x = dogs.fill_form (
-                        res.text,
-                        res.url,
-                        flags = dogs.FILL_FLG_EXTRAS,
-                        data = {
-                            self.qmap ['ans']: None
-                            }
-                        )
-
-
-                self.nextq = x
+                except:
+                    return self.geterrmsg (res)
            
             self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
             
@@ -163,7 +163,7 @@ class QstMgt (object):
 
         def submit (self, qst, **kwargs):
 
-            if qst [self.qmap ['qid']] == 'submit':
+            if qst [self.qmap ['qid']] == 'error':
                 if qst [self.qmap ['ans']] == '1':
                     self.stop = True
                     self.pseudos = self.bkpseudo
@@ -199,22 +199,9 @@ class QstMgt (object):
 
             if not res:
                 if self.interactive:
-                    res = lxml.html.fromstring (y.text).text_content ()
-                    self.bkpseudo = self.pseudos
-                    self.pseudos = [ curses.A_INVIS | ord (o) for o in ('1', '0') ] if sys.stdout.isatty () else ('1', '0')
-
-                    qst = {
-                            self.qmap ['qdescr']: res,
-                            self.qmap ['ans']: None,
-                            self.qmap ['opta']: 'ask forever',
-                            self.qmap ['optb']: 'exit',
-                            self.qmap ['qid']: 'submit',
-                            self.qmap ['qn']: 'X',
-                            }
-
+                    qst = self.geterrmsg (y)
                     self.nextq [self.dt1] = qst
-
-                return None
+                    return None
 
 
             self.nextq [self.dt1 or self.dt0] = res
@@ -225,4 +212,21 @@ class QstMgt (object):
 
             return int (s)
             
+        def geterrmsg (self, res):
+
+            res = lxml.html.fromstring (res.text).text_content ()
+            self.bkpseudo = self.pseudos
+            self.pseudos = [ curses.A_INVIS | ord (o) for o in ('1', '0') ] if sys.stdout.isatty () else ('1', '0')
+
+            return {
+                    self.qmap ['qdescr']: res,
+                    self.qmap ['ans']: None,
+                    self.qmap ['opta']: 'retry',
+                    self.qmap ['optb']: 'exit',
+                    self.qmap ['qid']: 'error',
+                    self.qmap ['qn']: 'X',
+                    }
+
+
+
 
