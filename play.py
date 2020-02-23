@@ -14,6 +14,7 @@ import http.server
 from qstmgt import QstMgt
 from ansmgt import AnsMgt
 import curses
+import curses.ascii
 import cfscrape
 
 
@@ -55,7 +56,6 @@ class ScrMgr:
         self.abdr.noutrefresh ()
         self.update_qscr ()
         self.update_ascr ()
-        curses.doupdate ()
 
     
     def __getitem__ (self, attr):
@@ -163,7 +163,7 @@ class ScrMgr:
                     self.qline += 1
 
             finally:
-                self.qtextscr.refresh (self.qline, 0, self.qcord[0], self.qcord [1],
+                self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
                 (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
                     [1]) - 1)
                         
@@ -201,7 +201,6 @@ class ScrMgr:
             self.update_qscr ()
             self.update_ascr ()
             self.qst = qst
-            curses.doupdate ()
 
         else:
             return
@@ -219,6 +218,8 @@ class ScrMgr:
 
 
             self.qst = self.qmgr.fetch ()
+            if not self.qst:
+                return BREAK
 
             return self.update_qscr ()
         else:
@@ -287,7 +288,6 @@ class ScrMgr:
                 (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
                     [1]) - 1)
 
-        curses.doupdate ()
 
         return
 
@@ -427,7 +427,7 @@ def main (stdscr, args):
 
             for f in ('Matric No', 'Password', 'Course code', 'Tma No', 'url'):
                 inputscr.clear ()
-                inputscr.addstr (0, 0, f + ': ')
+                inputscr.addstr (0, 0, f + ': ', curses.A_BOLD)
                 inputscr.refresh ()
                 s = inputscr.getstr ()
                 
@@ -435,7 +435,7 @@ def main (stdscr, args):
                     curses.noecho ()
                     curses.raw ()
                     inputscr.clear ()
-                    inputscr.refresh ()
+                    inputscr.noutrefresh ()
                     return
 
                 ipt.append (s.decode ().strip ())
@@ -443,7 +443,7 @@ def main (stdscr, args):
             curses.noecho ()
             curses.raw ()
             inputscr.clear ()
-            inputscr.refresh ()
+            inputscr.noutrefresh ()
 
             url = ipt [4]
 
@@ -542,12 +542,17 @@ def main (stdscr, args):
 
     inputscr = stdscr.derwin (1, curses.COLS, curses.LINES - 1, 0)
 
+    ipt_dim = inputscr.getmaxyx ()
+
+    ipt_cord = inputscr.getbegyx ()
 
     handler = LoopMgr (args.matno, args.crscode)
 
     sthread = threading.Thread (target = handler.scroll)
 
     sthread.start ()
+    
+    errpad = curses.newpad (10000, ipt_dim [1])
 
     qa_scrmgr = ScrMgr (
             qscr = qstscr,
@@ -562,7 +567,38 @@ def main (stdscr, args):
         try:
             c = qa_scrmgr (c)
         except NotImplementedError:
-            c = handler (c)
+            try:
+                c = handler (c)
+                curses.doupdate ()
+            except Exception as err:
+                curses.raw () 
+                curses.nl ()
+                curses.curs_set (0)
+                errpad.keypad (True)
+                inputscr.keypad (True)
+                errpad.clear ()
+                errpad.addstr (0, 0, err.args [0])
+                cur = errpad.getyx ()
+
+                line = 0
+
+                while True:
+                    errpad.noutrefresh (line, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                   
+                    curses.doupdate ()
+                    c = inputscr.getch ()
+                    if c == curses.KEY_RIGHT or c == curses.KEY_DOWN:
+                        if (line + ipt_dim [0] - 1) < cur [0]:
+                            line += 1
+
+                    elif c == curses.KEY_UP or c == curses.KEY_LEFT:
+                        if line > 0:
+                            line -= 1
+                    elif c == curses.ascii.NL:
+                        inputscr.clear ()
+                        inputscr.refresh ()
+                        break
+
 
         if c == BREAK:
             break
