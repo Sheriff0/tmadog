@@ -172,7 +172,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
             break
 
     if c != idx:
-        return None
+        raise TypeError ('No such button %s found' % (button))
         
     t = m.tag
 

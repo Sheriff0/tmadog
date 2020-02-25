@@ -16,6 +16,7 @@ from ansmgt import AnsMgt
 import curses
 import curses.ascii
 import cfscrape
+import concurrent.futures
 
 
 BREAK = 0
@@ -217,7 +218,7 @@ class ScrMgr:
                     self.pq.append ((self.qst, x))
 
 
-            self.qst = self.qmgr.fetch ()
+            self.qst = self.qmgr.fetch (timeout = (30.5, 60))
             if not self.qst:
                 return BREAK
 
@@ -332,18 +333,18 @@ class ScrMgr:
 def main (stdscr, args):
 
     class LoopMgr:
-        def __init__ (self, matno, crscode):
+        def __init__ (self, matno, crscode, tma):
             self.scroll_status = True
             self.pad = curses.newpad (1, 10000)
-            self.mkscrollscr (matno, crscode)
-
-        def mkscrollscr (self, matno, crscode):
             self.crsscr_dim = crsscr.getmaxyx ()
             self.cord = crsscr.getbegyx ()
-            self.pad.clear ()
-            self.pad.bkgdset (0, curses.A_REVERSE)
+            self.mkscrollscr (matno, crscode, tma)
+            self.in_fut = False
 
-            self.pad.addstr (0, 0, matno + '  ' + crscode)
+        def mkscrollscr (self, matno, crscode, tma):
+            self.pad.clear ()
+
+            self.pad.addstr (0, 0, matno + '  ' + crscode + ' TMA%s' % (tma,), curses.A_REVERSE)
 
             self.pwrite_len = self.pad.getyx ()[1]
 
@@ -351,7 +352,7 @@ def main (stdscr, args):
             self.scroll_status = False
             return
 
-        def scroll (self, t = 0.05):
+        def scroll (self, t = 0.07):
 
             right = crsscr.derwin (1, math.ceil (self.crsscr_dim [1] * (2/3)), 0, self.crsscr_dim [1] - math.ceil (self.crsscr_dim [1] * (2/3)))
             left = crsscr.derwin (1, math.floor (self.crsscr_dim [1] * (1/3)), 0, 0)
@@ -415,81 +416,142 @@ def main (stdscr, args):
             except StopIteration:
                 return
 
+        def ctrl_l12 (self):
+            stdscr.redrawwin ()
+            update_scr ()
+
         def ctrl_c3 (self):
             return BREAK
 
-        def retrofit_114 (self):
-            
-            ipt = []
-            
-            curses.echo ()
-            curses.noraw ()
+        def ctrl_x24 (self):
+            pass
 
-            for f in ('Matric No', 'Password', 'Course code', 'Tma No', 'url'):
-                inputscr.clear ()
-                inputscr.addstr (0, 0, f + ': ', curses.A_BOLD)
-                inputscr.refresh ()
-                s = inputscr.getstr ()
+        def retro_114 (self):
+
+            if not self.in_fut:
+                ipt = []
+
+                fields = ('Matric No', 'Password', 'Course code', 'Tma No', 'url')
                 
-                if not s:
-                    curses.noecho ()
-                    curses.raw ()
+                curses.echo ()
+                curses.noraw ()
+
+                for f in fields:
                     inputscr.clear ()
+                    inputscr.addstr (0, 0, f + ': ', curses.A_BOLD)
                     inputscr.noutrefresh ()
-                    return
+                    update_scr ()
+                    s = inputscr.getstr ()
+                    s = s.decode ().strip () 
+                    if re.match (r'quit', s, re.I):
+                        curses.noecho ()
+                        curses.raw ()
+                        inputscr.clear ()
+                        inputscr.noutrefresh ()
+                        update_scr ()
+                        return
 
-                ipt.append (s.decode ().strip ())
+                    ipt.append (s)
 
-            curses.noecho ()
-            curses.raw ()
-            inputscr.clear ()
-            inputscr.noutrefresh ()
+                curses.noecho ()
+                curses.raw ()
+                inputscr.clear ()
+                inputscr.noutrefresh ()
+                update_scr
 
-            url = ipt [4]
+                fut = threading.Thread (target = self.retrofit, kwargs = {'ipt':
+                    ipt}, daemon = True)
+
+                fut.start ()
+
+                self.in_fut = True
+
+            return
+
+
+
+        def retrofit (self, ipt):
+
+            nonlocal qstmgr
+
+            url = ipt [4] or args.url
 
             if not url.startswith ('http'):
                 url = 'https://' + url
 
+            url + '/' if not url.endswith ('/') else ''
 
             farg = qstmgr.fargs.copy ()
 
-            farg ['url'] = re.sub (r'https?://.+(?=/)', url,
+            farg ['url'] = re.sub (r'https?://.+/', url,
                     farg ['url'], flags = re.I)
 
-            referer = re.sub (r'https?://.+(?=/)', url,
+            referer = re.sub (r'https?://.+/', url,
                     qstmgr.referer, flags = re.I)
 
 
+            session = cfscrape.create_scraper ()
             qmgr = QstMgt.QstMgr (
                     fargs = farg,
                     url = referer,
                     qmap = qmap,
-                    matno = ipt [0],
-                    crscode = ipt [2],
-                    tma = ipt [3]
+                    matno = ipt [0] or args.matno,
+                    crscode = ipt [2] or args.crscode,
+                    tma = ipt [3] or args.tma,
+                    session = session
                     )
 
+            qmgr.interactive = True
+
+            errpad.clear ()
+            errpad.addstr (0, 0, 'Sending first request to %s' % (url or
+                args.url,))
+            errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+            update_scr ()
+            
             try:
                 nav = Navigation.Navigator (
-                        url + '/',
+                        url,
                         mp, 
                         {
-                            '[Matric Number]': ipt [0],
-                            '[Password]': ipt [1] 
+                            '[Matric Number]': ipt [0] or args.matno,
+                            '[Password]': ipt [1] or args.pwd 
                             },
-                        session = cfscrape.create_scraper ()
+                        session = session,
+                        timeout = (30.5, 60)
                         )
 
-                nav ('profile_page')
+                errpad.clear ()
+                errpad.addstr (0, 0, 'Trying to login %s' % (ipt[0] or
+                    args.matno,))
+                errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                update_scr ()
 
-                self.mkscrollscr (ipt [0], ipt [2])
-                qstmgr = qmgr
-                qa_scrmgr.qmgr = qstmgr
+                nav ['profile_page']
+
+                inputscr.addstr (0, 0, 'done.')
+                inputscr.noutrefresh ()
+                update_scr ()
+
+                qa_scrmgr.qmgr = qmgr
+                qa_scrmgr.qtextscr.clear ()
                 qa_scrmgr.qst = None
                 qa_scrmgr.update_qscr ()
+                self.mkscrollscr (
+                        ipt[0] or args.matno,
+                        ipt [2] or args.crscode,
+                        ipt [3] or args.tma,
 
-            except:
-                return
+                        )
+            
+            except Exception as err:
+                errpad.clear ()
+                errpad.addstr (0, 0, 'Err: ' + repr (err))
+                errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                update_scr ()
+
+            finally:
+                self.in_fut = False
 
 
     mp = configparser.ConfigParser (interpolation =
@@ -528,6 +590,10 @@ def main (stdscr, args):
 
             )
 
+    def update_scr ():
+        if not handler.scroll_status:
+            curses.doupdate ()
+
     curses.start_color ()
 
     curses.noecho ()
@@ -546,9 +612,9 @@ def main (stdscr, args):
 
     ipt_cord = inputscr.getbegyx ()
 
-    handler = LoopMgr (args.matno, args.crscode)
+    handler = LoopMgr (args.matno, args.crscode, args.tma)
 
-    sthread = threading.Thread (target = handler.scroll)
+    sthread = threading.Thread (target = handler.scroll, daemon = True)
 
     sthread.start ()
     
@@ -566,10 +632,11 @@ def main (stdscr, args):
         
         try:
             c = qa_scrmgr (c)
+            update_scr ()
         except NotImplementedError:
             try:
                 c = handler (c)
-                curses.doupdate ()
+                update_scr ()
             except Exception as err:
                 curses.raw () 
                 curses.nl ()
@@ -584,8 +651,8 @@ def main (stdscr, args):
 
                 while True:
                     errpad.noutrefresh (line, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
-                   
-                    curses.doupdate ()
+                    
+                    update_scr ()
                     c = inputscr.getch ()
                     if c == curses.KEY_RIGHT or c == curses.KEY_DOWN:
                         if (line + ipt_dim [0] - 1) < cur [0]:
@@ -596,7 +663,8 @@ def main (stdscr, args):
                             line -= 1
                     elif c == curses.ascii.NL:
                         inputscr.clear ()
-                        inputscr.refresh ()
+                        inputscr.noutrefresh ()
+                        update_scr ()
                         break
 
 
@@ -604,11 +672,12 @@ def main (stdscr, args):
             break
 
 
-    curses.raw ()
+    curses.noraw ()
     curses.echo ()
     handler.stop_scroll ()
     stdscr.clear ()
     stdscr.refresh ()
+    return
 
 if __name__ == '__main__':
 

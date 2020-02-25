@@ -1,6 +1,7 @@
 import configparser
 import dogs
 import requests
+import urllib.parse
     
 class InvalidPath (TypeError):
     def __init__ (self, *pargs, **kwargs):
@@ -67,12 +68,23 @@ class Recipe (object):
 class Navigation (object):
 
     class Navigator (object):
-        def __init__ (self, home_url, webmap, keys, session = requests):
+        def __init__ (self, home_url, webmap, keys, session = requests, **kwargs):
             self.webmap = webmap
             self.keys = keys
             self.cache = {}
             self.session = session 
-            res = session.get (home_url)
+            self.kwargs = kwargs
+            self.kwargs.update (
+                    headers = {
+                        'host': urllib.parse.urlparse (home_url).hostname,
+                        'sec-fetch-mode': 'navigate',
+                        'sec-fetch-user': '?1',
+                        'sec-fetch-site': 'none'
+                        }
+                    )
+            res = session.get (home_url, **self.kwargs)
+            res.raise_for_status ()
+
             self.cache['home'] = res
             self.lp = 'home'
 
@@ -82,8 +94,9 @@ class Navigation (object):
         def __str__ (self):
             return self.cache[self.lp].text
 
-        def __call__ (self, new_lp = None):
+        def __call__ (self, new_lp = None, **kwargs):
             self.lp = new_lp if new_lp else self.lp
+            self.kwargs
             return self
 
         def __getitem__ (self, sl):
@@ -114,20 +127,36 @@ class Navigation (object):
 
             res = None
 
-            try:
+            referer = urllib.parse.urlparse (self['home'].url)
 
-                for i, r in zip (range (req_gen.len)[sl], gen):
-                    res = self.session.request (**r)
-                    res.raise_for_status ()
-                    req_gen (res)
+            for i, r in zip (range (req_gen.len)[sl], gen):
 
-            except:
-                raise InvalidPath ('Navigator: step %s can\'t be taken for destination %s' % (
-                            req_gen.steps[i],
-                            req_gen.name
-                            ),
-                        req_gen
+                url = urllib.parse.urlparse (r ['url'])
+
+                x = 'cross-site'
+
+                if referer.hostname == url.hostname:
+                    x = 'same-origin'
+                elif url.hostname.endswith (referer.hostname):
+                    x = 'same-site'
+
+                self.kwargs.update (
+                        headers = {
+                            'referer': referer.geturl (),
+                            'host': url.hostname,
+                            'sec-fetch-mode': 'navigate',
+                            'sec-fetch-user': '?1',
+                            'sec-fetch-site': x
+                            }
                         )
+
+                res = self.session.request (**r, **self.kwargs)
+
+                res.raise_for_status ()
+                referer = urllib.parse.urlparse (res.url)
+
+                req_gen (res)
+
 
             try:
                  return (

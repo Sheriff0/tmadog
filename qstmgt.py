@@ -102,32 +102,55 @@ class QstMgt (object):
                 self.fargs.update (url = url1 or self.fargs['url'])
                 
                 x = parse.urlparse (self.fargs ['url'])
+                z = parse.urlparse (self.referer)
+                y = 'cross-site'
+
+                if z.hostname == x.hostname:
+                    y = 'same-origin'
+                elif x.hostname.endswith (z.hostname):
+                    y = 'same-site'
 
                 kwargs.setdefault (
                         'headers',
                         {
                             'referer': self.referer,
                             'host': x.hostname,
+                            'sec-fetch-mode': 'navigate',
+                            'sec-fetch-user': '?1',
+                            'sec-fetch-site': y
                             }
                         )
 
-                res = self.session.request(**self.fargs , **kwargs)
+
+
 
                 try:
-                   res.raise_for_status ()
-                   self.referer1 = res.url
-                   x = dogs.fill_form (
-                           res.text,
-                           res.url,
-                           flags = dogs.FILL_FLG_EXTRAS,
-                           data = {
-                               self.qmap ['ans']: None
-                               }
-                           )
-                   self.nextq = x
-                
+                    res = self.session.request(**self.fargs , **kwargs)
+
+                    res.raise_for_status ()
+                    self.referer1 = res.url
+                    x = dogs.fill_form (
+                            res.text,
+                            res.url,
+                            flags = dogs.FILL_FLG_EXTRAS,
+                            data = {
+                                self.qmap ['ans']: None
+                                }
+                            )
+                    self.nextq = x
+
+                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as err:
+
+                    if self.interactive:
+                        return self.geterrmsg (err.args [0])
+                    else:
+                        raise TypeError ('Invalid question page', res)
+
                 except:
-                    return self.geterrmsg (res)
+                    if self.interactive:
+                        return self.geterrmsg (res)
+                    else:
+                        raise TypeError ('Invalid question page', res)
            
             self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
             
@@ -167,6 +190,8 @@ class QstMgt (object):
                 if qst [self.qmap ['ans']] == '1':
                     self.stop = True
                     self.pseudos = self.bkpseudo
+                else:
+                    self.stop = False
 
                 return None
 
