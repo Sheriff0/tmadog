@@ -42,8 +42,8 @@ class TmadogUtils (object):
 
 
     def submitter (
-            ans_mgr: AnsMgr,
-            qst_mgr: QstMgr
+            ans_mgr,
+            qst_mgr
             ):
 
         try:

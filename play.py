@@ -150,9 +150,7 @@ class ScrMgr:
                     self.qline += 1
 
                 else:
-                    t = self.optmap [n [0]]
-                    offset = t[0] - (self.qline + self.qdim[0] - 1)
-                    self.qline += offset if offset >= 0 else 0
+                    self.qline += 1
 
 
                 self.paint ()
@@ -472,14 +470,21 @@ def main (stdscr, args):
 
         def retrofit (self, ipt):
 
-            nonlocal qstmgr
+            nonlocal qstmgr, nav
 
             url = ipt [4] or args.url
 
             if not url.startswith ('http'):
                 url = 'https://' + url
 
-            url + '/' if not url.endswith ('/') else ''
+            url += '/' if not url.endswith ('/') else ''
+
+            matno = ipt [0] or args.matno
+            crscode = ipt [2] or args.crscode
+
+            tma = ipt [3] or args.tma
+
+            pwd = ipt [1] or args.pwd
 
             farg = qstmgr.fargs.copy ()
 
@@ -490,44 +495,57 @@ def main (stdscr, args):
                     qstmgr.referer, flags = re.I)
 
 
-            session = cfscrape.create_scraper ()
-            qmgr = QstMgt.QstMgr (
-                    fargs = farg,
-                    url = referer,
-                    qmap = qmap,
-                    matno = ipt [0] or args.matno,
-                    crscode = ipt [2] or args.crscode,
-                    tma = ipt [3] or args.tma,
-                    session = session
-                    )
+            session = None
 
-            qmgr.interactive = True
-
-            errpad.clear ()
-            errpad.addstr (0, 0, 'Sending first request to %s' % (url or
-                args.url,))
-            errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
-            update_scr ()
             
             try:
-                nav = Navigation.Navigator (
-                        url,
-                        mp, 
-                        {
-                            '[Matric Number]': ipt [0] or args.matno,
-                            '[Password]': ipt [1] or args.pwd 
-                            },
-                        session = session,
-                        timeout = (30.5, 60)
+                if url != args.url or not re.fullmatch (args.matno, matno , flags = re.I):
+
+                    session = cfscrape.create_scraper ()
+
+                    errpad.clear ()
+                    errpad.addstr (0, 0, 'Sending first request to %s' % (url,))
+                    errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                    update_scr ()
+
+                    nav = Navigation.Navigator (
+                            url,
+                            mp, 
+                            {
+                                '[Matric Number]': matno,
+                                '[Password]': pwd 
+                                },
+                            session = session,
+                            timeout = (30.5, 60)
+                            )
+
+                    errpad.clear ()
+                    errpad.addstr (0, 0, 'Trying to login %s' % (matno,))
+                    errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                    update_scr ()
+
+                    nav ['profile_page']
+
+                else:
+
+                    session = nav.session
+
+                    errpad.clear ()
+                    errpad.addstr (0, 0, 'Skipping to login %s' % (matno,))
+                    errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                    update_scr ()
+
+                qmgr = QstMgt.QstMgr (
+                        fargs = farg,
+                        url = referer,
+                        qmap = qmap,
+                        matno = matno,
+                        crscode = crscode,
+                        tma = tma,
+                        session = session
                         )
 
-                errpad.clear ()
-                errpad.addstr (0, 0, 'Trying to login %s' % (ipt[0] or
-                    args.matno,))
-                errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
-                update_scr ()
-
-                nav ['profile_page']
+                qmgr.interactive = True
 
                 inputscr.addstr (0, 0, 'done.')
                 inputscr.noutrefresh ()
@@ -537,10 +555,16 @@ def main (stdscr, args):
                 qa_scrmgr.qtextscr.clear ()
                 qa_scrmgr.qst = None
                 qa_scrmgr.update_qscr ()
+                args.matno = matno
+                args.crscode = crscode
+                args.tma = tma
+                args.url = url
+
+
                 self.mkscrollscr (
-                        ipt[0] or args.matno,
-                        ipt [2] or args.crscode,
-                        ipt [3] or args.tma,
+                        args.matno,
+                        args.crscode,
+                        args.tma,
 
                         )
             

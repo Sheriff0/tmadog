@@ -101,67 +101,48 @@ class QstMgt (object):
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
                 
-                x = parse.urlparse (self.fargs ['url'])
-                z = parse.urlparse (self.referer)
-                y = 'cross-site'
-
-                if z.hostname == x.hostname:
-                    y = 'same-origin'
-                elif x.hostname.endswith (z.hostname):
-                    y = 'same-site'
-
                 kwargs.setdefault (
                         'headers',
-                        {
-                            'referer': self.referer,
-                            'host': x.hostname,
-                            'sec-fetch-mode': 'navigate',
-                            'sec-fetch-user': '?1',
-                            'sec-fetch-site': y
-                            }
+                        dogs.mkheader (self.fargs ['url'], self.referer)
                         )
 
-
-
-
                 try:
-                    res = self.session.request(**self.fargs , **kwargs)
+                    self.qres = self.session.request(**self.fargs , **kwargs)
 
-                    res.raise_for_status ()
-                    self.referer1 = res.url
-                    x = dogs.fill_form (
-                            res.text,
-                            res.url,
+                    self.qres.raise_for_status ()
+                    self.referer1 = self.qres.url
+                    self.nextq = dogs.fill_form (
+                            self.qres.text,
+                            self.qres.url,
                             flags = dogs.FILL_FLG_EXTRAS,
                             data = {
                                 self.qmap ['ans']: None
                                 }
                             )
-                    self.nextq = x
 
-                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as err:
+                    self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
+                    
+                    if self.count == self.stop:
+                        self.stop = False
+
+                except TypeError:
 
                     if self.interactive:
-                        return self.geterrmsg (err.args [0])
+                        return self.geterrmsg (self.qres)
                     else:
-                        raise TypeError ('Invalid question page', res)
+                        raise TypeError ('Invalid question page', self.qres)
 
-                except:
+                except BaseException as err:
                     if self.interactive:
-                        return self.geterrmsg (res)
+                        return self.geterrmsg (err)
                     else:
-                        raise TypeError ('Invalid question page', res)
+                        raise TypeError ('Invalid question page', self.qres)
            
-            self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
             
-            if self.count == self.stop:
-                self.stop = False
-
             if not self.dt1:
                 self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
 
             return self.nextq.pop (self.dt1)
-            
 
         def _copycase (self, repl):
             def __copycase(m):
@@ -195,7 +176,6 @@ class QstMgt (object):
 
                 return None
 
-            x = parse.urlparse (self.nextq ['url'])
 
             self.nextq [self.dt1 or self.dt0] = qst
             
@@ -203,11 +183,7 @@ class QstMgt (object):
 
             kwargs.setdefault (
                     'headers',
-                    {
-                        'referer': self.referer1,
-                        'host': x.hostname,
-
-                        }
+                    dogs.mkheader (self.nextq ['url'], self.referer1)
                     )
 
             res = self.session.request (**self.nextq, **kwargs)
@@ -230,16 +206,21 @@ class QstMgt (object):
 
 
             self.nextq [self.dt1 or self.dt0] = res
+            
+            if not res [self.qmap ['qid']] == 'error':
+                s = (int ('0' + res[self.qmap ['score']]) - self.totscore) == 1
 
-            s = (int ('0' + res[self.qmap ['score']]) - self.totscore) == 1
+                self.totscore = int ('0' + res[self.qmap ['score']])
 
-            self.totscore = int ('0' + res[self.qmap ['score']])
-
-            return int (s)
+                return int (s)
             
         def geterrmsg (self, res):
 
-            res = lxml.html.fromstring (res.text).text_content ()
+            if isinstance (res, Exception):
+                res = repr (res)
+            else:
+                res = lxml.html.fromstring (res.text).text_content ()
+
             self.bkpseudo = self.pseudos
             self.pseudos = [ curses.A_INVIS | ord (o) for o in ('1', '0') ] if sys.stdout.isatty () else ('1', '0')
 

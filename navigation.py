@@ -77,6 +77,7 @@ class Navigation (object):
             self.kwargs.update (
                     headers = {
                         'host': urllib.parse.urlparse (home_url).hostname,
+                        'referer': home_url,
                         'sec-fetch-mode': 'navigate',
                         'sec-fetch-user': '?1',
                         'sec-fetch-site': 'none'
@@ -127,33 +128,19 @@ class Navigation (object):
 
             res = None
 
-            referer = urllib.parse.urlparse (self['home'].url)
+            referer = self['home'].url
 
             for i, r in zip (range (req_gen.len)[sl], gen):
 
-                url = urllib.parse.urlparse (r ['url'])
-
-                x = 'cross-site'
-
-                if referer.hostname == url.hostname:
-                    x = 'same-origin'
-                elif url.hostname.endswith (referer.hostname):
-                    x = 'same-site'
 
                 self.kwargs.update (
-                        headers = {
-                            'referer': referer.geturl (),
-                            'host': url.hostname,
-                            'sec-fetch-mode': 'navigate',
-                            'sec-fetch-user': '?1',
-                            'sec-fetch-site': x
-                            }
+                        headers = dogs.mkheader (r ['url'], referer)
                         )
 
                 res = self.session.request (**r, **self.kwargs)
 
                 res.raise_for_status ()
-                referer = urllib.parse.urlparse (res.url)
+                referer = res.url
 
                 req_gen (res)
 

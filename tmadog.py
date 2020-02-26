@@ -42,8 +42,8 @@ main_psr.add_argument (
         '--config-file',
         '-cf',
         type = str,
-        help = '''The config file to use aside the default '.tmadogrc' file''',
-        default = '.tmadogrc',
+        help = '''The config file to use aside the default '.dogrc' file''',
+        default = 'dogrc',
         )
 
 cmds = main_psr.add_subparsers (
@@ -64,10 +64,4 @@ for p, m in [
     for opt in m.opt_des:
         p.add_argument (*opt['id'].copy (), **{k: opt[k] for k in opt if k is not 'id'})
 
-
-
-#def main ():
-#    pass
-#
-#if __name__ == '__main__':
-#        main ()
+args = main_psr.parse_args ()

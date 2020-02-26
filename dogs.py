@@ -203,3 +203,24 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
     else:
         return None
 
+def mkheader (url, ref = None):
+
+    url = parse.urlparse (url)
+    ref = parse.urlparse (ref) if ref else None
+    headers = {
+                'host': url.hostname,
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-user': '?1',
+                }
+
+    if ref:
+        headers ['referer'] = ref.geturl ()
+
+    if url.hostname == ref.hostname:
+        headers ['sec-fetch-site'] = 'same-origin'
+    elif ref and url.hostname.endswith (ref.hostname):
+        headers ['sec-fetch-site'] = 'same-site'
+    else:
+        headers ['sec-fetch-site'] = 'cross-site'
+
+    return headers
