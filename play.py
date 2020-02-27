@@ -699,15 +699,13 @@ def main (stdscr, args):
     curses.noraw ()
     curses.echo ()
     handler.stop_scroll ()
-    stdscr.clear ()
-    stdscr.refresh ()
     return
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('--config', default = 'myrc', help = 'configuration file to use')
+    parser.add_argument ('--config', default = 'dogrc', help = 'configuration file to use')
 
 
     parser.add_argument ('--url', help = 'The remote url if no local server', required = True)

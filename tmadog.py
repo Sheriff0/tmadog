@@ -8,6 +8,28 @@ from submit import Submit
 import configparser
 
 
+class Commands:
+    def __init__ (self, **kwargs):
+        for k in kwargs:
+            setattr (self, k, kwargs [k])
+
+        return
+
+    def __iter__ (self):
+        for k in self.__dict__.copy ():
+            if k.endswith ('cmd'):
+                yield k
+
+    def __next__ (self):
+        return self.__iter__ ()
+
+    def __call__ (self, cmd, args):
+        c = (k for k in self.__dict__ if k.startswith (cmd))
+        try:
+            return getattr (self, next (c)).main (args)
+        except StopIteration:
+            raise KeyError ('No command %s found' % (cmd,))
+
 main_psr = argparse.ArgumentParser (
         #usage = '''tmadog [-h | --help] COMMAND [cmd_args [...]]
         #''',
@@ -46,22 +68,27 @@ main_psr.add_argument (
         default = 'dogrc',
         )
 
-cmds = main_psr.add_subparsers (
 
-        required = True,
+commands = Commands (submit_cmd = Submit)
+
+cmds_parser = main_psr.add_subparsers (
+
         title = 'COMMAND',
+        dest = 'command',
        # metavar = '''
        # submit
        # hack
        # ''',
         )
 
-cmd_submit_psr = cmds.add_parser ( **Submit.cmd_des)
-
-for p, m in [
-        (cmd_submit_psr, Submit),
-        ]:
-    for opt in m.opt_des:
-        p.add_argument (*opt['id'].copy (), **{k: opt[k] for k in opt if k is not 'id'})
+for c in commands:
+    c1 = c + '_psr'
+    c = getattr (commands, c)
+    setattr (commands, c1, cmds_parser.add_parser ( **c.setup, description = c.__doc__))
+    for opt in c.options:
+        getattr (commands, c1).add_argument (*opt [0], **opt [1])
 
 args = main_psr.parse_args ()
+
+if hasattr (args, 'command'):
+    commands (args.command, args)
