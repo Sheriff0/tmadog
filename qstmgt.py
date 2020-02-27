@@ -186,23 +186,21 @@ class QstMgt (object):
                     dogs.mkheader (self.nextq ['url'], self.referer1)
                     )
 
-            res = self.session.request (**self.nextq, **kwargs)
+            self.sres = self.session.request (**self.nextq, **kwargs)
 
-            res.raise_for_status ()
+            self.sres.raise_for_status ()
 
             x = self.nextq.pop (self.dt1 or self.dt0)
 
-            y = res
-
-            self.referer = res.url
+            self.referer = self.sres.url
 
             res = self.fetch ()
 
             if not res:
                 if self.interactive:
-                    qst = self.geterrmsg (y)
+                    qst = self.geterrmsg (self.srep)
                     self.nextq [self.dt1] = qst
-                    return None
+                return None
 
 
             self.nextq [self.dt1 or self.dt0] = res

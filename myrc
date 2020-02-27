@@ -1,0 +1,29 @@
+[DEFAULT]
+volatile = False
+indices = 0,0,0,0,0,0
+pseudo_ans = A,B,C,D
+
+[home]
+url = https://www.nouonline.net/
+
+[login_form]
+keys = [Matric Number]/[Password]
+path = Login
+
+[tma_page]
+path = Take TMA3,${login_form:keys},TMA3
+
+[profile_page]
+path = ${login_form:path},${login_form:keys}
+
+[qmap]
+qdescr = qdescr
+ans = ans
+score = totscore
+qn = qj
+crscode = crscode
+qid = qid
+opta = opta
+optb = optb
+optc = optc
+optd = optd

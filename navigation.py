@@ -2,6 +2,7 @@ import configparser
 import dogs
 import requests
 import urllib.parse
+import re
     
 class InvalidPath (TypeError):
     def __init__ (self, *pargs, **kwargs):
@@ -73,6 +74,7 @@ class Navigation (object):
             self.keys = keys
             self.cache = {}
             self.session = session 
+            self.traverse_deps = True
             self.kwargs = kwargs
             self.kwargs.update (
                     headers = {
@@ -86,8 +88,8 @@ class Navigation (object):
             res = session.get (home_url, **self.kwargs)
             res.raise_for_status ()
 
-            self.cache['home'] = res
-            self.lp = 'home'
+            self.cache['home_page'] = res
+            self.lp = 'home_page'
 
         def __repr__ (self):
             return self.cache[self.lp].url
@@ -100,35 +102,59 @@ class Navigation (object):
             self.kwargs
             return self
 
+        def __contains__ (self, value):
+            return value in self.cache
+
         def __getitem__ (self, sl):
             if isinstance (sl, int):
                 sl = slice (None, sl)
+                s = self.lp 
             
             elif isinstance (sl, slice):
-                pass
+                s = self.lp 
             
             elif isinstance (sl, str):
-                if sl in self.cache:
-                    return self.cache[sl]
-                
-                else:
-                    return self.__goto__ (lp = sl)
+                s = sl
+                sl = slice (None, None)
+
+            if s in self and ((s in self.webmap and not self.webmap.getboolean (s, 'volatile')) or
+                    (re.match (r'\w+:-?\d', s))):
+                return self.cache[s]
+            
+            elif s in self.webmap:
+                if self.traverse_deps:
+                    s1 = s
+                    deps = []
+                    while True:
+                        s1 = self.webmap [s1]['requires']
+                        if s1 in self and not self.webmap.getboolean (s1, 'volatile'):
+                            break
+                        else:
+                            deps.append (s1)
+
+                    while True:
+                        if deps:
+                            self.__goto__ (lp = deps.pop ())
+
+                        else:
+                            break
+
+                return self.__goto__ (lp = s, sl = sl)
 
             else:
-                raise TypeError ('index must be "int" or "slice" or str')
+                raise Exception ('Location %s not in map' % (sl,))
 
-            return self.__goto__ (sl = sl)
 
         def __goto__ (self, lp = None, sl = slice (None, None)):
             lp = lp if lp else self.lp
             req_gen = Recipe (self.webmap [lp]['path'], self.webmap[lp]['indices'],
-                    self.keys, self.cache['home'], lp)
+                    self.keys, self.cache[self.webmap [lp]['requires']], lp)
 
             gen = next (req_gen)
 
             res = None
 
-            referer = self['home'].url
+            referer = self.cache[self.webmap [lp]['requires']].url
 
             for i, r in zip (range (req_gen.len)[sl], gen):
 
@@ -146,10 +172,13 @@ class Navigation (object):
 
 
             try:
-                 return (
-                         next (gen),
-                         res
-                         )
+                r = next (gen)
+                k = lp + ':' + str (sl.stop)
+                self.cache [k] = (
+                        r,
+                        res
+                        )
+                return self.cache [k]
 
             except StopIteration:
                 self.cache [lp] = res

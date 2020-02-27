@@ -12,15 +12,34 @@ from pathlib import PurePath
 from urllib import parse
 import configparser
 
-ANS_MODE_HACK = 0b01
-ANS_MODE_NORM = 0b00
 
 class AnsMgt:
 
-    ANS_MODE_HACK = 0b01
-    ANS_MODE_NORM = 0b00
-
     class AnsMgr (object):
+
+        ANS_MODE_HACK = 0b01
+        ANS_MODE_NORM = 0b10
+
+        NOANSWER = -1
+        NOCOURSE = 0
+        FAIL = -2
+
+        prologs = [
+                    '''The course {crscode} is unknown to the database, can you answer this question of it?''',
+
+
+                    '''I failed the answer to this question. Please can you answer it ?''',
+
+                    '''This question has no answer in the database, can you answer it?''',
+        ]
+
+        epilogs = [
+                '',
+                
+                '''Type '%s' if answer corresponds to row %s and so on.''',
+
+                '''Type '%s' if answer corresponds to row %s or type ':hack' to switch to hack mode.'''
+                ]
 
         def __init__ (
                 self,
@@ -58,22 +77,6 @@ class AnsMgt:
 
 
 
-        hints = [
-                (
-                    '''Norm: The answer to this question is not in the database, can you answer it ?''',
-                    '''Type '%s' if answer corresponds to row %s or type ':hack' to switch to hack mode.'''
-                    ),
-
-                (
-                    '''Hack: I currently can't hack questions for this course, can you answer this question please ?''',
-                    '''Type '%s' if answer corresponds to row %s and so on.'''
-                    ),
-
-                (
-                    '''Fail: I failed the answer to this question. Please can you answer it ?''',
-                    '''Type '%s' if answer corresponds to row %s and so on.'''
-                    )
-        ]
 
         def __call__ (self, qstlike, d = None):
             return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
@@ -144,25 +147,21 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 return x
 
         def check (self, qst, mark):
-            if mark is 0:
+            if mark == 0:
                 qst = qst.copy ()
 
                 if not self.interactive:
                     qst[self.qmap ['ans']] = None
                 else:
-                    msg = self.hints [-1]
-                    x = self.qprompt (qst, prolog = msg[0], max_retry = self.max_retry)
-                    if x in (':hack', ':Hack', ':HACK'):
-                        self.mode = ANS_MODE_HACK
-                
-                return self.update (qst.copy ())
+                    return self.resolve (qst, self.FAIL)
 
+        
         def answer (self, qst):
 
             if not isinstance (qst, lxml.html.FieldsDict):
                 raise TypeError ('Question must be a form', type (qst))
 
-            if self.mode is ANS_MODE_NORM:
+            if self.mode & self.ANS_MODE_NORM:
                 x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
@@ -184,13 +183,16 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                             return qst
 
                         else:
-                            return self.resolve (qst)
+                            return self.resolve (qst, self.NOANSWER)
+
+                    elif x:
+                        return self.resolve (qst, self.NOANSWER)
 
                     else:
-                        return self.resolve (qst)
+                        return self.resolve (qst, self.NOCOURSE)
 
 
-            if self.mode is ANS_MODE_HACK:
+            if self.mode & self.ANS_MODE_HACK:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
@@ -206,16 +208,19 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                         self.update (qst.copy ())
                         return qst
                     else:
-                        return self.resolve (qst)
+                        return self.resolve (qst, self.NOANSWER)
+
+                elif x:
+                    return self.resolve (qst, self.NOANSWER)
 
                 else:
-                    return self.resolve (qst)
+                    return self.resolve (qst, self.NOCOURSE)
 
         def update (self, qst):
             
             self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
 
-            self._cache[qst [self.qmap ['crscode']].upper ()].update ([(qst
+            self._cache [qst [self.qmap ['crscode']].upper ()].update ([(qst
                 [self.qmap ['qid']],
                     qst)])
 
@@ -227,21 +232,22 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 if x and x [self.qmap ['qid']] == qst [self.qmap ['qid']]:
                     self._cache.pop (qst [self.qmap ['crscode']].lower ())
 
-        def resolve (self, qst):
+        def resolve (self, qst, sig):
 
             if not self.interactive:
-                return None
+                self.update (qst.copy ())
+                return sig
 
-            msg = self.hints [self.mode]
             x = self.qprompt (
                     qst,
-                    prolog = msg[0],
-                    epilog = msg[1] % (self.pseudos[0], self.pseudos[0]),
+                    prolog = self.prologs [sig].format (**qst),
+                    epilog = self.epilogs [self.ANS_MODE_NORM if self.mode > self.ANS_MODE_NORM else self.mode] % (self.pseudos[0], self.pseudos[0]),
+
                     max_retry = self.max_retry
                     )
 
             if x in (':hack', ':Hack', ':HACK'):
-                self.mode = ANS_MODE_HACK
+                self.mode = self.ANS_MODE_HACK
             self.update (qst.copy ())
 
             return None if not qst[self.qmap ['ans']] else qst
@@ -279,7 +285,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
                 %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
                 (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
-                        FALSE AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
+                        ? AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
                         c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
                     ''' % (
                         self.qmap ['qdescr'],
@@ -291,6 +297,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                         self.qmap['optd']
                         ),
                     (
+                        False,
                         qst[self.qmap ['crscode']],
                         )
                     )
@@ -305,14 +312,14 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 self._cur = conn.cursor ()
 
             self._cur.execute ('''
-            SELECT ans AS %s FROM answers INNER JOIN (courses) ON (courses.crscode LIKE ? AND courses.qid IS ? AND courses.ready
-            IS NOT FALSE) WHERE answers.cid IS courses.cid
+            SELECT ans AS %s FROM answers INNER JOIN (courses) ON (courses.crscode LIKE ? AND courses.qid IS ? AND courses.ready IS ?) WHERE answers.cid IS courses.cid
                     ''' % (
                         self.qmap ['ans'],
                         ),
                     (
                         qst [self.qmap ['crscode']],
                         qst [self.qmap ['qid']],
+                        True,
                         )
                     )
 

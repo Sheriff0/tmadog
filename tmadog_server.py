@@ -105,6 +105,15 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
         if self.path == '/':
             self.path = '/index.php'
+
+        elif self.path == '/stuserout.php':
+            try:
+                self.active_st.pop (self.headers.get ('cookie').split ('=')[-1])
+                self.path = '/stuser.php'
+            except:
+                self.send_error (400)
+                return
+
         
         p = pathlib.Path (self.root + '/', self.path[1:])
 
@@ -218,12 +227,13 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
             if not hasattr (self, 'active_st'):
                 self.active_st = {}
 
-            cookie = self.headers.get ('cookie', None) or str (next (self._cookies))
+            cookie = self.headers.get ('cookie').split ('=')[-1] if 'cookie' in self.headers else str (next (self._cookies))
             if not hasattr (self, 'data'):
                 self.data = self.rfile.read (int (self.headers.get ('content-length', 0))).decode ()
         
             if not self.data:
                 self.send_error (400)
+                return
 
             d = self.parse_data (self.data) 
             s = p.read_text ()
@@ -234,7 +244,8 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
             self.send_header ('Content-Type', 'text/html')
 
-            self.send_header ('Set-Cookie', 'id=' + cookie + '; path=/')
+            if cookie not in self.active_st:
+                self.send_header ('Set-Cookie', 'id=' + cookie + '; path=/')
 
             self.end_headers ()
 

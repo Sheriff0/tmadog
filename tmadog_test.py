@@ -47,6 +47,7 @@ class ServerTest (unittest.TestCase):
                     )
             
             t = cl.std_nav ('tma_page')[:-1]
+            #NOTE: add test for checking if, for eg, 'tma_page:-1' is in navigator
             cl.std_qmgr = QstMgt.QstMgr (
                     matno = cl.std_cred [0],
                     crscode = 'CIT701',
@@ -134,37 +135,40 @@ class ServerTest (unittest.TestCase):
                 qmap = self.qmap,
                 pseudo_ans = self.qmap ['pseudo_ans'].split (','),
                 database = 'pg/olddb',
-                mode = AnsMgt.ANS_MODE_NORM,
+                mode = AnsMgt.AnsMgr.ANS_MODE_NORM,
                 )
 
         hack_ansmgr = AnsMgt.AnsMgr (
                 qmap = self.qmap,
                 pseudo_ans = self.qmap ['pseudo_ans'].split (','),
                 database = 'pg/olddb',
-                mode = AnsMgt.ANS_MODE_HACK,
+                mode = AnsMgt.AnsMgr.ANS_MODE_HACK,
                 )
 
         qst1 = qstmgr.fetch ()
         
         self.assertTrue (hasattr (qst1, 'keys'), 'Question should be dictionary-like')
 
-        while True:
+        t = self.std_qmgr.fetch ()
+        t1 = qstmgr.fetch ()
+
+        while t or t1:
 
             t = self.std_qmgr.fetch ()
             if t:
                 q = norm_ansmgr.answer (t)
-                p = self.std_qmgr.submit (q)
-                norm_ansmgr.check (q, p)
+                if q:
+                    p = self.std_qmgr.submit (q)
+                    norm_ansmgr.check (q, p)
 
             t1 = qstmgr.fetch ()
             if t1:
                 q1 = hack_ansmgr.answer (t1)
-                p1 = qstmgr.submit (q1)
+                if q1:
+                    p1 = qstmgr.submit (q1)
 
-                hack_ansmgr.check (q1, p1)
+                    hack_ansmgr.check (q1, p1)
 
-            if t is False and t1 is False:
-                break
 
             for k, r, amgr in zip (
                     [q, q1],
@@ -196,6 +200,8 @@ def main (argv = []):
     grp_parser.add_argument ('--url', help = 'The remote url if no local server')
 
     args, ukn = parser.parse_known_args (argv or [])
+
+    ServerTest.local = args.local
 
     if args.local:
         ServerTest.server, ukn = tmadog_server.main (argv = ukn)

@@ -2,19 +2,33 @@
 volatile = False
 indices = 0,0,0,0,0,0
 pseudo_ans = A,B,C,D
+requires = home_page
 
-[home]
+[kmap]
+matno = [Matric Number]
+pwd = [Password]
+
+
+[home_page]
 url = https://www.nouonline.net/
+requires = None
 
-[login_form]
-keys = [Matric Number]/[Password]
+[login_page]
+keys = ${kmap:matno}/${kmap:pwd}
 path = Login
 
+[logout_page]
+path = Logout
+requires = profile_page
+volatile = True
+
 [tma_page]
-path = Take TMA3,${login_form:keys},TMA3
+path = Take TMA3,${login_page:keys},TMA3
 
 [profile_page]
-path = ${login_form:path},${login_form:keys}
+path = ${login_page:keys}
+requires = login_page
+volatile = True
 
 [qmap]
 qdescr = qdescr

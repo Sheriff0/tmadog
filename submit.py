@@ -13,6 +13,11 @@ import sys
 import argparse
 import configparser
 from urllib import parse
+from navigation import Navigation
+from qstmgt import QstMgt
+from ansmgt import AnsMgt
+import io
+
 
 class Submit (object):
     '''This command submit your TMAs faster and more efficiently.
@@ -42,8 +47,6 @@ class Submit (object):
 
                 'type': str,
 
-                #'nargs': '+',
-
                 'required': True,
 
                 }
@@ -62,8 +65,6 @@ class Submit (object):
 
                 'type': str,
 
-                #'nargs': '+',
-
                 'required': True,
 
                 }
@@ -79,9 +80,6 @@ class Submit (object):
 
                     'help': '''The tma to submit.
                 ''',
-
-
-                #'nargs': '+',
 
                 'required': True,
 
@@ -100,17 +98,153 @@ class Submit (object):
                     'help': '''The course to submit.
                 ''',
 
-
-                #'nargs': '+',
-
                 'required': True,
 
                 }
                 ],
+
+            [
+                (
+                    '--verbose',
+                    ),
+
+                {
+                    'action': 'store_true',
+
+                    'help': '''Whether you want a summary of the operation's results''',
+
+                }
+                ],
+
+            [
+                (
+                    '--jobs',
+                    ),
+
+                {
+
+                    'help': '''To use jobs.
+                ''',
+
+                'type': int,
+
+                'default': 0,
+                }
+                ],
+
+            [
+                (
+                    '--mode',
+                    ),
+
+                {
+
+                    'help': '''The submission mode.
+                ''',
+
+                'default': AnsMgt.AnsMgr.ANS_MODE_NORM,
+
+                'choices': [
+                    AnsMgt.AnsMgr.ANS_MODE_NORM,
+                    AnsMgt.AnsMgr.ANS_MODE_HACK
+                    ],
+                'type': int 
+                }
+                ],
             ]
 
-    @staticmethod
+    @classmethod
     def main (
+            cl,
             args: argparse.Namespace,
             ) -> None :
-        print (args)
+        if args.jobs:
+            cl.run_jobs (args)
+        else:
+            std = {}
+            ansmgr = AnsMgt.AnsMgr ( 
+                    qmap = args.map ['qmap'],
+                    database = args.database,
+                    mode = args.mode,
+                    pseudo_ans = args.map ['qmap']['pseudo_ans'].split (','),
+                    interactive = False,
+                    )
+
+            nav = Navigation.Navigator (
+                    args.url,
+                    args.map, 
+                    {
+                        },
+                    timeout = (30.5, 60),
+                    session = cfscrape.create_scraper (),
+                    )
+
+            for i, m in enumerate (args.matno):
+
+                std [args.map ['kmap']['matno']] = m
+
+                try:
+                    std [args.map ['kmap']['pwd']] = args.pwd [i]
+                    std ['crscode'] = args.crscode [i]
+                    std ['tmano'] = args.tmano [i]
+                except:
+                    pass
+
+                finally:
+                    nav.keys = std
+                    nav ['profile_page']
+
+                    if 'tma_page:-1' not in nav:
+                        nav ('tma_page')[-1]
+
+                    qstmgr = QstMgt.QstMgr (
+                            fargs = nav ['tma_page:-1'][0],
+                            url = nav ['tma_page:-1'][1].url,
+                            matno = nav.keys [args.map ['kmap']['matno']],
+
+                            tma = nav.keys ['tmano'],
+
+                            crscode = nav.keys ['crscode'],
+                            qmap = nav.webmap ['qmap'],
+                            stop = 10,
+                            session = nav.session
+                            )
+
+                    cl.submit (nav, ansmgr, qstmgr)
+
+                    nav.traverse_deps = False
+
+                    nav ['logout_page']
+
+                    nav.traverse_deps = True
+
+
+    @classmethod
+    def submit (cl, navigator, ansmgr, qstmgr):
+
+        qst = qstmgr.fetch ()
+
+        while qst:
+            qst = ansmgr.answer (qst)
+
+            if qst == ansmgr.NOANSWER:
+                if not qstmgr.stop:
+                    qstmgr.stop = True
+                    while qst == ansmgr.NOANSWER:
+                        qst = qstmgr.fetch ()
+                        qst = ansmgr.answer (qst)
+
+                    qstmgr.stop = False
+                    r = qstmgr.submit (qst)
+                    ansmgr.check (qst, r)
+
+            elif qst == ansmgr.NOCOURSE:
+                return qst
+            else:
+                r = qstmgr.submit (qst)
+                ansmgr.check (qst, r)
+
+
+            qst = qstmgr.fetch ()
+        
+        return 0

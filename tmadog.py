@@ -61,10 +61,11 @@ main_psr.add_argument (
         )
 
 main_psr.add_argument (
-        '--config-file',
-        '-cf',
+        '--map',
+        '--config',
+        dest = 'map',
         type = str,
-        help = '''The config file to use aside the default '.dogrc' file''',
+        help = '''The config file to use aside the default 'dogrc' file''',
         default = 'dogrc',
         )
 
@@ -90,5 +91,11 @@ for c in commands:
 
 args = main_psr.parse_args ()
 
-if hasattr (args, 'command'):
+mp = configparser.ConfigParser (interpolation =
+        configparser.ExtendedInterpolation ())
+
+mp.read (args.map)
+args.map = mp
+
+if args.command:
     commands (args.command, args)
