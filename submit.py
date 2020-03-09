@@ -17,6 +17,7 @@ from navigation import Navigation
 from qstmgt import QstMgt
 from ansmgt import AnsMgt
 import io
+import parse
 
 
 class Submit (object):
@@ -145,10 +146,27 @@ class Submit (object):
                 'default': AnsMgt.AnsMgr.ANS_MODE_NORM,
 
                 'choices': [
+                    AnsMgt.AnsMgr.ANS_MODE_MAD,
+                    AnsMgt.AnsMgr.ANS_MODE_HACK,
                     AnsMgt.AnsMgr.ANS_MODE_NORM,
-                    AnsMgt.AnsMgr.ANS_MODE_HACK
                     ],
                 'type': int 
+                }
+                ],
+
+            [
+                (
+                    '--stop',
+                    ),
+
+                {
+
+                    'help': '''The number of questions to submit.
+                ''',
+
+                'default': 10,
+
+                'type': int, 
                 }
                 ],
             ]
@@ -158,69 +176,77 @@ class Submit (object):
             cl,
             args: argparse.Namespace,
             ) -> None :
+
         if args.jobs:
             cl.run_jobs (args)
         else:
-            std = {}
-            ansmgr = AnsMgt.AnsMgr ( 
-                    qmap = args.map ['qmap'],
-                    database = args.database,
-                    mode = args.mode,
-                    pseudo_ans = args.map ['qmap']['pseudo_ans'].split (','),
-                    interactive = False,
-                    )
+            cl.submit (args)
 
-            nav = Navigation.Navigator (
-                    args.url,
-                    args.map, 
-                    {
-                        },
-                    timeout = (30.5, 60),
-                    session = cfscrape.create_scraper (),
-                    )
+    
+    @classmethod
+    def submit (cl, args):
+        std = {}
+        ansmgr = AnsMgt.AnsMgr ( 
+                qmap = args.map ['qmap'],
+                database = args.database,
+                mode = args.mode,
+                pseudo_ans = args.map ['qmap']['pseudo_ans'].split (','),
+                interactive = False,
+                )
 
-            for i, m in enumerate (args.matno):
+        nav = Navigation.Navigator (
+                args.url,
+                args.map, 
+                {
+                    },
+                timeout = (30.5, 60),
+                session = cfscrape.create_scraper (),
+                )
 
-                std [args.map ['kmap']['matno']] = m
+        for i, m in enumerate (args.matno):
 
-                try:
-                    std [args.map ['kmap']['pwd']] = args.pwd [i]
-                    std ['crscode'] = args.crscode [i]
-                    std ['tmano'] = args.tmano [i]
-                except:
-                    pass
+            std [args.map ['kmap']['matno']] = m
 
-                finally:
-                    nav.keys = std
-                    nav ['profile_page']
+            try:
+                std [args.map ['kmap']['pwd']] = args.pwd [i]
+                std ['crscode'] = args.crscode [i]
+                std ['tmano'] = args.tmano [i]
+            except:
+                pass
 
-                    if 'tma_page:-1' not in nav:
-                        nav ('tma_page')[-1]
+            finally:
+                nav.keys = std
+                nav ['profile_page']
 
-                    qstmgr = QstMgt.QstMgr (
-                            fargs = nav ['tma_page:-1'][0],
-                            url = nav ['tma_page:-1'][1].url,
-                            matno = nav.keys [args.map ['kmap']['matno']],
+                if 'tma_page:-1' not in nav:
+                    nav ('tma_page')[-1]
 
-                            tma = nav.keys ['tmano'],
+                qstmgr = QstMgt.QstMgr (
+                        fargs = nav ['tma_page:-1'][0],
+                        url = nav ['tma_page:-1'][1].url,
+                        matno = nav.keys [args.map ['kmap']['matno']],
 
-                            crscode = nav.keys ['crscode'],
-                            qmap = nav.webmap ['qmap'],
-                            stop = 10,
-                            session = nav.session
-                            )
+                        tma = nav.keys ['tmano'],
 
-                    cl.submit (nav, ansmgr, qstmgr)
+                        crscode = nav.keys ['crscode'],
+                        qmap = nav.webmap ['qmap'],
+                        stop = args.stop,
+                        session = nav.session
+                        )
 
-                    nav.traverse_deps = False
+                res = cl._submit (nav, ansmgr, qstmgr)
+                print (res)
 
-                    nav ['logout_page']
+                nav.traverse_deps = False
 
-                    nav.traverse_deps = True
+                nav ['logout_page']
+
+                nav.traverse_deps = True
+
 
 
     @classmethod
-    def submit (cl, navigator, ansmgr, qstmgr):
+    def _submit (cl, navigator, ansmgr, qstmgr):
 
         qst = qstmgr.fetch ()
 
@@ -247,4 +273,13 @@ class Submit (object):
 
             qst = qstmgr.fetch ()
         
-        return 0
+        res = re.search (r'(?P<score>\d+)\W+?out\W+?of\W+?(?P<total>\d+)',
+                qstmgr.sres.text, flags = re.I | re.M)
+        if not res:
+            qstmgr.stop = False
+            qstmgr.fetch
+            res = re.search (r'(?P<score>\d+)\W+?out\W+?of\W+?(?P<total>\d+)',
+                    qstmgr.qres.text, flags = re.I | re.M)
+
+        return res.group (0) if res else res
+

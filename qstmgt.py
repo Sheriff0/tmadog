@@ -72,14 +72,15 @@ class QstMgt (object):
 
         def _transform_req (self, req, matno, tma , crscode):
             
+            tma = str (tma)
+            tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma
             self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
             req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
 
             req['url'] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
                     self._copycase (crscode), req['url'], flags = re.IGNORECASE)
 
-            req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                (tma)), req['url'], flags = re.IGNORECASE)
+            req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(tma), req['url'], flags = re.IGNORECASE)
             
 
             for k in req.get(self.dt0, {}):
@@ -88,8 +89,8 @@ class QstMgt (object):
                 req[self.dt0][k] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
                         self._copycase (crscode), req[self.dt0][k], flags = re.IGNORECASE)
 
-                req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(r'tma' + str
-                    (tma)), req[self.dt0][k], flags = re.IGNORECASE)
+                req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]',
+                        self._copycase(tma), req[self.dt0][k], flags = re.IGNORECASE)
 
             return req
 
@@ -120,7 +121,7 @@ class QstMgt (object):
                                 }
                             )
 
-                    self.count = int ('' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
+                    self.count = int ('0' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
                     
                     if self.count == self.stop:
                         self.stop = False
@@ -198,7 +199,7 @@ class QstMgt (object):
 
             if not res:
                 if self.interactive:
-                    qst = self.geterrmsg (self.srep)
+                    qst = self.geterrmsg (self.sres)
                     self.nextq [self.dt1] = qst
                 return None
 

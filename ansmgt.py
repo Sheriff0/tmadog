@@ -17,6 +17,7 @@ class AnsMgt:
 
     class AnsMgr (object):
 
+        ANS_MODE_MAD = 0b00
         ANS_MODE_HACK = 0b01
         ANS_MODE_NORM = 0b10
 
@@ -161,7 +162,32 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             if not isinstance (qst, lxml.html.FieldsDict):
                 raise TypeError ('Question must be a form', type (qst))
 
-            if self.mode & self.ANS_MODE_NORM:
+            if self.mode == self.ANS_MODE_MAD:
+                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._mad (qst)
+
+                if x and self.qmap ['crscode'] in x:
+                    self.download (x, qst)
+                    return qst
+
+                elif x and x[self.qmap ['ans']]:
+                    x = dict (x)
+                    x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
+
+                    if x [self.qmap ['ans']]:
+                        qst.update (x)
+                        self.update (qst.copy ())
+                        return qst
+                    else:
+                        return self.resolve (qst, self.NOANSWER)
+
+                elif x:
+                    return self.resolve (qst, self.NOANSWER)
+
+                else:
+                    return self.resolve (qst, self.NOCOURSE)
+
+
+            elif self.mode & self.ANS_MODE_NORM:
                 x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
@@ -192,7 +218,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                         return self.resolve (qst, self.NOCOURSE)
 
 
-            if self.mode & self.ANS_MODE_HACK:
+            elif self.mode & self.ANS_MODE_HACK:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
@@ -303,6 +329,37 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     )
 
             return self._cur.fetchone ()
+
+
+        def _mad (self, qst):
+
+            if not self._cur:
+                conn = sqlite3.connect (self.database)
+                conn.row_factory = sqlite3.Row
+                self._cur = conn.cursor ()
+
+            self._cur.execute ('''
+                SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
+                %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
+                (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
+                        ? AND a.cid == c.cid AND h.cid ==
+                        c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
+                    ''' % (
+                        self.qmap ['qdescr'],
+                        self.qmap ['ans'],
+                        self.qmap ['qid'],
+                        self.qmap['opta'],
+                        self.qmap['optb'],
+                        self.qmap['optc'],
+                        self.qmap['optd']
+                        ),
+                    (
+                        False,
+                        )
+                    )
+
+            return self._cur.fetchone ()
+
 
         def _fetch (self, qst):
 

@@ -467,10 +467,9 @@ def main (stdscr, args):
             return
 
 
-
         def retrofit (self, ipt):
 
-            nonlocal qstmgr, nav
+            nonlocal qstmgr, nav, mp
 
             url = ipt [4] or args.url
 
@@ -495,29 +494,29 @@ def main (stdscr, args):
                     qstmgr.referer, flags = re.I)
 
 
-            session = None
-
-            
             try:
                 if url != args.url or not re.fullmatch (args.matno, matno , flags = re.I):
 
-                    session = cfscrape.create_scraper ()
 
                     errpad.clear ()
                     errpad.addstr (0, 0, 'Sending first request to %s' % (url,))
                     errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
                     update_scr ()
 
-                    nav = Navigation.Navigator (
+                    nav.reconfigure (
                             url,
-                            mp, 
-                            {
-                                '[Matric Number]': matno,
-                                '[Password]': pwd 
+                            keys = {
+                                mp ['kmap']['matno']: matno,
+                                mp ['kmap']['pwd']: pwd 
                                 },
-                            session = session,
-                            timeout = (30.5, 60)
                             )
+
+                    errpad.clear ()
+                    errpad.addstr (0, 0, 'Trying to logout %s' % (args.matno,))
+                    errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
+                    update_scr ()
+
+                    nav ['logout_page']
 
                     errpad.clear ()
                     errpad.addstr (0, 0, 'Trying to login %s' % (matno,))
@@ -527,8 +526,6 @@ def main (stdscr, args):
                     nav ['profile_page']
 
                 else:
-
-                    session = nav.session
 
                     errpad.clear ()
                     errpad.addstr (0, 0, 'Skipping to login %s' % (matno,))
@@ -542,7 +539,7 @@ def main (stdscr, args):
                         matno = matno,
                         crscode = crscode,
                         tma = tma,
-                        session = session
+                        session = nav.session
                         )
 
                 qmgr.interactive = True
@@ -559,6 +556,7 @@ def main (stdscr, args):
                 args.crscode = crscode
                 args.tma = tma
                 args.url = url
+                args.pwd = pwd
 
 
                 self.mkscrollscr (
@@ -600,6 +598,7 @@ def main (stdscr, args):
             session = session
             )
             
+    nav ['profile_page']
     t = nav ('tma_page')[:-1]
 
     qstmgr = QstMgt.QstMgr (

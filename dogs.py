@@ -216,9 +216,9 @@ def mkheader (url, ref = None):
     if ref:
         headers ['referer'] = ref.geturl ()
 
-    if url.hostname == ref.hostname:
+    if ref and url.geturl ().split ('/')[0] == ref.geturl ().split ('/')[0]:
         headers ['sec-fetch-site'] = 'same-origin'
-    elif ref and url.hostname.endswith (ref.hostname):
+    elif ref and url.hostname.endswith (ref.hostname.split ('.', 1)[-1]):
         headers ['sec-fetch-site'] = 'same-site'
     else:
         headers ['sec-fetch-site'] = 'cross-site'

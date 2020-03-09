@@ -52,7 +52,7 @@ qtemplate ='''<html>
 
 atemplate = '''<html>
 <body>
-You have scored {mark:d}. Your total score is {totscore:d}
+You have scored {mark:d}. Your total score is {totscore:d} out of 10
 </body>
 </html>'''
 
@@ -103,7 +103,16 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
     def do_GET (self):
         self.log_req ()
 
+        status = 200
+
         if self.path == '/':
+            if self.cfmode:
+                self.path = '/cf.html'
+                status = 503
+            else:
+                self.path = '/index.html'
+
+        elif self.path.startswith ('/?__cf_chl_jschl_tk__'):
             self.path = '/index.php'
 
         elif self.path == '/stuserout.php':
@@ -118,7 +127,8 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
         p = pathlib.Path (self.root + '/', self.path[1:])
 
         if p.exists ():
-            self.send_response (200)
+            self.send_response (status)
+
             self.send_header ('Content-Length', p.stat ().st_size)
 
             self.send_header ('Content-Type', 'text/html')
@@ -132,16 +142,21 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
     def do_POST (self):
         
-        self.log_req ()
         
         if self.path.endswith (('stuser.php', 'tmuser.php')):
+            self.log_req ()
             self.login ()
         
         elif self.path.endswith ('dzaden3_ynd.php'):
+            self.log_req ()
             self.getqst ()
 
         elif self.path.endswith ('qsak3_ynz.php'):
+            self.log_req ()
             self.getans ()
+
+        elif self.path.startswith ('/?__cf_chl_jschl_tk__'):
+            self.do_GET ()
 
     
     def getans (self):
@@ -290,6 +305,8 @@ def main (argv = sys.argv):
             help = 'The hostname for the server')
     
     parser.add_argument ('--port', default = 3000, type = int, help = 'The port for the server')
+
+    parser.add_argument ('--cfmode', action = 'store_true', help = 'To use cfmode')
     
     parser.add_argument ('--no-run', dest = 'run', action = 'store_false', help = 'Run the server')
 
@@ -297,6 +314,7 @@ def main (argv = sys.argv):
     args,ukn = parser.parse_known_args (argv or [])
 
     RequestHandler.root = args.dir
+    RequestHandler.cfmode = args.cfmode
 
     if args.silent:
         RequestHandler.log_request = nolog

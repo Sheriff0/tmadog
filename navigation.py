@@ -105,6 +105,31 @@ class Navigation (object):
         def __contains__ (self, value):
             return value in self.cache
 
+        def reconfigure (self, home_url, webmap = None, keys = None, session =
+                None, **kwargs):
+            self.webmap = webmap if webmap else self.webmap
+            self.keys = keys if keys else self.keys
+            self.session = session if session else self.session
+            self.traverse_deps = True
+            self.kwargs = kwargs if kwargs else self.kwargs
+
+            if 'home_page' not in self or self ['home_page'].url != home_url:
+                self.kwargs.update (
+                        headers = {
+                            'host': urllib.parse.urlparse (home_url).hostname,
+                            'referer': home_url,
+                            'sec-fetch-mode': 'navigate',
+                            'sec-fetch-user': '?1',
+                            'sec-fetch-site': 'none'
+                            }
+                        )
+                res = self.session.get (home_url, **self.kwargs)
+                res.raise_for_status ()
+
+                self.cache['home_page'] = res
+
+            self.lp = 'home_page'
+
         def __getitem__ (self, sl):
             if isinstance (sl, int):
                 sl = slice (None, sl)
@@ -117,29 +142,44 @@ class Navigation (object):
                 s = sl
                 sl = slice (None, None)
 
-            if s in self and ((s in self.webmap and not self.webmap.getboolean (s, 'volatile')) or
+            v = self.webmap.get (s, 'volatile', fallback = '')
+
+            if s in self and ((not v or v not in self) or
                     (re.match (r'\w+:-?\d', s))):
                 return self.cache[s]
             
             elif s in self.webmap:
                 if self.traverse_deps:
-                    s1 = s
-                    deps = []
+                    deps = [s]
                     while True:
-                        s1 = self.webmap [s1]['requires']
-                        if s1 in self and not self.webmap.getboolean (s1, 'volatile'):
+                        s1 = self.webmap [deps [-1]]['requires']
+                        v = self.webmap [s1]['volatile']
+                        if not v and s1 in self:
+                            if urllib.parse.urlparse (self.cache [s1].url).hostname == urllib.parse.urlparse (self.cache ['home_page'].url).hostname:
+                                break
+                            else:
+                                deps.append (s1)
+                        
+                        elif v and v not in self and s1 in self:
                             break
+
                         else:
                             deps.append (s1)
+                    deps.reverse ()
 
-                    while True:
-                        if deps:
-                            self.__goto__ (lp = deps.pop ())
+                    for s1 in deps [:-1]:
+                        self.__goto__ (lp = s1)
+                        v = self.webmap [s1]['volatile']
+                        if v and v in self:
+                            self.cache.pop (v)
 
-                        else:
-                            break
 
-                return self.__goto__ (lp = s, sl = sl)
+
+                v = self.webmap [deps [-1]]['volatile']
+                if v and v in self:
+                    self.cache.pop (v)
+
+                return self.__goto__ (lp = deps [-1], sl = sl)
 
             else:
                 raise Exception ('Location %s not in map' % (sl,))
@@ -154,10 +194,9 @@ class Navigation (object):
 
             res = None
 
-            referer = self.cache[self.webmap [lp]['requires']].url
+            referer = req_gen.start.url
 
             for i, r in zip (range (req_gen.len)[sl], gen):
-
 
                 self.kwargs.update (
                         headers = dogs.mkheader (r ['url'], referer)
