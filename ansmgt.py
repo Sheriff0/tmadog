@@ -328,7 +328,12 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                         )
                     )
 
-            return self._cur.fetchone ()
+            a = self._cur.fetchone ()
+
+            if not a:
+                return self._mad (qst)
+            else:
+                return a
 
 
         def _mad (self, qst):
