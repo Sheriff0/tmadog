@@ -52,7 +52,7 @@ qtemplate ='''<html>
 
 atemplate = '''<html>
 <body>
-You have scored {mark:d}. Your total score is {totscore:d} out of 10
+You have scored {mark:d} mark for question. Your total score is {totscore:d} out of 10
 </body>
 </html>'''
 

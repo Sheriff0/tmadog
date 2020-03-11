@@ -189,7 +189,7 @@ class QstMgt (object):
 
             self.sres = self.session.request (**self.nextq, **kwargs)
 
-            self.sres.raise_for_status ()
+            #self.sres.raise_for_status ()
 
             x = self.nextq.pop (self.dt1 or self.dt0)
 

@@ -13,11 +13,12 @@ import configparser
 import http.server
 from qstmgt import QstMgt
 from ansmgt import AnsMgt
+import dbmgt
 import curses
 import curses.ascii
 import cfscrape
 import concurrent.futures
-
+import lxml
 
 BREAK = 0
 
@@ -45,8 +46,10 @@ class ScrMgr:
         self.qmgr.interactive = True
 
         self.qst = None
+        self.qmode = True
         self.pq = []
-        self.pqidx = 0
+        self.pqidx = -1
+        self.pqlen = 0
         self.qbdr.box ()
         self.qbdr.noutrefresh ()
         self.update_qscr ()
@@ -64,13 +67,26 @@ class ScrMgr:
             raise NotImplementedError ('code %d not available' % (key,), key)
 
     def key_left260 (self):
-        pass
+        if self.qmode:
+            if self.qst:
+                if self.pqlen > (self.pqlen - self.pqidx) >= 1 and self.pqidx > 0:
+                    self.pqidx -= 1
+                
+                    self.update_qscr (self.amgr.download (self.amgr (*self.pq
+                        [self.pqidx]), self.amgr (*self.pq [-1]).copy ()))
 
     def key_right261 (self):
-        pass
+        if self.qmode:
+            if self.qst:
+                if self.pqlen >= (self.pqlen - self.pqidx) > 1:
+                    self.pqidx += 1
+
+                    self.update_qscr (self.amgr.download (self.amgr (*self.pq
+                        [self.pqidx]), self.amgr (*self.pq [-1]).copy ()))
+
 
     def key_up259 (self):
-        if self.optmap:
+        if self.qmode and self.optmap:
             cur = self.qtextscr.getyx ()
             n = [i for i,t in enumerate (self.optmap) if t[0] == cur [0]]
 
@@ -110,15 +126,18 @@ class ScrMgr:
                 else:
                     self.qline -= 1
 
+        elif not self.qmode:
+            if not self.isseen (self.msgyx, TOP):
+                self.qline -= 1
 
-            finally:
-                qst = self.qst
-                self.update_qscr () 
-                self.qst = qst
+
+        self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
+        (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
+            [1]) - 1)
 
 
     def key_down258 (self):
-        if self.optmap:
+        if self.qmode and self.optmap:
             cur = self.qtextscr.getyx ()
             n = [i for i,t in enumerate (self.optmap) if t[0] == cur [0]]
 
@@ -159,10 +178,14 @@ class ScrMgr:
                 else:
                     self.qline += 1
 
-            finally:
-                self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
-                (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
-                    [1]) - 1)
+
+        elif not self.qmode:
+            if not self.isseen (self.msgyx, BOTTOM):
+                self.qline += 1
+
+        self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
+        (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
+            [1]) - 1)
                         
 
 
@@ -179,28 +202,108 @@ class ScrMgr:
 
 
     def enter10 (self):
-        if self.qst: 
-            c = chr (self ['inch'] () & 0xff)
-            self.qst [self.qmgr.qmap ['ans']] = c
-           
-            x = self.qmgr.submit (self.qst)
 
-            if x != None:
-                self.pq.append ((self.qst, x))
+        if self.qmode:
+            if self.qst: 
+                c = chr (self ['inch'] () & 0xff)
+                self.qst [self.qmgr.qmap ['ans']] = c
+               
+                e = self.qmgr.submit (self.qst)
 
+                y = lxml.html.fromstring (self.qmgr.sres.text).text_content ()
 
-            qst = self.qmgr.fetch (timeout = (30.5, 60))
-            if not qst:
-                return BREAK
+                x = re.search (r'(?P<mark>[01])\s+mark for question', y, re.I)
 
-            return self.update_qscr (qst)
+                if x and self.qst [self.qmgr.qmap ['qid']] != 'error':
+                    self.amgr.check (self.qst, int (x.group ('mark')), e)
+
+                self.qmode = False
+
+                self.qtextscr.clear ()
+
+                self.qtextscr.addstr (0, 0, y)
+
+                self.msgyx = [0]
+                self.msgyx.append ((self.qtextscr.getyx ()[0] + 1) * self.qdim
+                        [1])
+
+                self.qline = 0
+
+                self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
+                        (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
+                            [1]) - 1)
+
+            else:
+                qst = self.qmgr.fetch (timeout = (30.5, 60))
+
+                if not qst:
+                    return BREAK
+            
+                elif isinstance (qst, lxml.html.FieldsDict):
+                    x = qst
+
+                    qst = x.copy ()
+
+                    x = self.amgr.answer (x)
+
+                    if x and qst [self.qmgr.qmap ['qid']] != x [self.qmgr.qmap ['qid']]:
+                        try:
+                            self.pq.index ((x [self.qmgr.qmap ['crscode']], x
+                                [self.qmgr.qmap ['qid']]))
+                        except ValueError:
+                            self.pq.append ((x [self.qmgr.qmap ['crscode']], x
+                                [self.qmgr.qmap ['qid']]))
+                            self.pqlen += 1
+                    else:
+                        qst = x
+
+                    self.pq.append ((qst [self.qmgr.qmap ['crscode']], qst
+                        [self.qmgr.qmap ['qid']]))
+
+                    self.pqlen += 1
+
+                    self.pqidx = self.pqlen - 1
+
+                return self.update_qscr (qst)
 
         else:
             qst = self.qmgr.fetch (timeout = (30.5, 60))
+
             if not qst:
                 return BREAK
+        
+            elif isinstance (qst, lxml.html.FieldsDict):
+                x = qst
+
+                qst = x.copy ()
+
+                x = self.amgr.answer (x)
+
+                if qst [self.qmgr.qmap ['qid']] != x [self.qmgr.qmap ['qid']]:
+                    try:
+                        self.pq.index ((x [self.qmgr.qmap ['crscode']], x
+                            [self.qmgr.qmap ['qid']]))
+                    except ValueError:
+                        self.pq.append ((x [self.qmgr.qmap ['crscode']], x
+                            [self.qmgr.qmap ['qid']]))
+
+                        self.pqlen += 1
+
+                else:
+                    qst = x
+
+                self.pq.append ((qst [self.qmgr.qmap ['crscode']], qst
+                    [self.qmgr.qmap ['qid']]))
+
+                self.pqlen += 1
+
+                self.pqidx = self.pqlen - 1
+
+            self.qmode = True
 
             return self.update_qscr (qst)
+
+
 
     
     def update_qscr (self, qst = None):
@@ -247,11 +350,28 @@ class ScrMgr:
 
                 self.qtextscr.addch ('\n')
 
+
             if not self.optmap:
                 pass #NOTE: Draw a textbox for fill-in-the-gap answer
-            
-            self.qst = self.amgr.answer ()
-            self.qtextscr.move (self.optmap [0][0], 0)
+           
+
+            elif qst [self.qmgr.qmap ['qid']] != 'error':
+
+                a = qst [self.qmgr.qmap ['ans']]
+                
+                if a:
+                    i = self.qmgr.pseudos.index (a)
+
+                    self.optmap [i][-1] = curses.A_BLINK
+
+                else:
+                    i = 0
+
+            else:
+                    i = 0
+
+
+            self.qtextscr.move (self.optmap [i][0], 0)
 
             self.paint ()
 
@@ -266,7 +386,6 @@ class ScrMgr:
         self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
                 (self.qdim [0] + self.qcord [0]) - 1, (self.qdim [1] + self.qcord
                     [1]) - 1)
-
 
         return
 
@@ -502,7 +621,7 @@ def main (stdscr, args):
                     errpad.noutrefresh (0, 0, ipt_cord [0], ipt_cord [1], ipt_cord [0] + ipt_dim [0] - 1, ipt_cord [1] + ipt_dim [1] - 1)
                     update_scr ()
 
-                    nav ['profile_page']
+                    nav ['tma_page']
 
                 else:
 
@@ -577,8 +696,8 @@ def main (stdscr, args):
             session = session
             )
             
-    nav ['profile_page']
-    t = nav ('tma_page')[:-1]
+    #nav ['profile_page']
+    t = nav ('qst_page')[:-1]
 
     qstmgr = QstMgt.QstMgr (
             matno = args.matno,
@@ -623,7 +742,7 @@ def main (stdscr, args):
     ansmgr = AnsMgt.AnsMgr (
             qmap = qmap,
             database = args.database,
-            mode = AnsMgt.AnsMgr.ANS_MODE_MAD,
+            mode = AnsMgt.AnsMgr.ANS_MODE_HACK | AnsMgt.AnsMgr.ANS_MODE_NORM,
             pseudo_ans = qmap ['pseudo_ans'].split (','),
             interactive = False,
             )
@@ -680,16 +799,34 @@ def main (stdscr, args):
             break
 
 
+    if ansmgr._cur:
+        f = open (args.qstdump, 'w')
+        f.write ('[') 
+        dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (), ansmgr.qmap,
+                ansmgr._cur, f if args.debug else None)
+        f.seek (-1, 1) 
+        f.write (']')
+        f.close ()
+
+        ansmgr.close ()
+
     curses.noraw ()
     curses.echo ()
     handler.stop_scroll ()
+    curses.endwin ()
+
     return
+
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('--config', default = 'dogrc', help = 'configuration file to use')
+
+    parser.add_argument ('--debug', action = 'store_true', help = 'To enable debug mode')
+
+    parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
 
     parser.add_argument ('--database', '-db', default = 'pg/olddb', help = 'The database to use')
 
@@ -713,7 +850,6 @@ if __name__ == '__main__':
         stdscr = curses.initscr ()
 
         main (stdscr, args)
-        curses.endwin ()
 
     except BaseException as err:
         curses.endwin ()

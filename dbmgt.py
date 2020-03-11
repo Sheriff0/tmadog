@@ -1,9 +1,10 @@
+import sqlite3
+import json
+
 class DbMgt (object):
 
-    TMADOGDB = 'tmadogdb'
-
-    @staticmethod
-    def setupdb (db):
+    @classmethod
+    def setupdb (cl, db):
 
         conn = sqlite3.connect (db)
 
@@ -19,7 +20,7 @@ class DbMgt (object):
 
             CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
                     NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
-                    CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE DEFAULT NULL
+                    CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE NOT NULL
                     REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
                     UPDATE CASCADE);
 
@@ -40,10 +41,10 @@ class DbMgt (object):
         return conn
 
 
-    @staticmethod
-    def update_hacktab (db, data, qmap, cursor = None):
+    @classmethod
+    def update_hacktab (cl, db, data, qmap, cursor = None, fp = None):
 
-        conn = setupdb (db) if not cursor else cursor.connection
+        conn = cl.setupdb (db) if not cursor else cursor.connection
 
         conn.row_factory = sqlite3.Row
 
@@ -57,6 +58,11 @@ class DbMgt (object):
         dogid, cid, = None, None
 
         for datum in data:
+
+            if fp:
+                json.dump (datum, fp)
+                fp.write (',')
+
             try:
                 crsref = cur.execute ('''
                         SELECT * FROM courses WHERE qid = ? AND crscode = ?
@@ -66,7 +72,7 @@ class DbMgt (object):
                             )).fetchone ()
 
                 if not crsref:
-                    cid = updatedb (db, [datum], qmap, cur)['cid']
+                    cid = cl.updatedb (db, [datum], qmap, cur)['cid']
 
                 else:
                     cid = crsref['cid']
@@ -81,8 +87,7 @@ class DbMgt (object):
                             datum[qmap ['optc']],
                             datum[qmap ['optd']]
                             ))
-                if cursor:
-                    return cursor
+                        
 
             except sqlite3.OperationalError as err:
                 print ('update_hacktab: replace: ', err.args[0])
@@ -96,15 +101,18 @@ class DbMgt (object):
             print (err.args[0])
             return conn
 
-        return None
+        if cursor:
+            return cursor
+        else:
+            return None
 
 
-    @staticmethod
-    def updatedb (db, data, qmap, cursor = None):
+    @classmethod
+    def updatedb (cl, db, data, qmap, cursor = None):
 
         repeats = 0
 
-        conn = setupdb (db) if not cursor else cursor.connection
+        conn = cl.setupdb (db) if not cursor else cursor.connection
 
         conn.row_factory = sqlite3.Row
 
@@ -117,12 +125,10 @@ class DbMgt (object):
 
         ids = {}
 
-        for datum in set (data):
+        for datum in data:
 
             try:
 
-                if isinstance (datum, QstDbT):
-                    datum = datum._asdict ()
                 cur.execute ('''INSERT INTO questions (qdescr)
                         VALUES (?);''', (datum[qmap ['qdescr']],))
 
@@ -134,8 +140,7 @@ class DbMgt (object):
                         (?, ?, ?, ?)''', (
                             datum[qmap ['crscode']],
                             dogid,
-                            True if datum[qmap ['ans']] and datum[qmap ['crscode']] and datum[qmap ['qid']] else
-                            False,
+                            True if datum[qmap ['ans']] and datum[qmap ['crscode']] and datum[qmap ['qid']] else False,
                             datum[qmap ['qid']]
                             ))
 
@@ -151,8 +156,6 @@ class DbMgt (object):
                             cid
                             ))
 
-                if cursor:
-                    return ids
 
             except sqlite3.IntegrityError as ierr:
 
@@ -162,13 +165,12 @@ class DbMgt (object):
 
                 crsref = cur.execute ('''
                         SELECT * FROM courses WHERE (crscode = ? AND qid = ? AND
-                        dogid = ?) OR (dogid = ? AND ready = ?) LIMIT 1
+                        dogid = ?) OR (dogid = ?) LIMIT 1
                         ''', (
                             datum[qmap ['crscode']],
                             datum[qmap ['qid']],
                             dupq['dogid'],
                             dupq['dogid'],
-                            False
                             )).fetchone() or {
                                     'cid': None,
                                     'dogid': dupq['dogid'],
@@ -177,9 +179,7 @@ class DbMgt (object):
                                     'qid': None
                                     }
 
-                ansref = cur.execute ('''SELECT * FROM answers WHERE (dogid =
-            ? AND cid = ?) OR dogid = ?;''', (
-                dupq['dogid'],
+                ansref = cur.execute ('''SELECT * FROM answers WHERE cid = ? AND dogid = ?;''', (
                 crsref['cid'],
                 dupq['dogid']
                 )).fetchone () or {
@@ -218,9 +218,6 @@ class DbMgt (object):
                             cid
                             ))
 
-                if cursor:
-                    return ids
-
             except sqlite3.OperationalError as err:
                 print ('insert/replace: ', err.args[0])
                 conn.close ()
@@ -236,7 +233,7 @@ class DbMgt (object):
         if not cursor:
             conn.close()
         else:
-            return cursor
+            return ids
 
         if repeats > 0:
             print ('%d questions repeated' % (repeats,))

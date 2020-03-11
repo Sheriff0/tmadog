@@ -99,7 +99,7 @@ class Navigation (object):
 
         def __call__ (self, new_lp = None, **kwargs):
             self.lp = new_lp if new_lp else self.lp
-            self.kwargs
+            self.kwargs.update (kwargs)
             return self
 
         def __contains__ (self, value):
@@ -213,6 +213,9 @@ class Navigation (object):
             try:
                 r = next (gen)
                 k = lp + ':' + str (sl.stop)
+                if not res:
+                    res = self.cache[self.webmap [lp]['requires']]
+
                 self.cache [k] = (
                         r,
                         res

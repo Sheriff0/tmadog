@@ -63,8 +63,9 @@ class AnsMgt:
             self.max_retry = max_retry
 
         class CacheIter (object):
-            def __init__ (self, cache):
+            def __init__ (self, cache, reverser):
                 self.cache = cache
+                self.revert_ans = reverser
 
             def __iter__ (self):
                 yield from self.__next__ ()
@@ -74,14 +75,34 @@ class AnsMgt:
                 for k in self.cache:
                     if k.isupper ():
                         for k1 in self.cache [k]:
-                            yield self.cache[k][k1]
+                            yield self.revert_ans (self.cache[k][k1])
 
 
 
 
-        def __call__ (self, qstlike, d = None):
-            return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
+        #def __call__ (self, qstlike, d = None):
+        #   return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
         
+        def __call__ (self, crscode, qid):
+            x = self._cache.get (crscode.upper (), None)
+
+            if x:
+                x = x.get (qid, None)
+                return x
+
+        def pop (self, crscode, qid):
+            x = self._cache.get (crscode.upper (), None)
+
+            if x:
+                x = x.pop (qid, None)
+                if x:
+                    if crscode.lower () in self._cache and self._cache [crscode.lower ()][self.qmap ['qid']] == x [self.qmap ['qid']]:
+                        self._cache.pop (crscode.lower ())
+                    
+                return x
+
+
+
         def _copycase (self, t, i):
             return i.upper () if t.isupper () else i.lower ()
         
@@ -147,14 +168,27 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
                 return x
 
-        def check (self, qst, mark):
+        def check (self, qst, mark, effective):
             if mark == 0:
                 qst = qst.copy ()
 
                 if not self.interactive:
-                    qst[self.qmap ['ans']] = None
+                    x = self (qst [self.qmap ['crscode']], qst [self.qmap ['qid']])
+                    if x and qst [self.qmap ['ans']] == x [self.qmap ['ans']]:
+                        x [self.qmap ['ans']] = None
+
+                    elif not x:
+                        qst [self.qmap ['ans']] = None
+                        self.update (qst.copy ())
+
                 else:
                     return self.resolve (qst, self.FAIL)
+
+            elif mark == 1:
+                if effective:
+                    self.update (qst.copy ())
+                else:
+                    self.pop (qst [self.qmap ['crscode']], qst [self.qmap ['qid']])
 
         
         def answer (self, qst):
@@ -162,32 +196,8 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             if not isinstance (qst, lxml.html.FieldsDict):
                 raise TypeError ('Question must be a form', type (qst))
 
-            if self.mode == self.ANS_MODE_MAD:
-                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._mad (qst)
 
-                if x and self.qmap ['crscode'] in x:
-                    self.download (x, qst)
-                    return qst
-
-                elif x and x[self.qmap ['ans']]:
-                    x = dict (x)
-                    x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
-
-                    if x [self.qmap ['ans']]:
-                        qst.update (x)
-                        self.update (qst.copy ())
-                        return qst
-                    else:
-                        return self.resolve (qst, self.NOANSWER)
-
-                elif x:
-                    return self.resolve (qst, self.NOANSWER)
-
-                else:
-                    return self.resolve (qst, self.NOCOURSE)
-
-
-            elif self.mode & self.ANS_MODE_NORM:
+            if self.mode & self.ANS_MODE_NORM:
                 x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
 
                 if x:
@@ -209,20 +219,21 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                             return qst
 
                         else:
-                            return self.resolve (qst, self.NOANSWER)
+                            self.resolve (qst, self.NOANSWER)
 
                     elif x:
-                        return self.resolve (qst, self.NOANSWER)
+                        self.resolve (qst, self.NOANSWER)
 
                     else:
-                        return self.resolve (qst, self.NOCOURSE)
+                        self.resolve (qst, self.NOCOURSE)
 
 
-            elif self.mode & self.ANS_MODE_HACK:
+            if self.mode & self.ANS_MODE_HACK:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
-                    self.download (x, qst)
+                    self.update (qst.copy ())
+                    qst = self.download (x, qst)
                     return qst
 
                 elif x and x[self.qmap ['ans']]:
@@ -230,17 +241,19 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
 
                     if x [self.qmap ['ans']]:
+                        self.update (qst.copy ())
                         qst.update (x)
                         self.update (qst.copy ())
                         return qst
                     else:
-                        return self.resolve (qst, self.NOANSWER)
+                        self.resolve (qst, self.NOANSWER)
 
                 elif x:
-                    return self.resolve (qst, self.NOANSWER)
+                    self.resolve (qst, self.NOANSWER)
 
                 else:
-                    return self.resolve (qst, self.NOCOURSE)
+                    self.resolve (qst, self.NOCOURSE)
+
 
         def update (self, qst):
             
@@ -274,16 +287,29 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
             if x in (':hack', ':Hack', ':HACK'):
                 self.mode = self.ANS_MODE_HACK
+
             self.update (qst.copy ())
 
             return None if not qst[self.qmap ['ans']] else qst
             
 
+        def revert_ans (self, qst):
+            try:
+                i = self.pseudos.index (qst [self.qmap ['ans']])
+                k = 'opt' + chr (97 + i)
+                qst [self.qmap ['ans']] = qst [self.qmap [k]]
+
+            except ValueError:
+                pass
+
+            return qst
+
+
 
         def convert_ans (self, qst, ans):
             ans = re.sub (r'\+', r'\\W+?', ans)
             if not hasattr (self, 'opts'):
-                self.opts = [ 'opt' + bytes ([97 + a]).decode () for a in range (len (self.pseudos))]
+                self.opts = [ 'opt' + chr (97 + a) for a in range (len (self.pseudos))]
 
             for i in range (len (self.pseudos)):
                 if re.match (ans, qst[self.qmap [self.opts [i]]].strip (), flags = re.IGNORECASE):
@@ -294,7 +320,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
         def iter_cache (self):
 
-            return CacheIter (self._cache)
+            return self.CacheIter (self._cache, self.revert_ans)
 
         def close (self):
 
@@ -407,7 +433,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
         def download (self, x, qst):
             
             if not hasattr (self, 'opts'):
-                self.opts = [ 'opt' + bytes ([97 + a]).decode () for a in range (len (self.pseudos))]
+                self.opts = [ 'opt' + chr (97 + a) for a in range (len (self.pseudos))]
 
             qst.update (
                     {
