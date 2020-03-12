@@ -71,9 +71,12 @@ class ScrMgr:
             if self.qst:
                 if self.pqlen > (self.pqlen - self.pqidx) >= 1 and self.pqidx > 0:
                     self.pqidx -= 1
-                
-                    self.update_qscr (self.amgr.download (self.amgr (*self.pq
-                        [self.pqidx]), self.amgr (*self.pq [-1]).copy ()))
+               
+                    p = self.amgr (*self.pq [self.pqidx])
+                    l = self.amgr (*self.pq [-1]).copy ()
+
+                    if p and l:
+                        self.update_qscr (self.amgr.download (p, l))
 
     def key_right261 (self):
         if self.qmode:
@@ -81,9 +84,11 @@ class ScrMgr:
                 if self.pqlen >= (self.pqlen - self.pqidx) > 1:
                     self.pqidx += 1
 
-                    self.update_qscr (self.amgr.download (self.amgr (*self.pq
-                        [self.pqidx]), self.amgr (*self.pq [-1]).copy ()))
+                    p = self.amgr (*self.pq [self.pqidx])
+                    l = self.amgr (*self.pq [-1]).copy ()
 
+                    if p and l:
+                        self.update_qscr (self.amgr.download (p, l))
 
     def key_up259 (self):
         if self.qmode and self.optmap:
@@ -254,8 +259,6 @@ class ScrMgr:
                             self.pq.append ((x [self.qmgr.qmap ['crscode']], x
                                 [self.qmgr.qmap ['qid']]))
                             self.pqlen += 1
-                    else:
-                        qst = x
 
                     self.pq.append ((qst [self.qmgr.qmap ['crscode']], qst
                         [self.qmgr.qmap ['qid']]))
@@ -370,10 +373,7 @@ class ScrMgr:
             else:
                     i = 0
 
-
-            self.qtextscr.move (self.optmap [i][0], 0)
-
-            self.paint ()
+            self.paint (self.optmap [i])
 
         elif self.qst:
             pass
@@ -381,6 +381,7 @@ class ScrMgr:
         else:
             self.qline = 0
             self.qtextscr.addstr (0, 0, 'Hit Enter to start')
+
 
 
         self.qtextscr.noutrefresh (self.qline, 0, self.qcord[0], self.qcord [1],
@@ -399,30 +400,30 @@ class ScrMgr:
             cur = self.qtextscr.getyx ()
             t = [x for x in self.optmap if x [0] == cur [0]]
 
-        if not t:
-            return
+            if not t:
+                return
 
-        else:
-            t = t[0]
+            else:
+                t = t[0]
 
-            c = divmod (t [1], self.qdim [1])
-            l = t [0] 
-            
-            x = c[0]
+        c = divmod (t [1], self.qdim [1])
+        l = t [0] 
+        
+        x = c[0]
 
-            while x:
-                self.qtextscr.chgat (l, 0, (color) if not undo
-                        else t[-1])
-                l += 1
-                x -= 1
+        while x:
+            self.qtextscr.chgat (l, 0, (color) if not undo
+                    else t[-1])
+            l += 1
+            x -= 1
 
-            self.qtextscr.chgat (l, 0, c [1], (color) if not undo
-                    else t [-1])
-            
-            if t [2]:
-                self.qtextscr.addch (t[0], 0, t[2])
+        self.qtextscr.chgat (l, 0, c [1], (color) if not undo
+                else t [-1])
+        
+        if t [2]:
+            self.qtextscr.addch (t[0], 0, t[2])
 
-            self.qtextscr.move (t[0], 0)
+        self.qtextscr.move (t[0], 0)
 
 
 
@@ -804,7 +805,6 @@ def main (stdscr, args):
         f.write ('[') 
         dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (), ansmgr.qmap,
                 ansmgr._cur, f if args.debug else None)
-        f.seek (-1, 1) 
         f.write (']')
         f.close ()
 

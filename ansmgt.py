@@ -11,6 +11,7 @@ import parse as _parse
 from pathlib import PurePath
 from urllib import parse
 import configparser
+import dbmgt
 
 
 class AnsMgt:
@@ -198,17 +199,14 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
 
             if self.mode & self.ANS_MODE_NORM:
-                x = self._cache.get ( qst [self.qmap ['crscode']].upper (), None)
+                x = self (qst [self.qmap ['crscode']], qst [self.qmap ['qid']])
 
-                if x:
-                    x = x.get (qst [self.qmap ['qid']], None)
-                    if x and x[self.qmap ['ans']]:
-                        self.download (x, qst)
-                        return qst
-                    else:
-                        x = None
+                if x and x[self.qmap ['ans']]:
+                    qst [self.qmap ['ans']] = x [self.qmap ['ans']]
 
-                if not x:
+                    return qst
+
+                else:
 
                     x = self._fetch (qst)
                     if x and x [self.qmap ['ans']]:
@@ -218,21 +216,12 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                             self.update (qst.copy ())
                             return qst
 
-                        else:
-                            self.resolve (qst, self.NOANSWER)
-
-                    elif x:
-                        self.resolve (qst, self.NOANSWER)
-
-                    else:
-                        self.resolve (qst, self.NOCOURSE)
 
 
             if self.mode & self.ANS_MODE_HACK:
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
-                    self.update (qst.copy ())
                     qst = self.download (x, qst)
                     return qst
 
@@ -241,19 +230,12 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
 
                     if x [self.qmap ['ans']]:
-                        self.update (qst.copy ())
                         qst.update (x)
                         self.update (qst.copy ())
                         return qst
-                    else:
-                        self.resolve (qst, self.NOANSWER)
 
-                elif x:
-                    self.resolve (qst, self.NOANSWER)
 
-                else:
-                    self.resolve (qst, self.NOCOURSE)
-
+            self.resolve (qst, self.NOANSWER)
 
         def update (self, qst):
             
@@ -307,7 +289,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
 
         def convert_ans (self, qst, ans):
-            ans = re.sub (r'\+', r'\\W+?', ans)
+            ans = re.sub (r'\W+', r'\\W+?', ans.strip ())
             if not hasattr (self, 'opts'):
                 self.opts = [ 'opt' + chr (97 + a) for a in range (len (self.pseudos))]
 
@@ -329,17 +311,17 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
         def _hack (self, qst):
 
             if not self._cur:
-                conn = sqlite3.connect (self.database)
+                conn = dbmgt.DbMgt.setupdb (self.database)
                 conn.row_factory = sqlite3.Row
                 self._cur = conn.cursor ()
 
             self._cur.execute ('''
                 SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
                 %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
-                (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
+                (courses AS c, answers AS a, hacktab AS h) ON (c.dogid ==
+                q.dogid AND a.dogid == c.dogid AND c.ready IS NOT
                         ? AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
-                        c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
-                    ''' % (
+                        c.cid)                    ''' % (
                         self.qmap ['qdescr'],
                         self.qmap ['ans'],
                         self.qmap ['qid'],
@@ -365,17 +347,17 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
         def _mad (self, qst):
 
             if not self._cur:
-                conn = sqlite3.connect (self.database)
+                conn = dbmgt.DbMgt.setupdb (self.database)
                 conn.row_factory = sqlite3.Row
                 self._cur = conn.cursor ()
 
             self._cur.execute ('''
                 SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
                 %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
-                (courses AS c, answers AS a, hacktab AS h) ON (ready IS NOT
+                (courses AS c, answers AS a, hacktab AS h) ON (c.dogid ==
+                q.dogid AND a.dogid == c.dogid AND c.ready IS NOT
                         ? AND a.cid == c.cid AND h.cid ==
-                        c.cid) WHERE (c.dogid, a.dogid) IS (q.dogid, q.dogid)
-                    ''' % (
+                        c.cid)                    ''' % (
                         self.qmap ['qdescr'],
                         self.qmap ['ans'],
                         self.qmap ['qid'],
@@ -395,12 +377,14 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
         def _fetch (self, qst):
 
             if not self._cur:
-                conn = sqlite3.connect (self.database)
+                conn = dbmgt.DbMgt.setupdb (self.database)
                 conn.row_factory = sqlite3.Row
                 self._cur = conn.cursor ()
 
             self._cur.execute ('''
-            SELECT ans AS %s FROM answers INNER JOIN (courses) ON (courses.crscode LIKE ? AND courses.qid IS ? AND courses.ready IS ?) WHERE answers.cid IS courses.cid
+            SELECT ans AS %s FROM answers INNER JOIN (courses) ON
+            (courses.crscode LIKE ? AND courses.qid == ? AND courses.ready == ?
+            AND answers.cid == courses.cid)
                     ''' % (
                         self.qmap ['ans'],
                         ),
@@ -416,7 +400,8 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             if not r:
 
                 self._cur.execute ('''
-                SELECT ans AS %s FROM answers INNER JOIN questions ON qdescr LIKE ? WHERE answers.dogid IS questions.dogid
+                SELECT ans AS %s FROM answers INNER JOIN questions ON qdescr
+                LIKE ? WHERE answers.dogid == questions.dogid
                         ''' % (
                             self.qmap ['ans'],
                             ),

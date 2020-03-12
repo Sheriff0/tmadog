@@ -20,11 +20,11 @@ class DbMgt (object):
 
             CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
                     NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
-                    CASCADE ON UPDATE CASCADE, cid INTEGER UNIQUE NOT NULL
+                    CASCADE ON UPDATE CASCADE, cid INTEGER PRIMARY KEY NOT NULL
                     REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
                     UPDATE CASCADE);
 
-            CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL UNIQUE
+            CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL PRIMARY KEY
             REFERENCES courses (cid),
             opta VARCHAR NOT NULL,
             optb VARCHAR NOT NULL,
@@ -64,18 +64,7 @@ class DbMgt (object):
                 fp.write (',')
 
             try:
-                crsref = cur.execute ('''
-                        SELECT * FROM courses WHERE qid = ? AND crscode = ?
-                        ;''', (
-                            datum[qmap ['qid']],
-                            datum[qmap ['crscode']]
-                            )).fetchone ()
-
-                if not crsref:
-                    cid = cl.updatedb (db, [datum], qmap, cur)['cid']
-
-                else:
-                    cid = crsref['cid']
+                cid = cl.updatedb (db, [datum], qmap, cur)['cid']
 
                 cur.execute ('''
                         REPLACE INTO hacktab (cid, opta, optb, optc, optd) VALUES (?, ?,
@@ -171,22 +160,7 @@ class DbMgt (object):
                             datum[qmap ['qid']],
                             dupq['dogid'],
                             dupq['dogid'],
-                            )).fetchone() or {
-                                    'cid': None,
-                                    'dogid': dupq['dogid'],
-                                    'crscode': None,
-                                    'ready': False,
-                                    'qid': None
-                                    }
-
-                ansref = cur.execute ('''SELECT * FROM answers WHERE cid = ? AND dogid = ?;''', (
-                crsref['cid'],
-                dupq['dogid']
-                )).fetchone () or {
-                        'ans': None,
-                        'dogid': None,
-                        'cid': None
-                        }
+                            )).fetchone() 
 
                 cur1 = cur.connection.cursor ()
 
@@ -195,12 +169,10 @@ class DbMgt (object):
                         VALUES (?, ?, ?, ?, ?)
                         ''', (
                             crsref['cid'],
-                            datum[qmap ['crscode']] or crsref['crscode'],
-                            crsref['dogid'],
-                            True if (ansref['ans'] or datum[qmap ['ans']]) and (datum[qmap ['qid']] or
-                                crsref['qid']) and (crsref['crscode'] or
-                                    datum[qmap ['crscode']]) else False,
-                                datum[qmap ['qid']] or crsref['qid']
+                            datum[qmap ['crscode']],
+                            dupq ['dogid'],
+                            True if datum[qmap ['ans']] and datum[qmap ['qid']] and datum[qmap ['crscode']] else False,
+                                datum[qmap ['qid']]
                                 ))
 
                 cid = cur1.lastrowid
@@ -213,7 +185,7 @@ class DbMgt (object):
                         REPLACE INTO answers (ans, dogid, cid) VALUES (?,
                         ?, ?)
                         ''', (
-                            datum[qmap ['ans']] or ansref['ans'],
+                            datum[qmap ['ans']],
                             dupq['dogid'],
                             cid
                             ))
@@ -222,22 +194,22 @@ class DbMgt (object):
                 print ('insert/replace: ', err.args[0])
                 conn.close ()
                 return -1
-
-        try:
-            conn.commit ()
-
-        except sqlite3.OperationalError as err:
-            print (err.args[0])
-            return conn
-
-        if not cursor:
-            conn.close()
-        else:
+        
+        if cursor:
             return ids
+        
+        else:
+            try:
+                conn.commit ()
 
-        if repeats > 0:
-            print ('%d questions repeated' % (repeats,))
+            except sqlite3.OperationalError as err:
+                print (err.args[0])
 
-        return None
+            finally:
+                if repeats > 0:
+                    print ('%d questions repeated' % (repeats,))
+
+
+                return None
 
 
