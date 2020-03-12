@@ -54,7 +54,18 @@ class ScrMgr:
         self.qbdr.noutrefresh ()
         self.update_qscr ()
 
-    
+    def resize_screen (self):
+
+        cord, dim = self.qbdr.getbegyx (), self.qbdr.getmaxyx ()
+        self.qcord, self.qdim = (cord [0] + 1, cord [1] + 1), (dim [0] - 2, dim [1] - 2) 
+
+        self.qbdr.clear ()
+        self.qbdr.refresh ()
+        self.qbdr.box ()
+        self.qbdr.noutrefresh ()
+        self.qtextscr.resize (10000, self.qdim [1])
+        self.update_qscr (self.qst)
+
     def __getitem__ (self, attr):
         return getattr (self.qtextscr, attr)
 
@@ -260,6 +271,9 @@ class ScrMgr:
                                 [self.qmgr.qmap ['qid']]))
                             self.pqlen += 1
 
+                    else:
+                        qst = x
+
                     self.pq.append ((qst [self.qmgr.qmap ['crscode']], qst
                         [self.qmgr.qmap ['qid']]))
 
@@ -390,6 +404,10 @@ class ScrMgr:
 
         return
 
+    def ctrl_l18 (self):
+        if self.qmode and self.qst:
+            curses.flash ()
+            self.update_qscr (self.qst)
 
     def paint (self, t = None, color = curses.A_BOLD | curses.A_REVERSE, undo = False):
 
@@ -431,12 +449,18 @@ def main (stdscr, args):
 
     class LoopMgr:
         def __init__ (self, matno, crscode, tma):
+
             self.scroll_status = True
             self.pad = curses.newpad (1, 10000)
             self.crsscr_dim = crsscr.getmaxyx ()
             self.cord = crsscr.getbegyx ()
             self.mkscrollscr (matno, crscode, tma)
             self.in_fut = False
+
+            if self.scroll_status:
+                self.sthread = threading.Thread (target = self.scroll, daemon = True)
+
+                self.sthread.start ()
 
         def mkscrollscr (self, matno, crscode, tma):
             self.pad.clear ()
@@ -451,57 +475,59 @@ def main (stdscr, args):
 
         def scroll (self, t = 0.07):
 
-            right = crsscr.derwin (1, math.ceil (self.crsscr_dim [1] * (2/3)), 0, self.crsscr_dim [1] - math.ceil (self.crsscr_dim [1] * (2/3)))
-            left = crsscr.derwin (1, math.floor (self.crsscr_dim [1] * (1/3)), 0, 0)
+            crsscr.clear ()
+            crsscr.refresh ()
+            self.right = crsscr.derwin (1, math.ceil (self.crsscr_dim [1] * (2/3)), 0, self.crsscr_dim [1] - math.ceil (self.crsscr_dim [1] * (2/3)))
+            self.left = crsscr.derwin (1, math.floor (self.crsscr_dim [1] * (1/3)), 0, 0)
 
-            rcord = right.getbegyx ()
-            lcord = left.getbegyx ()
+            self.rcord = self.right.getbegyx ()
+            self.lcord = self.left.getbegyx ()
 
-            rdim = right.getmaxyx ()
-            ldim = left.getmaxyx ()
-            
-            rparam = [0, 0, rcord [0], rcord [1] + rdim [1] - 1, rcord [0],
-                    rcord [1] + rdim [1] - 1]
-            lparam = [0, self.pwrite_len, lcord [0], lcord [1], lcord [0], lcord [1]]
+            self.rdim = self.right.getmaxyx ()
+            self.ldim = self.left.getmaxyx ()
+            self.rparam = [0, 0, self.rcord [0], self.rcord [1] + self.rdim [1] - 1, self.rcord [0], self.rcord [1] + self.rdim [1] - 1]
+
+            self.lparam = [0, self.pwrite_len, self.lcord [0], self.lcord [1], self.lcord [0], self.lcord [1]]
 
             curses.curs_set (0)
 
             while self.scroll_status:
-                self.pad.noutrefresh (*rparam)
-                self.pad.noutrefresh (*lparam)
+                self.pad.noutrefresh (*self.rparam)
+                self.pad.noutrefresh (*self.lparam)
                 time.sleep (t)
+
                 curses.doupdate ()
                 
-                if rparam [3] > rcord [1]:
-                    rparam [3] -= 1
+                if self.rparam [3] > self.rcord [1]:
+                    self.rparam [3] -= 1
 
-                elif rparam [3] == rcord [1]:
-                    if rparam [1] == self.pwrite_len:
-                        rparam = [0, 0, rcord [0], rcord [1] + rdim [1] - 1, rcord [0], rcord [1] + rdim [1] - 1]
+                elif self.rparam [3] == self.rcord [1]:
+                    if self.rparam [1] == self.pwrite_len:
+                        self.rparam = [0, 0, self.rcord [0], self.rcord [1] + self.rdim [1] - 1, self.rcord [0], self.rcord [1] + self.rdim [1] - 1]
 
-                    elif rparam [1] < self.pwrite_len:
-                        rparam [1] += 1
+                    elif self.rparam [1] < self.pwrite_len:
+                        self.rparam [1] += 1
 
 
                 
-                if rparam [3] > rcord [1]:
-                    if lparam[3] > lcord [1]:
-                        lparam [3] -= 1
-                    elif lparam[3] == lcord [1]:
-                        if lparam [1] <= (self.pwrite_len - 1):
-                            lparam[1] += 1
+                if self.rparam [3] > self.rcord [1]:
+                    if self.lparam[3] > self.lcord [1]:
+                        self.lparam [3] -= 1
+                    elif self.lparam[3] == self.lcord [1]:
+                        if self.lparam [1] <= (self.pwrite_len - 1):
+                            self.lparam[1] += 1
 
-                elif rparam [3] == rcord [1]:
-                    if rparam [1] == 1:
-                        lparam = [0, 0, lcord [0], lcord [1] + ldim [1] - 1, lcord [0],
-                        lcord [1] + ldim [1] - 1]
+                elif self.rparam [3] == self.rcord [1]:
+                    if self.rparam [1] == 1:
+                        self.lparam = [0, 0, self.lcord [0], self.lcord [1] + self.ldim [1] - 1, self.lcord [0],
+                        self.lcord [1] + self.ldim [1] - 1]
 
-                    elif rparam [1] > 1:
-                        if lparam[3] > lcord [1]:
-                            lparam [3] -= 1
-                        elif lparam[3] == lcord [1]:
-                            if lparam [1] <= (self.pwrite_len - 1):
-                                lparam[1] += 1
+                    elif self.rparam [1] > 1:
+                        if self.lparam[3] > self.lcord [1]:
+                            self.lparam [3] -= 1
+                        elif self.lparam[3] == self.lcord [1]:
+                            if self.lparam [1] <= (self.pwrite_len - 1):
+                                self.lparam[1] += 1
 
                 
 
@@ -516,6 +542,30 @@ def main (stdscr, args):
         def ctrl_l12 (self):
             stdscr.redrawwin ()
             update_scr ()
+
+        def key_resize410 (self):
+            
+            nonlocal qstscr, inputscr, ipt_cord, crsscr
+
+            curses.update_lines_cols()
+
+            qstscr.resize (curses.LINES - 2, curses.COLS)
+            inputscr.resize (1, curses.COLS)
+            ipt_dim = inputscr.getmaxyx ()
+
+            ipt_cord = inputscr.getbegyx ()
+            crsscr.resize (1, curses.COLS)
+
+            self.crsscr_dim = crsscr.getmaxyx ()
+            self.cord = crsscr.getbegyx ()
+            if self.scroll_status:
+                self.scroll_status = False
+                self.scroll_status = True
+
+                self.sthread = threading.Thread (target = self.scroll, args = (0.70,), daemon = True)
+                self.sthread.start ()
+                
+            qa_scrmgr.resize_screen ()
 
         def ctrl_c3 (self):
             return BREAK
@@ -734,9 +784,6 @@ def main (stdscr, args):
 
     handler = LoopMgr (args.matno, args.crscode, args.tma)
 
-    sthread = threading.Thread (target = handler.scroll, daemon = True)
-
-    sthread.start ()
     
     errpad = curses.newpad (10000, ipt_dim [1])
 
