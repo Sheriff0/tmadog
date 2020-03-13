@@ -72,24 +72,11 @@ class Navigation (object):
         def __init__ (self, home_url, webmap, keys, session = requests, **kwargs):
             self.webmap = webmap
             self.keys = keys
+            self.home_url = home_url
             self.cache = {}
             self.session = session 
             self.traverse_deps = True
             self.kwargs = kwargs
-            self.kwargs.update (
-                    headers = {
-                        'host': urllib.parse.urlparse (home_url).hostname,
-                        'referer': home_url,
-                        'sec-fetch-mode': 'navigate',
-                        'sec-fetch-user': '?1',
-                        'sec-fetch-site': 'none'
-                        }
-                    )
-            res = session.get (home_url, **self.kwargs)
-            res.raise_for_status ()
-
-            self.cache['home_page'] = res
-            self.lp = 'home_page'
 
         def __repr__ (self):
             return self.cache[self.lp].url
@@ -114,21 +101,7 @@ class Navigation (object):
             self.kwargs = kwargs if kwargs else self.kwargs
 
             if 'home_page' not in self or self ['home_page'].url != home_url:
-                self.kwargs.update (
-                        headers = {
-                            'host': urllib.parse.urlparse (home_url).hostname,
-                            'referer': home_url,
-                            'sec-fetch-mode': 'navigate',
-                            'sec-fetch-user': '?1',
-                            'sec-fetch-site': 'none'
-                            }
-                        )
-                res = self.session.get (home_url, **self.kwargs)
-                res.raise_for_status ()
-
-                self.cache['home_page'] = res
-
-            self.lp = 'home_page'
+                self.boot ('home_page')
 
         def __getitem__ (self, sl):
             if isinstance (sl, int):
@@ -153,6 +126,9 @@ class Navigation (object):
                     deps = [s]
                     while True:
                         s1 = self.webmap [deps [-1]]['requires']
+                        if not s1:
+                            break
+
                         v = self.webmap [s1]['volatile']
                         if not v and s1 in self:
                             if urllib.parse.urlparse (self.cache [s1].url).hostname == urllib.parse.urlparse (self.cache ['home_page'].url).hostname:
@@ -186,9 +162,17 @@ class Navigation (object):
 
 
         def __goto__ (self, lp = None, sl = slice (None, None)):
+
+
             lp = lp if lp else self.lp
+
+            if not self.webmap [lp]['requires']:
+                return self.boot (lp)
+
+            x = self.cache [self.webmap [lp]['requires']]
+
             req_gen = Recipe (self.webmap [lp]['path'], self.webmap[lp]['indices'],
-                    self.keys, self.cache[self.webmap [lp]['requires']], lp)
+                    self.keys, x, lp)
 
             gen = next (req_gen)
 
@@ -198,8 +182,8 @@ class Navigation (object):
 
             for i, r in zip (range (req_gen.len)[sl], gen):
 
-                self.kwargs.update (
-                        headers = dogs.mkheader (r ['url'], referer)
+                self.kwargs ['headers'].update (
+                        dogs.mkheader (r ['url'], referer)
                         )
 
                 res = self.session.request (**r, **self.kwargs)
@@ -226,4 +210,26 @@ class Navigation (object):
                 self.cache [lp] = res
                 self.lp = lp
                 return res
+        
+        def boot (self, page):
+
+            self.kwargs.setdefault ('headers', {})
+
+            self.kwargs ['headers'].update (
+                    {
+                        'host': urllib.parse.urlparse (self.home_url).hostname,
+                        'referer': self.home_url,
+                        'sec-fetch-mode': 'navigate',
+                        'sec-fetch-user': '?1',
+                        'sec-fetch-site': 'none'
+                        }
+                    )
+
+            res = self.session.get (self.home_url, **self.kwargs)
+            res.raise_for_status ()
+
+            self.cache[page] = res
+            self.lp = page
+
+            return res
 

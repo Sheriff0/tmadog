@@ -153,13 +153,14 @@ class DbMgt (object):
                 dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum[qmap ['qdescr']],)).fetchone ()
 
                 crsref = cur.execute ('''
-                        SELECT * FROM courses WHERE (crscode = ? AND qid = ? AND
-                        dogid = ?) OR (dogid = ?) LIMIT 1
+                        SELECT * FROM courses WHERE (crscode == ? AND qid == ? AND
+                        dogid == ?) OR (dogid == ? AND crscode = ?) LIMIT 1
                         ''', (
                             datum[qmap ['crscode']],
                             datum[qmap ['qid']],
                             dupq['dogid'],
                             dupq['dogid'],
+                            None,
                             )).fetchone() 
 
                 cur1 = cur.connection.cursor ()
@@ -168,7 +169,7 @@ class DbMgt (object):
                         REPLACE INTO courses (cid, crscode, dogid, ready, qid)
                         VALUES (?, ?, ?, ?, ?)
                         ''', (
-                            crsref['cid'],
+                            crsref['cid'] if crsref else None,
                             datum[qmap ['crscode']],
                             dupq ['dogid'],
                             True if datum[qmap ['ans']] and datum[qmap ['qid']] and datum[qmap ['crscode']] else False,
@@ -195,21 +196,16 @@ class DbMgt (object):
                 conn.close ()
                 return -1
         
+        conn.commit ()
+
         if cursor:
             return ids
         
         else:
-            try:
-                conn.commit ()
-
-            except sqlite3.OperationalError as err:
-                print (err.args[0])
-
-            finally:
-                if repeats > 0:
-                    print ('%d questions repeated' % (repeats,))
+            if repeats > 0:
+                print ('%d questions repeated' % (repeats,))
 
 
-                return None
+            return None
 
 

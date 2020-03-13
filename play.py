@@ -84,10 +84,10 @@ class ScrMgr:
                     self.pqidx -= 1
                
                     p = self.amgr (*self.pq [self.pqidx])
-                    l = self.amgr (*self.pq [-1]).copy ()
+                    l = self.amgr (*self.pq [-1])
 
                     if p and l:
-                        self.update_qscr (self.amgr.download (p, l))
+                        self.update_qscr (self.amgr.download (p, l.copy ()))
 
     def key_right261 (self):
         if self.qmode:
@@ -96,10 +96,10 @@ class ScrMgr:
                     self.pqidx += 1
 
                     p = self.amgr (*self.pq [self.pqidx])
-                    l = self.amgr (*self.pq [-1]).copy ()
+                    l = self.amgr (*self.pq [-1])
 
                     if p and l:
-                        self.update_qscr (self.amgr.download (p, l))
+                        self.update_qscr (self.amgr.download (p, l.copy ()))
 
     def key_up259 (self):
         if self.qmode and self.optmap:
@@ -271,7 +271,7 @@ class ScrMgr:
                                 [self.qmgr.qmap ['qid']]))
                             self.pqlen += 1
 
-                    else:
+                    elif x and qst [self.qmgr.qmap ['qid']] == x [self.qmgr.qmap ['qid']]:
                         qst = x
 
                     self.pq.append ((qst [self.qmgr.qmap ['crscode']], qst

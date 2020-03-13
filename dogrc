@@ -11,6 +11,7 @@ pwd = [Password]
 
 [home_page]
 url = https://www.nouonline.net/
+requires =
 
 [login_page]
 keys = ${kmap:matno}/${kmap:pwd}
