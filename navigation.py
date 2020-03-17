@@ -77,6 +77,7 @@ class Navigation (object):
             self.session = session 
             self.traverse_deps = True
             self.kwargs = kwargs
+            self.refcount = 1
 
         def __repr__ (self):
             return self.cache[self.lp].url

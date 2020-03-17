@@ -12,6 +12,7 @@ from pathlib import PurePath
 from urllib import parse
 import configparser
 import dbmgt
+import copy
 
 
 class AnsMgt:
@@ -37,7 +38,7 @@ class AnsMgt:
 
         epilogs = [
                 '',
-                
+
                 '''Type '%s' if answer corresponds to row %s and so on.''',
 
                 '''Type '%s' if answer corresponds to row %s or type ':hack' to switch to hack mode.'''
@@ -83,7 +84,7 @@ class AnsMgt:
 
         #def __call__ (self, qstlike, d = None):
         #   return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
-        
+
         def __call__ (self, crscode, qid):
             x = self._cache.get (crscode.upper (), None)
 
@@ -99,14 +100,14 @@ class AnsMgt:
                 if x:
                     if crscode.lower () in self._cache and self._cache [crscode.lower ()][self.qmap ['qid']] == x [self.qmap ['qid']]:
                         self._cache.pop (crscode.lower ())
-                    
+
                 return x
 
 
 
         def _copycase (self, t, i):
             return i.upper () if t.isupper () else i.lower ()
-        
+
         def _mkprompt (self):
             txt = '''{prolog}
 
@@ -125,13 +126,13 @@ class AnsMgt:
             return txt
 
         def _qpromt (self, qst, epilog = None, prolog = None):
-            
-            if not hasattr (self, 'p_text'): 
+
+            if not hasattr (self, 'p_text'):
                 self.p_text = self._mkprompt ()
 
             x = input (self.p_text.format (
                 prolog = prolog or '(tmadog)',
-                epilog = epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (self.pseudos[0], self.pseudos[0]), 
+                epilog = epilog or '''Type '%s' if answer corresponds to row %s and so on.''' % (self.pseudos[0], self.pseudos[0]),
                 **qst
                 )
                 )
@@ -191,7 +192,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 else:
                     self.pop (qst [self.qmap ['crscode']], qst [self.qmap ['qid']])
 
-        
+
         def answer (self, qst):
 
             if not isinstance (qst, lxml.html.FieldsDict):
@@ -204,6 +205,8 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 if x and x[self.qmap ['ans']]:
                     qst [self.qmap ['ans']] = x [self.qmap ['ans']]
 
+                    self.update (qst)
+
                     return qst
 
                 else:
@@ -213,7 +216,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                         x = self.convert_ans (qst, x[self.qmap ['ans']])
                         if x:
                             qst [self.qmap ['ans']] = x
-                            self.update (qst.copy ())
+                            self.update (qst)
                             return qst
 
 
@@ -222,6 +225,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
+                    self.update (qst)
                     qst = self.download (x, qst)
                     return qst
 
@@ -230,15 +234,18 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     x [self.qmap ['ans']] = self.convert_ans (x, x[self.qmap ['ans']])
 
                     if x [self.qmap ['ans']]:
-                        qst.update (x)
-                        self.update (qst.copy ())
+                        self.update (qst)
+                        qst = self.download (x, qst)
+                        self.update (qst)
                         return qst
 
 
             self.resolve (qst, self.NOANSWER)
 
         def update (self, qst):
-            
+
+            qst = copy.deepcopy (qst)
+
             self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
 
             self._cache [qst [self.qmap ['crscode']].upper ()].update ([(qst
@@ -256,7 +263,8 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
         def resolve (self, qst, sig):
 
             if not self.interactive:
-                self.update (qst.copy ())
+                self.update (qst)
+
                 return sig
 
             x = self.qprompt (
@@ -273,7 +281,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             self.update (qst.copy ())
 
             return None if not qst[self.qmap ['ans']] else qst
-            
+
 
         def revert_ans (self, qst):
             try:
@@ -416,14 +424,16 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             return r
 
         def download (self, x, qst):
-            
+
             if not hasattr (self, 'opts'):
                 self.opts = [ 'opt' + chr (97 + a) for a in range (len (self.pseudos))]
 
-            qst.update (
+            w = copy.deepcopy (qst)
+
+            w.update (
                     {
                         y: x [y] for y in (self.qmap [z] for z in self.qmap if z in ['qdescr', 'qid', 'ans'] + self.opts)
                         }
                     )
 
-            return qst
+            return w
