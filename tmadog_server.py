@@ -58,7 +58,7 @@ You have scored {mark:d} mark for question. Your total score is {totscore:d} out
 
 class RequestHandler (http.server.BaseHTTPRequestHandler):
 
-    _cookies = (x for x in range (20))
+    _cookies = (x for x in range (100))
 
     active_st = {}
 
