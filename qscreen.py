@@ -1,6 +1,6 @@
 from navigation import Navigation
 from qstmgt import QstMgt
-import cfscrape
+import cfscrape_mod
 import curses
 import math
 import pdb
@@ -32,6 +32,7 @@ class QScr:
         self.qscr = qscr
         self.qmgr = None
         self.qline = 0
+        self.optmap = []
         self.pqidx = -1
         self.lpqidx = -1
         self.id = id
@@ -62,13 +63,6 @@ class QScr:
 
         return self.qmgr
 
-    def __getitem__ (self, attr):
-        if self.has_screen ():
-            return getattr (self.pscr, attr)
-
-        else:
-            raise Exception ('QScr: No available screen')
-
 
     def acquire_screen (self, pscreen, scrparams = None):
         self.pscr = pscreen
@@ -91,7 +85,6 @@ class QScr:
 
 class QscrMuxer:
     V_GRANULARITY = 10000
-    MAX_PHY_SCREENS = 2
 
     def __init__ (self, pscreen, keys): 
         
@@ -100,18 +93,17 @@ class QscrMuxer:
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
 
 
-        if scrdim [0] == 0:
+        if scrdim [0] < 3:
             self.has_screen = False
             return -1
         
         else:
             self.has_screen = True
             d = 1
-            if scrdim [0] == 1:
+            if scrdim [0] == 3:
                 self.qst_scr = self.pscreen
             else:
-                if scrdim [0] > 2:
-                    d = min (self.MAX_PHY_SCREENS, len (keys))
+                d = min (math.trunc (scrdim [0] / 3), len (keys))
 
                 self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
 
@@ -153,7 +145,7 @@ class QscrMuxer:
                         key [keys.URL],
                         key [keys.WMAP], 
                         key,
-                        session = cfscrape.create_scraper ()
+                        session = cfscrape_mod.create_scraper ()
                         )
 
             finally:
@@ -189,9 +181,13 @@ class QscrMuxer:
 
 
     def __getitem__ (self, key):
-        return getattr (self.qscr, key)
+        return getattr (self.qscrs [self.qscr_pointer], key)
 
-    def prev (self, p = None):
+    def __setitem__ (self, key, value):
+        setattr (self.qscrs [self.qscr_pointer], key, value)
+
+
+    def scroll_up (self, p = None):
         self.unload ()
 
         if not p:
@@ -216,7 +212,7 @@ class QscrMuxer:
         self.load ()
 
 
-    def next (self, p = None):
+    def scroll_down (self, p = None):
         self.unload ()
 
         if not p:
@@ -240,30 +236,23 @@ class QscrMuxer:
 
         self.load ()
 
-    def __eq__ (self, value):
-        return hasattr (self, 'qscr') and self.qscr == value
 
     def load (self, scr = None):
 
         if scr == None:
             scr = self.qscrs [self.qscr_pointer]
-        self.pscr = scr.pscr
-        self.qscr = scr.qscr
-        self.nav = scr.nav
-        self.qline = scr.qline
-        self.qst = scr.qst
-        self.qmgr = scr.boot ()
+
+        scr.boot ()
+
         self.scrdim = (scr.scrdim [0] - 2, scr.scrdim [1] - 2)
         self.scord = (scr.scord [0] + 1, scr.scord [1] + 1)
 
-        self.pscr.box ()
-        self.pscr.noutrefresh ()
-        self.qscr.noutrefresh (self.qline, 0, self.scord[0], self.scord [1],
+        scr.pscr.box ()
+        scr.pscr.noutrefresh ()
+        scr.qscr.noutrefresh (scr.qline, 0, self.scord[0], self.scord [1],
                 (self.scrdim [0] + self.scord [0]) - 1, (self.scrdim [1] + self.scord
                     [1]) - 1)
 
-        self.pqidx = scr.pqidx
-        self.lpqidx = scr.lpqidx
 
         return self
 
@@ -272,29 +261,15 @@ class QscrMuxer:
         if not scr:
             scr = self.qscrs [self.qscr_pointer]
 
-        if hasattr (self, 'qline'):
-            scr.qline = self.qline
-
-        if hasattr (self, 'pqdix'):
-            scr.pqidx = self.pqidx
-
-        if hasattr (self, 'lpqidx'):
-            scr.lpqidx = self.lpqidx
-
         if touch_screen:
             scr.pscr.box (' ', ' ')
             scr.pscr.noutrefresh ()
-            self.qscr.noutrefresh (self.qline, 0, self.scord[0], self.scord [1],
+            scr.qscr.noutrefresh (scr.qline, 0, self.scord[0], self.scord [1],
                     (self.scrdim [0] + self.scord [0]) - 1, (self.scrdim [1] + self.scord
                         [1]) - 1)
 
-        scr.qst = self.qst
-
-        self.qscr = self.pscr = self.qmgr = self.nav = None
 
         self.scrdim = self.scord = None
-        self.pqidx = self.lpqidx = -1
-        self.qline = 0
         return self
 
 
@@ -308,7 +283,7 @@ class QscrMuxer:
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
 
 
-        if scrdim [0] == 0:
+        if scrdim [0] < 3:
             self.has_screen = False
             self.status_scr = None
             self.status_bar = None
@@ -317,11 +292,10 @@ class QscrMuxer:
         else:
             self.has_screen = True
             d = 1
-            if scrdim [0] == 1:
+            if scrdim [0] == 3:
                 self.qst_scr = self.pscreen
             else:
-                if scrdim [0] > 2:
-                    d = min (self.MAX_PHY_SCREENS, self.qscr_len)
+                d = min (math.trunc (scrdim [0] / 3), self.qscr_len)
 
                 self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
 
@@ -350,6 +324,7 @@ class QscrMuxer:
         ptr = self.qscr_pointer
 
         i = 0
+        idx = None
 
         for scr in self.qscrs:
             scr.qscr.resize (self.V_GRANULARITY, scrdim [1] - 2)
@@ -360,7 +335,8 @@ class QscrMuxer:
                 try:
                     s = self.subscreens [i]
                     scr.acquire_screen (s)
-                    self.qscr_pointer = scr.id
+                    idx = scr.id
+                    self.qscr_pointer = idx
                     yield self.load ()
                     self.unload ()
                     i += 1
@@ -370,6 +346,12 @@ class QscrMuxer:
 
         
         self.qscr_pointer = ptr
+        if not self.qscrs [self.qscr_pointer].has_screen ():
+            if self.qscrs [idx].has_screen ():
+                self.qscrs [self.qscr_pointer].acquire_screen (
+                        *self.qscrs [idx].release_screen ()
+                        )
+
         yield self.load ()
 
 

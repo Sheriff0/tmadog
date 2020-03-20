@@ -16,7 +16,7 @@ from ansmgt import AnsMgt
 import dbmgt
 import curses
 import curses.ascii
-import cfscrape
+import cfscrape_mod
 import concurrent.futures
 import lxml
 import qscreen
@@ -48,29 +48,36 @@ class MPCT_Preprocessor:
         self.PWD = self.wmap ['kmap']['pwd']
         self.param = {}
         self.param [self.WMAP] = self.wmap
+        self.len = max (len (self.crscodes), len (self.tmas))
 
     def __len__ (self):
-        return len (self.matnos)
+        return self.len
 
     def __iter__ (self):
         yield from self.__next__ ()
 
     def __next__ (self):
 
-        for i, m in enumerate (self.matnos):
-            self.param [self.MATNO] = m
+        for i in range (self.len):
 
             try:
+                self.param [self.MATNO] = self.matnos [i]
+                self.param [self.PWD] = self.pwds [i]
                 self.param [self.CRSCODE] = self.crscodes [i]
                 self.param [self.TMA] = self.tmas [i]
-                self.param [self.PWD] = self.pwds [i]
                 self.param [self.URL] = self.urls [i]
-
+            
             except IndexError:
-                pass
+                try:
+                    self.param [self.CRSCODE] = self.crscodes [i]
+                    self.param [self.TMA] = self.tmas [i]
+                    self.param [self.URL] = self.urls [i]
+                
+                except IndexError:
+                    pass
 
             finally:
-                yield copy.deepcopy (self.param)
+                yield self.param.copy ()
 
 
 
@@ -80,7 +87,7 @@ class Interface:
         self.keys = keys
         self.amgr = amgr
         curses.curs_set (0)
-        self.scr_mgr.qst = None
+        self.scr_mgr ['qst'] = None
         self.qmode = True
         self.pq = []
         self.pqlen = 0
@@ -88,7 +95,7 @@ class Interface:
         self.update_qscr ()
 
     def __getitem__ (self, attr):
-        return self.scr_mgr [attr]
+        return getattr (self.scr_mgr ['qscr'], attr)
 
     def __call__ (self, key):
         cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
@@ -98,52 +105,50 @@ class Interface:
         except StopIteration:
             pass
 
-    def key_left260 (self, refresh = False):
+    def key_left260 (self):
         if self.qmode:
             if self.pq:
-                l = self.amgr (*self.pq [self.scr_mgr.lpqidx])
+                l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
-                if not refresh:
-                    self.scr_mgr.pqidx -= 1
+                self.scr_mgr ['pqidx'] -= 1
                 
-                if 0 <= self.scr_mgr.pqidx < self.pqlen:
-                        p = self.amgr (*self.pq [self.scr_mgr.pqidx])
+                if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
+                        p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
 
                         if p and l:
                             self.update_qscr (self.amgr.download (p, l))
 
-                elif self.scr_mgr.pqidx < 0:
-                    self.scr_mgr.pqidx = 0
+                elif self.scr_mgr ['pqidx'] < 0:
+                    self.scr_mgr ['pqidx'] = 0
 
 
-    def key_right261 (self, refresh = False):
+    def key_right261 (self):
         if self.qmode and self.pq:
-            l = self.amgr (*self.pq [self.scr_mgr.lpqidx])
+            l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
-            if not refresh:
-                self.scr_mgr.pqidx += 1
+            self.scr_mgr ['pqidx'] += 1
             
-            if 0 <= self.scr_mgr.pqidx < self.pqlen:
-                p = self.amgr (*self.pq [self.scr_mgr.pqidx])
+            if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
+                p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
 
                 if p and l:
                     self.update_qscr (self.amgr.download (p, l))
 
-            elif self.scr_mgr.pqidx >= self.pqlen:
-                if (self.scr_mgr.pqidx - self.scr_mgr.lpqidx) == 1 and not refresh:
-                    self.scr_mgr.pqidx = self.pqlen - 1
+            elif self.scr_mgr ['pqidx'] >= self.pqlen:
+                if (self.scr_mgr ['pqidx'] - self.scr_mgr ['lpqidx']) == 1:
+                    self.scr_mgr ['pqidx'] = self.pqlen - 1
                     return 
 
-                self.scr_mgr.pqidx = self.pqlen - 1
+                self.scr_mgr ['pqidx'] = self.pqlen - 1
 
                 if l:
                     self.update_qscr (l)
 
 
     def key_up259 (self):
-        if self.qmode and self.optmap:
-            cur = self.scr_mgr.qscr.getyx ()
-            n = [i for i,t in enumerate (self.optmap) if t[0] == cur [0]]
+        if self.qmode and self.scr_mgr ['optmap']:
+            cur = self.scr_mgr ['qscr'].getyx ()
+            n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
 
             if not n:
                 return
@@ -153,9 +158,9 @@ class Interface:
                 
                 if t < 0:
                     raise IndexError (t)
-                t = self.optmap [t]
+                t = self.scr_mgr ['optmap'] [t]
 
-                if self.isseen (self.optmap [n [0]], TOP):
+                if self.isseen (self.scr_mgr ['optmap'] [n [0]], TOP):
                     self.paint (undo = True)
 
 
@@ -163,15 +168,15 @@ class Interface:
                         pass
 
                     elif self.isseen (t, BOTTOM):
-                        self.scr_mgr.qline -= 1
+                        self.scr_mgr ['qline'] -= 1
 
                     else:
-                        self.scr_mgr.qline -= t[0]
+                        self.scr_mgr ['qline'] -= t[0]
 
-                    self.scr_mgr.qscr.move (t[0], 0)
+                    self.scr_mgr ['qscr'].move (t[0], 0)
 
                 else:
-                    self.scr_mgr.qline -= 1
+                    self.scr_mgr ['qline'] -= 1
 
                 self.paint ()
 
@@ -179,30 +184,30 @@ class Interface:
                 if self.isseen ((0, self.scr_mgr.scrdim[1] - 1), TOP):
                     pass
                 else:
-                    self.scr_mgr.qline -= 1
+                    self.scr_mgr ['qline'] -= 1
 
         elif not self.qmode:
             if not self.isseen (self.msgyx, TOP):
-                self.scr_mgr.qline -= 1
+                self.scr_mgr ['qline'] -= 1
 
 
-        self.scr_mgr.qscr.noutrefresh (self.scr_mgr.qline, 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
 
 
     def key_down258 (self):
-        if self.qmode and self.optmap:
-            cur = self.scr_mgr.qscr.getyx ()
-            n = [i for i,t in enumerate (self.optmap) if t[0] == cur [0]]
+        if self.qmode and self.scr_mgr ['optmap']:
+            cur = self.scr_mgr ['qscr'].getyx ()
+            n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
 
             if not n:
                 return
 
             try:
-                t = self.optmap [n [0] + 1]
+                t = self.scr_mgr ['optmap'] [n [0] + 1]
 
-                if self.isseen (self.optmap [n [0]]):
+                if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
                     self.paint (undo = True)
 
 
@@ -210,35 +215,35 @@ class Interface:
                         pass
 
                     elif self.isseen (t, 1):
-                        self.scr_mgr.qline += 1
+                        self.scr_mgr ['qline'] += 1
 
                     else:
-                        offset = t[0] - (self.scr_mgr.qline + self.scr_mgr.scrdim[0] - 1)
-                        self.scr_mgr.qline += offset if offset >= 0 else 1
+                        offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                        self.scr_mgr ['qline'] += offset if offset >= 0 else 1
 
-                    self.scr_mgr.qscr.move (t[0], 0)
+                    self.scr_mgr ['qscr'].move (t[0], 0)
 
-                elif self.isseen (self.optmap [n [0]], 1):
-                    self.scr_mgr.qline += 1
+                elif self.isseen (self.scr_mgr ['optmap'] [n [0]], 1):
+                    self.scr_mgr ['qline'] += 1
 
                 else:
-                    self.scr_mgr.qline += 1
+                    self.scr_mgr ['qline'] += 1
 
 
                 self.paint ()
 
             except IndexError:
-                if self.isseen (self.optmap [n [0]]):
+                if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
                     pass
                 else:
-                    self.scr_mgr.qline += 1
+                    self.scr_mgr ['qline'] += 1
 
 
         elif not self.qmode:
             if not self.isseen (self.msgyx, BOTTOM):
-                self.scr_mgr.qline += 1
+                self.scr_mgr ['qline'] += 1
 
-        self.scr_mgr.qscr.noutrefresh (self.scr_mgr.qline, 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
                         
@@ -246,55 +251,56 @@ class Interface:
     def isseen (self, coord, dir = TOP):
         if dir == BOTTOM:
             x = math.floor (coord [1] / self.scr_mgr.scrdim [1]) + coord [0]
-            y = (self.scr_mgr.qline + self.scr_mgr.scrdim [0]) - 1
-            return y >= x >= self.scr_mgr.qline
+            y = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+            return y >= x >= self.scr_mgr ['qline']
         
         elif dir == TOP:
             x = coord [0]
-            y = (self.scr_mgr.qline + self.scr_mgr.scrdim [0]) - 1
-            return self.scr_mgr.qline <= x <= y
+            y = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+            return self.scr_mgr ['qline'] <= x <= y
 
 
     def enter10 (self):
 
-        if self.qmode and self.scr_mgr.qst: 
+        if self.qmode and self.scr_mgr ['qst']: 
             c = chr (self ['inch'] () & 0xff)
-            self.scr_mgr.qst [self.scr_mgr.qmgr.qmap ['ans']] = c
+            self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['ans']] = c
            
-            e = self.scr_mgr.qmgr.submit (self.scr_mgr.qst)
+            e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
 
-            self.qmode = False
 
-            if hasattr (self.scr_mgr.qmgr, 'sres'):
-                y = lxml.html.fromstring (self.scr_mgr.qmgr.sres.text).text_content ()
+            if self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error' and hasattr (self.scr_mgr ['qmgr'], 'sres'):
+                self.qmode = False
+
+                y = lxml.html.fromstring (self.scr_mgr ['qmgr'].sres.text).text_content ()
 
                 x = re.search (r'(?P<mark>[01])\s+mark for question', y, re.I)
 
-                if self.scr_mgr.qst [self.scr_mgr.qmgr.qmap ['qid']] != 'error' and x:
-                    self.amgr.check (self.scr_mgr.qst, int (x.group ('mark')), e)
+                if x:
+                    self.amgr.check (self.scr_mgr ['qst'], int (x.group ('mark')), e)
 
 
-                self.scr_mgr.qscr.clear ()
+                self.scr_mgr ['qscr'].clear ()
 
-                self.scr_mgr.qscr.addstr (0, 0, y)
+                self.scr_mgr ['qscr'].addstr (0, 0, y)
 
                 self.msgyx = [0]
-                self.msgyx.append ((self.scr_mgr.qscr.getyx ()[0] + 1) * self.scr_mgr.scrdim
+                self.msgyx.append ((self.scr_mgr ['qscr'].getyx ()[0] + 1) * self.scr_mgr.scrdim
                         [1])
 
-                self.scr_mgr.qline = 0
+                self.scr_mgr ['qline'] = 0
 
-                self.scr_mgr.qscr.noutrefresh (self.scr_mgr.qline, 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+                self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                             [1]) - 1)
 
 
             else:
-                self.scr_mgr.qst = None
+                self.scr_mgr ['qst'] = None
                 return self.update_qscr ()
 
         else:
-            qst = self.scr_mgr.qmgr.fetch (timeout = (30.5, 60))
+            qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
 
             if not qst:
                 return BREAK
@@ -305,16 +311,16 @@ class Interface:
 
                 x = self.amgr.answer (x)
 
-                if x and x != self.amgr.NOANSWER and qst [self.scr_mgr.qmgr.qmap ['qid']] == x [self.scr_mgr.qmgr.qmap ['qid']]:
+                if x and x != self.amgr.NOANSWER and qst [self.scr_mgr ['qmgr'].qmap ['qid']] == x [self.scr_mgr ['qmgr'].qmap ['qid']]:
                     qst = x
 
-                self.pq.append ((qst [self.scr_mgr.qmgr.qmap ['crscode']], qst
-                    [self.scr_mgr.qmgr.qmap ['qid']]))
+                self.pq.append ((qst [self.scr_mgr ['qmgr'].qmap ['crscode']], qst
+                    [self.scr_mgr ['qmgr'].qmap ['qid']]))
 
                 self.pqlen += 1
 
-                self.scr_mgr.pqidx = self.pqlen - 1
-                self.scr_mgr.lpqidx = self.scr_mgr.pqidx
+                self.scr_mgr ['lpqidx'] = self.pqlen - 1
+                self.scr_mgr ['pqidx'] = self.scr_mgr ['lpqidx']
 
             self.qmode = True
 
@@ -325,63 +331,62 @@ class Interface:
     def update_qscr (self, qst = None, keep_qline = False):
 
         if not keep_qline:
-            self.scr_mgr.qline = 0
+            self.scr_mgr ['qline'] = 0
 
-        self.optmap = []
 
-        if self.scr_mgr.qst or qst: 
-            qst = self.scr_mgr.qst if not qst else qst
+        if qst: 
             
-            self.scr_mgr.qst = qst
+            self.scr_mgr ['qst'] = qst
+            self.scr_mgr ['optmap'] = []
 
-            self.scr_mgr.qscr.move (0, 0)
-            self.scr_mgr.qscr.clear ()
+            self.scr_mgr ['qscr'].move (0, 0)
+            self.scr_mgr ['qscr'].clear ()
 
-            for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.scr_mgr.qmgr.pseudos))]:
+            for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.scr_mgr ['qmgr'].pseudos))]:
                 if f.startswith ('opt'):
                     i = (ord (f[-1]) & 0x1f) - 1
-                    x = self.scr_mgr.qscr.getyx ()
+                    x = self.scr_mgr ['qscr'].getyx ()
                     
-                    if isinstance (self.scr_mgr.qmgr.pseudos [i], int):
-                        self.scr_mgr.qscr.addch (self.scr_mgr.qmgr.pseudos [i])
+                    if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int):
+                        self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
                         pre = ''
                     else:
-                        pre = self.scr_mgr.qmgr.pseudos [i] + ': '
+                        pre = self.scr_mgr ['qmgr'].pseudos [i] + ': '
 
-                    self.scr_mgr.qscr.addstr (pre + qst [self.scr_mgr.qmgr.qmap [f]].strip ())
-                    cur = self.scr_mgr.qscr.getyx ()
-                    self.optmap.append ([
+                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip ())
+                    cur = self.scr_mgr ['qscr'].getyx ()
+                    self.scr_mgr ['optmap'].append ([
                         x[0],
                         (cur [0] - x[0]) * (self.scr_mgr.scrdim [1]) + cur [1],
-                        self.scr_mgr.qmgr.pseudos [i] if isinstance (self.scr_mgr.qmgr.pseudos [i], int) else None,
+                        self.scr_mgr ['qmgr'].pseudos [i] if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int) else None,
                         curses.A_NORMAL
                         ])
 
-                    self.scr_mgr.qscr.addch ('\n')
+                    self.scr_mgr ['qscr'].addch ('\n')
 
                 elif f == 'qdescr':
-                    if isinstance (qst [self.scr_mgr.qmgr.qmap ['qn']], int):
-                        self.scr_mgr.qscr.addch (self.scr_mgr.qmgr.pseudos [i])
+                    if isinstance (qst [self.scr_mgr ['qmgr'].qmap ['qn']], int):
+                        self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
                         pre = ''
                     else:
-                        pre = str (qst [self.scr_mgr.qmgr.qmap ['qn']]) + '. '
+                        pre = str (qst [self.scr_mgr ['qmgr'].qmap ['qn']]) + '. '
 
-                    self.scr_mgr.qscr.addstr (pre + qst [self.scr_mgr.qmgr.qmap [f]].strip () + '\n')
+                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip () + '\n')
 
-                self.scr_mgr.qscr.addch ('\n')
+                self.scr_mgr ['qscr'].addch ('\n')
 
-            if not self.optmap:
+            if not self.scr_mgr ['optmap']:
                 pass #NOTE: Draw a textbox for fill-in-the-gap answer
            
 
-            elif qst [self.scr_mgr.qmgr.qmap ['qid']] != 'error':
+            elif qst [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error':
 
-                a = qst [self.scr_mgr.qmgr.qmap ['ans']]
+                a = qst [self.scr_mgr ['qmgr'].qmap ['ans']]
                 
                 if a:
-                    i = self.scr_mgr.qmgr.pseudos.index (a)
+                    i = self.scr_mgr ['qmgr'].pseudos.index (a)
 
-                    self.optmap [i][-1] = curses.A_BLINK
+                    self.scr_mgr ['optmap'] [i][-1] = curses.A_BLINK
 
                 else:
                     i = 0
@@ -389,24 +394,27 @@ class Interface:
             else:
                     i = 0
 
-            self.paint (self.optmap [i])
+            self.paint (self.scr_mgr ['optmap'] [i])
+
+        elif self.scr_mgr ['qst']:
+            pass
 
         else:
-            self.scr_mgr.qline = 0
-            self.scr_mgr.qscr.clear ()
-            self.scr_mgr.qscr.addstr (0, 0, 'Hit Enter to start')
+            self.scr_mgr ['qline'] = 0
+            self.scr_mgr ['qscr'].clear ()
+            self.scr_mgr ['qscr'].addstr (0, 0, 'Hit Enter to start')
 
 
-        self.scr_mgr.qscr.noutrefresh (self.scr_mgr.qline, 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
 
         return
 
     def ctrl_l18 (self):
-        if self.qmode and self.scr_mgr.qst:
+        if self.qmode and self.scr_mgr ['qst']:
             curses.flash ()
-            self.update_qscr (self.scr_mgr.qst)
+            self.update_qscr ()
 
     def ctrl_c3 (self):
         return BREAK
@@ -421,16 +429,17 @@ class Interface:
             for scr in r:
                 self.update_qscr (keep_qline = True)
 
+
     def ctrl_w23 (self):
         self ['keypad'] (True)
         c = self ['getch'] ()
 
         if c == curses.KEY_UP or c == curses.KEY_LEFT:
-            self.scr_mgr.prev ()
+            self.scr_mgr.scroll_up ()
             self.update_qscr (keep_qline = True)
 
         elif c == curses.KEY_DOWN or c == curses.KEY_RIGHT:
-            self.scr_mgr.next ()
+            self.scr_mgr.scroll_down ()
             self.update_qscr (keep_qline = True)
 
 
@@ -438,12 +447,12 @@ class Interface:
             undo = False, optmap = None):
 
         if t == None:
-            optmap = optmap if optmap else self.optmap
+            optmap = optmap if optmap else self.scr_mgr ['optmap']
 
             if not optmap:
                 return
 
-            cur = self.scr_mgr.qscr.getyx ()
+            cur = self.scr_mgr ['qscr'].getyx ()
 
             t = [x for x in optmap if x [0] == cur [0]]
 
@@ -459,18 +468,18 @@ class Interface:
         x = c[0]
 
         while x:
-            self.scr_mgr.qscr.chgat (l, 0, (color) if not undo
+            self.scr_mgr ['qscr'].chgat (l, 0, (color) if not undo
                     else t[-1])
             l += 1
             x -= 1
 
-        self.scr_mgr.qscr.chgat (l, 0, c [1], (color) if not undo
+        self.scr_mgr ['qscr'].chgat (l, 0, c [1], (color) if not undo
                 else t [-1])
         
         if t [2]:
-            self.scr_mgr.qscr.addch (t[0], 0, t[2])
+            self.scr_mgr ['qscr'].addch (t[0], 0, t[2])
 
-        self.scr_mgr.qscr.move (t[0], 0)
+        self.scr_mgr ['qscr'].move (t[0], 0)
 
 
 def main (stdscr, args):

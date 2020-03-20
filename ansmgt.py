@@ -77,7 +77,7 @@ class AnsMgt:
                 for k in self.cache:
                     if k.isupper ():
                         for k1 in self.cache [k]:
-                            yield self.revert_ans (self.cache[k][k1])
+                            yield dict (self.revert_ans (self.cache[k][k1]))
 
 
 
@@ -187,10 +187,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     return self.resolve (qst, self.FAIL)
 
             elif mark == 1:
-                if effective:
-                    self.update (qst.copy ())
-                else:
-                    self.pop (qst [self.qmap ['crscode']], qst [self.qmap ['qid']])
+                self.update (qst.copy ())
 
 
         def answer (self, qst):
