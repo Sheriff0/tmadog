@@ -427,7 +427,7 @@ class Interface:
         r = self.scr_mgr.resize (self.stdscr)
         if r and r != -1:
             for scr in r:
-                self.update_qscr (keep_qline = True)
+                self.update_qscr (scr ['qst'], keep_qline = True)
 
 
     def ctrl_w23 (self):
