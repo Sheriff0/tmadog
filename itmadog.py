@@ -23,7 +23,7 @@ import qscreen
 import copy
 import pdb
 
-BREAK = 0
+BREAK = -1
 
 CONT = 1
 
@@ -175,25 +175,33 @@ class Interface:
 
                     self.scr_mgr ['qscr'].move (t[0], 0)
 
-                else:
+                elif self.scr_mgr ['qline'] > 0:
                     self.scr_mgr ['qline'] -= 1
 
                 self.paint ()
 
+                n [0] -= 1
+
             except IndexError:
-                if self.isseen ((0, self.scr_mgr.scrdim[1] - 1), TOP):
+                if self.scr_mgr ['qline'] == 0:
                     pass
                 else:
                     self.scr_mgr ['qline'] -= 1
+
+            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                [1]) - 1)
+
+            return n [0]
 
         elif not self.qmode:
             if not self.isseen (self.msgyx, TOP):
                 self.scr_mgr ['qline'] -= 1
 
 
-        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-            [1]) - 1)
+            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                [1]) - 1)
 
 
     def key_down258 (self):
@@ -232,6 +240,8 @@ class Interface:
 
                 self.paint ()
 
+                n [0] += 1
+
             except IndexError:
                 if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
                     pass
@@ -239,14 +249,20 @@ class Interface:
                     self.scr_mgr ['qline'] += 1
 
 
+            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                [1]) - 1)
+                          
+            return n [0]
+
         elif not self.qmode:
             if not self.isseen (self.msgyx, BOTTOM):
                 self.scr_mgr ['qline'] += 1
 
-        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-            [1]) - 1)
-                        
+            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                [1]) - 1)
+                            
 
     def isseen (self, coord, dir = TOP):
         if dir == BOTTOM:
@@ -411,7 +427,7 @@ class Interface:
 
         return
 
-    def ctrl_l18 (self):
+    def ctrl_l12 (self):
         if self.qmode and self.scr_mgr ['qst']:
             curses.flash ()
             self.update_qscr ()
@@ -426,9 +442,15 @@ class Interface:
 
         r = self.scr_mgr.resize (self.stdscr)
         if r and r != -1:
-            for scr in r:
-                self.update_qscr (scr ['qst'], keep_qline = True)
+            for scr, inc in r:
+                self.update_qscr (
+                        scr ['qst'] if not inc else None,
+                        keep_qline = True if inc else False)
 
+            return inc
+
+        else:
+            return r
 
     def ctrl_w23 (self):
         self ['keypad'] (True)
@@ -480,6 +502,35 @@ class Interface:
             self.scr_mgr ['qscr'].addch (t[0], 0, t[2])
 
         self.scr_mgr ['qscr'].move (t[0], 0)
+
+    def ctrl_r18 (self):
+        if self.qmode and self.scr_mgr ['qst']:
+            qst = self.scr_mgr['qst'].copy ()
+
+            for k, v in self.scr_mgr ['nav'].webmap ['retros'].items ():
+                if k not in qst:
+                    break
+                qst [k] = v
+
+            return self.update_qscr (qst)
+
+    def ctrl_x24 (self, keep_prev = True):
+
+        if not hasattr (self, 'form'):
+            self.form = {
+                    self.scr_mgr ['qmgr'].qmap ['qdescr']: 'Please fill in below:',
+                    self.scr_mgr ['qmgr'].qmap ['qn']: 'FORM',
+                    }
+
+            self.form_fields = []
+
+            for i, k in enumerate (self.keys.param):
+                self.form_fields.append (k)
+                self.form [self.scr_mgr ['qmgr'].qmap ['opt' + chr (i)]] = ''
+                self.form [k] = self.keys.param [k]
+
+        self.scr_mgr ['qmgr'].pseudos, self.form_fields = self.form_fields,  self.scr_mgr ['qmgr'].pseudos
+
 
 
 def main (stdscr, args):

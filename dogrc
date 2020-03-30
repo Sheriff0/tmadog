@@ -4,6 +4,10 @@ indices = 0,0,0,0,0,0
 pseudo_ans = A,B,C,D
 requires = home_page
 
+[retros]
+rumbu = tqatri
+xstore = trextri
+
 [kmap]
 matno = [Matric Number]
 pwd = [Password]

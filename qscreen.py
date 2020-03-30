@@ -167,8 +167,11 @@ class QscrMuxer:
         self.qscr_len = len (keys)
 
         self.qscr_pointer = 0
+        
+        self.dimref = scrdim
 
         self.post_init ()
+
 
     def post_init (self):
         for i, pscr in enumerate (self.subscreens, self.qscr_pointer):
@@ -337,7 +340,7 @@ class QscrMuxer:
                     scr.acquire_screen (s)
                     idx = scr.id
                     self.qscr_pointer = idx
-                    yield self.load ()
+                    yield (self.load (), scrdim [1] >= self.dimref [1])
                     self.unload ()
                     i += 1
 
@@ -352,6 +355,10 @@ class QscrMuxer:
                         *self.qscrs [idx].release_screen ()
                         )
 
-        yield self.load ()
+        yield (self.load (), scrdim [1] >= self.dimref [1])
+
+        self.dimref = scrdim
+
+        return
 
 

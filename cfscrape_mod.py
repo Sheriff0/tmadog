@@ -24,6 +24,8 @@ __version__ = "2.1.1"
 import concurrent.futures
 import lxml.html
 import urllib.parse
+import dogs
+import pdb
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36",
@@ -192,93 +194,20 @@ class CloudflareScraper(Session):
         parsed_url = urlparse(resp.url)
         domain = parsed_url.netloc
         challenge_form = re.search(r'\<form.*?id=\"challenge-form\".*?\/form\>',body, flags=re.S).group(0) # find challenge form
-        method = re.search(r'method=\"(.*?)\"', challenge_form, flags=re.S).group(1)
-        if self.org_method is None:
-            self.org_method = resp.request.method
-        submit_url = "%s://%s%s" % (parsed_url.scheme,
-                                     domain,
-                                    re.search(r'action=\"(.*?)\"', challenge_form, flags=re.S).group(1).split('?')[0])
+        org_method = resp.request.method
 
-        cloudflare_kwargs = copy.deepcopy(original_kwargs)
+        cloudflare_kwargs = dogs.fill_form (html = resp.text, url = resp.url)
+
+        method = cloudflare_kwargs ['method']
+
+        submit_url = cloudflare_kwargs ['url']
 
         headers = cloudflare_kwargs.setdefault("headers", {})
         headers["Referer"] = resp.url
-
-        try:
-            cloudflare_kwargs["params"] = dict()
-            cloudflare_kwargs["data"] = dict()
-            if len(re.search(r'action=\"(.*?)\"', challenge_form, flags=re.S).group(1).split('?')) != 1:
-                for param in re.search(r'action=\"(.*?)\"', challenge_form, flags=re.S).group(1).split('?')[1].split('&'):
-                    cloudflare_kwargs["params"].update({param.split('=')[0]:param.split('=')[1]})
-
-            for input_ in re.findall(r'\<input.*?(?:\/>|\<\/input\>)', challenge_form, flags=re.S):
-                if re.search(r'name=\"(.*?)\"',input_, flags=re.S).group(1) != 'jschl_answer':
-                    if method == 'POST':
-                        cloudflare_kwargs["data"].update({re.search(r'name=\"(.*?)\"',input_, flags=re.S).group(1):
-                                                          re.search(r'value=\"(.*?)\"',input_, flags=re.S).group(1)})
-                    elif method == 'GET':
-                        cloudflare_kwargs["params"].update({re.search(r'name=\"(.*?)\"',input_, flags=re.S).group(1):
-                                                          re.search(r'value=\"(.*?)\"',input_, flags=re.S).group(1)})
-            if method == 'POST':
-                for k in ("jschl_vc", "pass"):
-                    if k not in cloudflare_kwargs["data"]:
-                        raise ValueError("%s is missing from challenge form" % k)
-            elif method == 'GET':
-                for k in ("jschl_vc", "pass"):
-                    if k not in cloudflare_kwargs["params"]:
-                        raise ValueError("%s is missing from challenge form" % k)
-
-        except Exception as e:
-            # Something is wrong with the page.
-            # This may indicate Cloudflare has changed their anti-bot
-            # technique. If you see this and are running the latest version,
-            # please open a GitHub issue so I can update the code accordingly.
-            raise ValueError(
-                "Unable to parse Cloudflare anti-bot IUAM page: %s %s"
-                % (e, BUG_REPORT)
-            )
+        headers["Origin"] = '%s://%s' % (parsed_url.scheme, parsed_url.hostname)
 
         # Solve the Javascript challenge
-        gifnodelist = lxml.html.fromstring (resp.text).cssselect ('[id=trk_jschal_nojs]')
-
-        if gifnodelist:
-            gifpath = gifnodelist [0].attrib.get ('style', None)
-
-            if gifpath:
-                gifpath = urllib.parse.urljoin (
-                        resp.url,
-                        re.search (r'\((.+)\)', gifpath).group (1).strip ('"\'')
-                        )
-
-                nojsres = self.get (
-                        gifpath,
-                        headers = {
-                            'referer': resp.url,
-                            'host': domain,
-                            }
-                        )
-
-        gifm = re.search (
-                r'(?P<ele>\w+)\.setAttribute\s*\(.+?,\s*(?P<url>.+?)\s*\).+?(?P=ele).id\s*=\s*[\'"]\w+jschal_js[\'"]',
-                resp.text)
-
-        if gifm:
-            gifpath = urllib.parse.urljoin (
-                    resp.url,
-                    gifm.group ('url').strip ('"\'')
-                    )
-
-            jsres = self.get (
-                    gifpath,
-                    headers = {
-                        'referer': resp.url,
-                        'host': domain,
-                        }
-                    )
-
-        
-        answer, delay = self.solve_challenge (body, domain)
-
+        answer, delay = self.solve_challenge(body, domain)
         if method == 'POST':
             cloudflare_kwargs["data"]["jschl_answer"] = answer
         elif method == 'GET':
@@ -287,42 +216,17 @@ class CloudflareScraper(Session):
         # Requests transforms any request into a GET after a redirect,
         # so the redirect has to be handled manually here to allow for
         # performing other types of requests even as the first request.
-        #cloudflare_kwargs["allow_redirects"] = False
 
         # Cloudflare requires a delay before solving the challenge
         time.sleep(max(delay - (time.time() - start_time), 0))
 
         # Send the challenge response and handle the redirect manually
-        redirect = self.request(method, submit_url, **cloudflare_kwargs)
-        if "Location" in redirect.headers:
-            redirect_location = urlparse(redirect.headers["Location"])
-
-            headers = original_kwargs.setdefault ('headers', {})
-
-            headers ['referer'] = redirect.url
-
-            if not redirect_location.netloc:
-                redirect_url = urlunparse(
-                    (
-                        parsed_url.scheme,
-                        domain,
-                        redirect_location.path,
-                        redirect_location.params,
-                        redirect_location.query,
-                        redirect_location.fragment,
-                    )
-                )
-                return self.request(method, redirect_url, **original_kwargs)
-            return self.request(method, redirect.headers["Location"], **original_kwargs)
-        elif "Set-Cookie" in redirect.headers:
-            if 'cf_clearance' in redirect.headers['Set-Cookie']:
-                resp = self.request(self.org_method, submit_url, cookies = redirect.cookies)
-                return resp
-            else:
-                return self.request(method, submit_url, **original_kwargs)
+        redirect = self.request(**cloudflare_kwargs)
+        pdb.set_trace ()
+        if "Set-Cookie" in redirect.headers:
+            return redirect
         else:
-            resp = self.request(self.org_method, submit_url, resp = redirect, **cloudflare_kwargs)
-            return resp
+            return self.request(org_method, resp.url)
 
 
     def close (self):
@@ -441,7 +345,7 @@ class CloudflareScraper(Session):
                     stdin = subprocess.PIPE,
                     stdout = subprocess.PIPE,
                     stderr = subprocess.PIPE,
-                    text = True,
+                    universal_newlines = True,
                     close_fds = False,
                     restore_signals = False
                     )
