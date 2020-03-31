@@ -203,9 +203,9 @@ class CloudflareScraper(Session):
         submit_url = cloudflare_kwargs ['url']
 
         headers = cloudflare_kwargs.setdefault("headers", {})
-        headers["Referer"] = resp.url
-        headers["Origin"] = '%s://%s' % (parsed_url.scheme, parsed_url.hostname)
+        headers.update (dogs.mkheader (submit_url, resp.url))
 
+        pdb.set_trace ()
         # Solve the Javascript challenge
         answer, delay = self.solve_challenge(body, domain)
         if method == 'POST':
@@ -222,7 +222,6 @@ class CloudflareScraper(Session):
 
         # Send the challenge response and handle the redirect manually
         redirect = self.request(**cloudflare_kwargs)
-        pdb.set_trace ()
         if "Set-Cookie" in redirect.headers:
             return redirect
         else:

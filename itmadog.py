@@ -16,7 +16,7 @@ from ansmgt import AnsMgt
 import dbmgt
 import curses
 import curses.ascii
-import cfscrape_mod
+import cloudscraper
 import concurrent.futures
 import lxml
 import qscreen

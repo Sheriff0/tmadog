@@ -1,6 +1,6 @@
 from navigation import Navigation
 from qstmgt import QstMgt
-import cfscrape_mod
+import cloudscraper
 import curses
 import math
 import pdb
@@ -145,7 +145,7 @@ class QscrMuxer:
                         key [keys.URL],
                         key [keys.WMAP], 
                         key,
-                        session = cfscrape_mod.create_scraper ()
+                        session = cloudscraper.create_scraper ()
                         )
 
             finally:

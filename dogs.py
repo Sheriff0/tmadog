@@ -209,6 +209,7 @@ def mkheader (url, ref = None):
     ref = parse.urlparse (ref) if ref else None
     headers = {
                 'host': url.hostname,
+                'origin': '%s://%s' % (url.scheme, url.hostname),
                 'sec-fetch-mode': 'navigate',
                 'sec-fetch-user': '?1',
                 }
@@ -220,6 +221,8 @@ def mkheader (url, ref = None):
         headers ['sec-fetch-site'] = 'same-origin'
     elif ref and url.hostname.endswith (ref.hostname.split ('.', 1)[-1]):
         headers ['sec-fetch-site'] = 'same-site'
+    elif not ref:
+        headers ['sec-fetch-site'] = 'none'
     else:
         headers ['sec-fetch-site'] = 'cross-site'
 
