@@ -26,12 +26,12 @@ path = Logout
 requires = tma_page
 
 [qst_page]
-path = TMA3
+path = TMA1
 requires = tma_page
 volatile = logout_page
 
 [tma_page]
-path = Take TMA3,${login_page:keys}
+path = TMA1,${login_page:keys}
 volatile = logout_page
 
 [profile_page]

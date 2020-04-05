@@ -53,6 +53,9 @@ class DbMgt (object):
 
         cur = conn.cursor ()
 
+        if fp:
+            fp.write ('[')
+
         ierr = None
 
         dogid, cid, = None, None
@@ -82,6 +85,9 @@ class DbMgt (object):
                 print ('update_hacktab: replace: ', err.args[0])
                 conn.close ()
                 return -1
+
+        if fp:
+            fp.write (']')
 
         try:
             conn.commit ()

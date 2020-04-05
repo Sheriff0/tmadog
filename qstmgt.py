@@ -13,7 +13,7 @@ from urllib import parse
 import configparser
 import sys
 import curses
-
+import math
 
 class QstMgt (object):
 
@@ -180,7 +180,7 @@ class QstMgt (object):
 
             self.nextq [self.dt1 or self.dt0] = qst
             
-            self.totscore = int ('0' + qst [self.qmap ['score']])
+            self.totscore = math.trunc (int (qst [self.qmap ['score']] + '0') / 10)
 
             kwargs.setdefault (
                     'headers',
@@ -207,9 +207,9 @@ class QstMgt (object):
             self.nextq [self.dt1 or self.dt0] = res
             
             if not res [self.qmap ['qid']] == 'error':
-                s = (int ('0' + res[self.qmap ['score']]) - self.totscore) == 1
+                s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
 
-                self.totscore = int ('0' + res[self.qmap ['score']])
+                self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
 
                 return int (s)
             

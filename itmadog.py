@@ -98,19 +98,51 @@ class Interface:
         return getattr (self.scr_mgr ['qscr'], attr)
 
     def __call__ (self, key):
+
+        args = bytearray ()
+        c = key 
+        self ['keypad'] (True)
+        self ['nodelay'] (False)
+        self ['notimeout'] (True)
+
+        while True:
+            comm = self._get_cmd (c)
+            if comm:
+                return comm (args) if args else comm ()
+
+            elif c <= 255:
+                args.append (c)
+                c = self ['getch'] ()
+
+            else:
+                return
+
+
+
+    def _get_cmd (self, key):
         cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
                 (r'(?<!\d)' + str (key) + r'(?!\d)', k))
-        try:
-            return next (cmd)()
-        except StopIteration:
-            pass
 
-    def key_left260 (self):
+        try:
+            comm = next (cmd)
+            return comm
+
+        except StopIteration:
+            return None
+
+
+    def key_left260 (self, subtrahend = 1):
         if self.qmode:
+            
+            if isinstance (subtrahend, bytearray):
+                if not subtrahend.isdigit ():
+                    return
+                subtrahend = int (subtrahend.decode())
+
             if self.pq:
                 l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
-                self.scr_mgr ['pqidx'] -= 1
+                self.scr_mgr ['pqidx'] -= subtrahend
                 
                 if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
                         p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
@@ -122,11 +154,16 @@ class Interface:
                     self.scr_mgr ['pqidx'] = 0
 
 
-    def key_right261 (self):
+    def key_right261 (self, addend = 1):
         if self.qmode and self.pq:
             l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
-            self.scr_mgr ['pqidx'] += 1
+            if isinstance (addend, bytearray):
+                if not addend.isdigit ():
+                    return
+                addend = int (addend.decode())
+
+            self.scr_mgr ['pqidx'] += addend
             
             if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
                 p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
@@ -145,7 +182,13 @@ class Interface:
                     self.update_qscr (l)
 
 
-    def key_up259 (self):
+    def key_up259 (self, subtrahend = 1):
+        if isinstance (subtrahend, bytearray):
+            if not subtrahend.isdigit ():
+                return
+
+            subtrahend = int (subtrahend.decode())
+
         if self.qmode and self.scr_mgr ['optmap']:
             cur = self.scr_mgr ['qscr'].getyx ()
             n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
@@ -168,7 +211,7 @@ class Interface:
                         pass
 
                     elif self.isseen (t, BOTTOM):
-                        self.scr_mgr ['qline'] -= 1
+                        self.scr_mgr ['qline'] -= subtrahend
 
                     else:
                         self.scr_mgr ['qline'] -= t[0]
@@ -176,17 +219,17 @@ class Interface:
                     self.scr_mgr ['qscr'].move (t[0], 0)
 
                 elif self.scr_mgr ['qline'] > 0:
-                    self.scr_mgr ['qline'] -= 1
+                    self.scr_mgr ['qline'] -= subtrahend
 
                 self.paint ()
 
-                n [0] -= 1
+                n [0] -= subtrahend
 
             except IndexError:
                 if self.scr_mgr ['qline'] == 0:
                     pass
                 else:
-                    self.scr_mgr ['qline'] -= 1
+                    self.scr_mgr ['qline'] -= subtrahend
 
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
             (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
@@ -196,7 +239,7 @@ class Interface:
 
         elif not self.qmode:
             if not self.isseen (self.msgyx, TOP):
-                self.scr_mgr ['qline'] -= 1
+                self.scr_mgr ['qline'] -= subtrahend
 
 
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
@@ -204,7 +247,13 @@ class Interface:
                 [1]) - 1)
 
 
-    def key_down258 (self):
+    def key_down258 (self, addend = 1):
+        if isinstance (addend, bytearray):
+            if not addend.isdigit ():
+                return
+
+            addend = int (addend.decode())
+
         if self.qmode and self.scr_mgr ['optmap']:
             cur = self.scr_mgr ['qscr'].getyx ()
             n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
@@ -223,7 +272,7 @@ class Interface:
                         pass
 
                     elif self.isseen (t, 1):
-                        self.scr_mgr ['qline'] += 1
+                        self.scr_mgr ['qline'] += addend
 
                     else:
                         offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
@@ -232,21 +281,21 @@ class Interface:
                     self.scr_mgr ['qscr'].move (t[0], 0)
 
                 elif self.isseen (self.scr_mgr ['optmap'] [n [0]], 1):
-                    self.scr_mgr ['qline'] += 1
+                    self.scr_mgr ['qline'] += addend
 
                 else:
-                    self.scr_mgr ['qline'] += 1
+                    self.scr_mgr ['qline'] += addend
 
 
                 self.paint ()
 
-                n [0] += 1
+                n [0] += addend
 
             except IndexError:
                 if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
                     pass
                 else:
-                    self.scr_mgr ['qline'] += 1
+                    self.scr_mgr ['qline'] += addend
 
 
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
@@ -257,7 +306,7 @@ class Interface:
 
         elif not self.qmode:
             if not self.isseen (self.msgyx, BOTTOM):
-                self.scr_mgr ['qline'] += 1
+                self.scr_mgr ['qline'] += addend
 
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
             (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
@@ -276,10 +325,14 @@ class Interface:
             return self.scr_mgr ['qline'] <= x <= y
 
 
-    def enter10 (self):
+    def enter10 (self, c = False):
 
         if self.qmode and self.scr_mgr ['qst']: 
-            c = chr (self ['inch'] () & 0xff)
+            if c == False:
+                c = self ['instr'] (len (self.scr_mgr ['qmgr'].pseudos [0]))
+
+            c = c.decode ()
+
             self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['ans']] = c
            
             e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
@@ -515,7 +568,7 @@ class Interface:
             return self.update_qscr (qst)
 
     def ctrl_x24 (self, keep_prev = True):
-
+        return
         if not hasattr (self, 'form'):
             self.form = {
                     self.scr_mgr ['qmgr'].qmap ['qdescr']: 'Please fill in below:',
@@ -531,6 +584,68 @@ class Interface:
 
         self.scr_mgr ['qmgr'].pseudos, self.form_fields = self.form_fields,  self.scr_mgr ['qmgr'].pseudos
 
+
+    def ctrl_s19 (self):
+        self ['timeout'] (5000)
+        c = self ['getch'] ()
+        c = '' if c == -1 else chr (c & 0xff)
+        self.scr_mgr ['qst'] = self.scr_mgr ['qst'].copy ()
+        self ['timeout'] (-1)
+        return self.enter10 (c)
+
+    def keys_minus45 (self, subtrahend = None):
+        if not subtrahend or not subtrahend.isdigit ():
+            subtrahend = 1
+        else:
+            subtrahend = int (subtrahend.decode())
+
+        qst = self.scr_mgr ['qst'].copy ()
+        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) - subtrahend
+
+        qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
+
+        self.update_qscr (qst, keep_qline = False)
+
+    def key_plus43 (self, addend = None):
+        if not addend or not addend.isdigit ():
+            addend = 1
+        else:
+            addend = int (addend.decode())
+
+        qst = self.scr_mgr ['qst'].copy ()
+        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) + addend
+
+        qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
+
+        self.update_qscr (qst, keep_qline = False)
+
+
+    def key_plus42 (self, addend = None):
+        if not addend or not addend.isdigit ():
+            addend = 1
+        else:
+            addend = int (addend.decode())
+
+        qst = self.scr_mgr ['qst'].copy ()
+        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) + addend
+
+        qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
+
+        self.update_qscr (qst, keep_qline = False)
+
+
+    def keys_minus47 (self, subtrahend = None):
+        if not subtrahend or not subtrahend.isdigit ():
+            subtrahend = 1
+        else:
+            subtrahend = int (subtrahend.decode())
+
+        qst = self.scr_mgr ['qst'].copy ()
+        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) - subtrahend
+
+        qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
+
+        self.update_qscr (qst, keep_qline = False)
 
 
 def main (stdscr, args):
@@ -581,14 +696,12 @@ def main (stdscr, args):
             break
 
 
-    if ansmgr._cur:
-        f = open (args.qstdump, 'w')
-        f.write ('[') 
+    if args.updatedb:
+        f = open (args.qstdump, 'w') if args.debug else None
         dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (), ansmgr.qmap,
-                ansmgr._cur, f if args.debug else None)
-        f.write (']')
-        f.close ()
+                ansmgr._cur, f)
 
+    if ansmgr._cur:
         ansmgr.close ()
 
     curses.noraw ()
@@ -609,6 +722,9 @@ if __name__ == '__main__':
     parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
 
     parser.add_argument ('--database', '-db', default = 'pg/olddb', help = 'The database to use')
+
+    parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest =
+            'updatedb', default = True, help = 'Update the database in use')
 
 
     parser.add_argument ('--url', help = 'The remote url if no local server',

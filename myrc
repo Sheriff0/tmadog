@@ -1,20 +1,43 @@
 [DEFAULT]
-volatile = False
+volatile =
 indices = 0,0,0,0,0,0
 pseudo_ans = A,B,C,D
+requires = home_page
 
-[home]
+[retros]
+rumbu = tqatri
+xstore = trextri
+
+[kmap]
+matno = [Matric Number]
+pwd = [Password]
+
+
+[home_page]
 url = https://www.nouonline.net/
+requires =
 
-[login_form]
-keys = [Matric Number]/[Password]
+[login_page]
+keys = ${kmap:matno}/${kmap:pwd}
 path = Login
 
+[logout_page]
+path = Logout
+requires = tma_page
+
+[qst_page]
+path = TMA3
+requires = tma_page
+volatile = logout_page
+
 [tma_page]
-path = Take TMA3,${login_form:keys},TMA3
+path = Take TMA3,${login_page:keys}
+volatile = logout_page
 
 [profile_page]
-path = ${login_form:path},${login_form:keys}
+path = ${login_page:keys}
+requires = login_page
+volatile = logout_page
 
 [qmap]
 qdescr = qdescr
