@@ -65,19 +65,23 @@ class AnsMgt:
             self.max_retry = max_retry
 
         class CacheIter (object):
-            def __init__ (self, cache, reverser):
+            def __init__ (self, cache, qmap, reverser):
                 self.cache = cache
                 self.revert_ans = reverser
+                self.qmap = qmap
 
             def __iter__ (self):
                 yield from self.__next__ ()
 
             def __next__ (self):
 
-                for k in self.cache:
-                    if k.isupper ():
-                        for k1 in self.cache [k]:
-                            yield dict (self.revert_ans (self.cache[k][k1]))
+                for v in self.cache.values ():
+                    if self.qmap ['qdescr'] not in v:
+                        for v1 in v.values ():
+                            yield self.revert_ans (v1)
+
+                    else:
+                        yield self.revert_ans (v)
 
 
 
@@ -85,23 +89,64 @@ class AnsMgt:
         #def __call__ (self, qstlike, d = None):
         #   return self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]][d] if d else self._cache [qstlike [self.qmap ['crscode']].upper ()][qstlike [self.qmap ['qid']]] # UGLY
 
-        def __call__ (self, crscode, qid):
-            x = self._cache.get (crscode.upper (), None)
+        def __call__ (self, crscode, qid, strict = True):
+            x = self._cache.get (qid, None)
 
             if x:
-                x = x.get (qid, None)
-                return x
+                if x.get (self.qmap ['crscode'], None) == crscode:
+                    return x
+                
+                else:
+                    x = self._cache.get (crscode, None)
+                    y = x.get (qid, None) if x else x
+                    if y:
+                        return y
 
-        def pop (self, crscode, qid):
-            x = self._cache.get (crscode.upper (), None)
+                    elif not strict:
+                        if x:
+                            for v in x.values (): 
+                                return v
+
+                    else:
+                        return None
+
+        def pop (self, crscode, qid, *fallback):
+            x = self._cache.pop (qid, None)
 
             if x:
-                x = x.pop (qid, None)
-                if x:
-                    if crscode.lower () in self._cache and self._cache [crscode.lower ()][self.qmap ['qid']] == x [self.qmap ['qid']]:
-                        self._cache.pop (crscode.lower ())
+                if x.get (self.qmap ['crscode'], None) == crscode:
+                    return x
+                
+                else:
+                    self._cache.setdefault (qid, x)
+                    x = self._cache.get (crscode, None)
+                    y = x.pop (qid, None) if x else x
+                    if y:
+                        return y
+                    else:
+                        if fallback:
+                            return fallback [0]
+                        raise KeyError (crscode, qid)
 
-                return x
+
+
+        def pop (self, crscode, qid, *fallback):
+            x = self._cache.get (qid, None)
+
+            if x:
+                if x.get (self.qmap ['crscode'], None) == crscode:
+                    return x
+                
+                else:
+                    self._cache.setdefault (qid, x)
+                    x = self._cache.get (crscode, None)
+                    y = x.get (qid, None) if x else x
+                    if y:
+                        return y
+                    else:
+                        if fallback:
+                            return fallback [0]
+                        raise KeyError (crscode, qid)
 
 
 
@@ -219,7 +264,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
 
             if self.mode & self.ANS_MODE_HACK:
-                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None) or self._hack (qst)
+                x = self (qst [self.qmap ['crscode']], qst [self.qmap ['qid']], strict = False) or self._hack (qst)
 
                 if x and self.qmap ['crscode'] in x:
                     self.update (qst)
@@ -243,19 +288,23 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
             qst = copy.deepcopy (qst)
 
-            self._cache.setdefault (qst [self.qmap ['crscode']].upper (), {})
+            y = self._cache.get (qst [self.qmap ['qid']], None)
 
-            self._cache [qst [self.qmap ['crscode']].upper ()].update ([(qst
-                [self.qmap ['qid']],
-                    qst)])
+            if y and y [self.qmap ['qdescr']] != qst [self.qmap ['qdescr']]:
 
-            if qst [self.qmap ['ans']]:
-                self._cache [qst [self.qmap ['crscode']].lower ()] =  qst
+                self._cache.setdefault (qst [self.qmap ['crscode']], {})
+
+                self._cache [qst [self.qmap ['crscode']]].update ([(qst
+                    [self.qmap ['qid']],
+                        qst)])
+
+            elif y:
+
+                y [self.qmap ['ans']] = qst [self.qmap ['ans']]
 
             else:
-                x = self._cache.get (qst [self.qmap ['crscode']].lower (), None)
-                if x and x [self.qmap ['qid']] == qst [self.qmap ['qid']]:
-                    self._cache.pop (qst [self.qmap ['crscode']].lower ())
+                self._cache [qst [self.qmap ['qid']]] = qst
+
 
         def resolve (self, qst, sig):
 
@@ -281,13 +330,16 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
 
         def revert_ans (self, qst):
-            try:
-                i = self.pseudos.index (qst [self.qmap ['ans']])
-                k = 'opt' + chr (97 + i)
-                qst [self.qmap ['ans']] = qst [self.qmap [k]]
+            qst = qst.copy ()
 
-            except ValueError:
-                pass
+            if qst [self.qmap ['ans']]:
+                try:
+                    i = self.pseudos.index (qst [self.qmap ['ans']])
+                    k = 'opt' + chr (97 + i)
+                    qst [self.qmap ['ans']] = qst [self.qmap [k]]
+
+                except ValueError:
+                    pass
 
             return qst
 
@@ -307,11 +359,16 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
         def iter_cache (self):
 
-            return self.CacheIter (self._cache, self.revert_ans)
+            return self.CacheIter (self._cache, self.qmap, self.revert_ans)
 
         def close (self):
 
+            self._cur.connection.commit ()
+
             self._cur.connection.close ()
+            if hasattr (self, 'mcur'):
+                self.mcur.connection.commit ()
+                self.mcur.connection.close ()
 
         def _hack (self, qst):
 
@@ -326,7 +383,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                 (courses AS c, answers AS a, hacktab AS h) ON (c.dogid ==
                 q.dogid AND a.dogid == c.dogid AND c.ready IS NOT
                         ? AND crscode LIKE ? AND a.cid == c.cid AND h.cid ==
-                        c.cid)                    ''' % (
+                        c.cid) LIMIT 1''' % (
                         self.qmap ['qdescr'],
                         self.qmap ['ans'],
                         self.qmap ['qid'],
@@ -350,33 +407,33 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
 
         def _mad (self, qst):
-
-            if not self._cur:
+            
+            if not hasattr (self, 'mcur'):
                 conn = dbmgt.DbMgt.setupdb (self.database)
                 conn.row_factory = sqlite3.Row
-                self._cur = conn.cursor ()
+                self.mcur = conn.cursor ()
 
-            self._cur.execute ('''
-                SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
-                %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
-                (courses AS c, answers AS a, hacktab AS h) ON (c.dogid ==
-                q.dogid AND a.dogid == c.dogid AND c.ready IS NOT
-                        ? AND a.cid == c.cid AND h.cid ==
-                        c.cid)                    ''' % (
-                        self.qmap ['qdescr'],
-                        self.qmap ['ans'],
-                        self.qmap ['qid'],
-                        self.qmap['opta'],
-                        self.qmap['optb'],
-                        self.qmap['optc'],
-                        self.qmap['optd']
-                        ),
-                    (
-                        False,
+                self.mcur.execute ('''
+                    SELECT qdescr AS %s, ans AS %s, qid AS %s, opta AS %s, optb AS
+                    %s, optc AS %s, optd AS %s FROM questions AS q INNER JOIN
+                    (courses AS c, answers AS a, hacktab AS h) ON (c.dogid ==
+                    q.dogid AND a.dogid == c.dogid AND c.ready IS NOT
+                            ? AND a.cid == c.cid AND h.cid ==
+                            c.cid) ORDER BY c.dogid DESC''' % (
+                            self.qmap ['qdescr'],
+                            self.qmap ['ans'],
+                            self.qmap ['qid'],
+                            self.qmap['opta'],
+                            self.qmap['optb'],
+                            self.qmap['optc'],
+                            self.qmap['optd']
+                            ),
+                        (
+                            False,
+                            )
                         )
-                    )
 
-            return self._cur.fetchone ()
+            return self.mcur.fetchone ()
 
 
         def _fetch (self, qst):
@@ -389,7 +446,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
             self._cur.execute ('''
             SELECT ans AS %s FROM answers INNER JOIN (courses) ON
             (courses.crscode LIKE ? AND courses.qid == ? AND courses.ready == ?
-            AND answers.cid == courses.cid)
+            AND answers.cid == courses.cid) LIMIT 1
                     ''' % (
                         self.qmap ['ans'],
                         ),
@@ -406,13 +463,15 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
                 self._cur.execute ('''
                 SELECT ans AS %s FROM answers INNER JOIN questions ON qdescr
-                LIKE ? WHERE answers.dogid == questions.dogid
+                LIKE ? WHERE answers.dogid == questions.dogid AND answers.ans
+                IS NOT ? LIMIT 1
                         ''' % (
                             self.qmap ['ans'],
                             ),
 
                         (
                             qst [self.qmap ['qdescr']],
+                            None
                             )
                         )
 

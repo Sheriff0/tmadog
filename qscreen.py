@@ -37,6 +37,7 @@ class QScr:
         self.lpqidx = -1
         self.id = id
         self.qst = None
+        self.qmode = False
 
     def __eq__ (self, value):
         return self.qscr == value
@@ -84,7 +85,7 @@ class QScr:
 
 
 class QscrMuxer:
-    V_GRANULARITY = 10000
+    V_GRANULARITY = 1000
 
     def __init__ (self, pscreen, keys): 
         
@@ -103,7 +104,7 @@ class QscrMuxer:
             if scrdim [0] == 3:
                 self.qst_scr = self.pscreen
             else:
-                d = min (math.trunc (scrdim [0] / 3), len (keys))
+                d = min (2, len (keys))
 
                 self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
 
@@ -298,7 +299,7 @@ class QscrMuxer:
             if scrdim [0] == 3:
                 self.qst_scr = self.pscreen
             else:
-                d = min (math.trunc (scrdim [0] / 3), self.qscr_len)
+                d = min (2, self.qscr_len)
 
                 self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
 

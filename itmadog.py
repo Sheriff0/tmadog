@@ -88,7 +88,7 @@ class Interface:
         self.amgr = amgr
         curses.curs_set (0)
         self.scr_mgr ['qst'] = None
-        self.qmode = True
+        self.scr_mgr ['qmode'] = False
         self.pq = []
         self.pqlen = 0
         self.stdscr = stdscr
@@ -132,7 +132,7 @@ class Interface:
 
 
     def key_left260 (self, subtrahend = 1):
-        if self.qmode:
+        if self.scr_mgr ['qmode']:
             
             if isinstance (subtrahend, bytearray):
                 if not subtrahend.isdigit ():
@@ -155,7 +155,7 @@ class Interface:
 
 
     def key_right261 (self, addend = 1):
-        if self.qmode and self.pq:
+        if self.scr_mgr ['qmode'] and self.pq:
             l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
             if isinstance (addend, bytearray):
@@ -189,7 +189,7 @@ class Interface:
 
             subtrahend = int (subtrahend.decode())
 
-        if self.qmode and self.scr_mgr ['optmap']:
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['optmap']:
             cur = self.scr_mgr ['qscr'].getyx ()
             n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
 
@@ -237,7 +237,7 @@ class Interface:
 
             return n [0]
 
-        elif not self.qmode:
+        elif not self.scr_mgr ['qmode']:
             if not self.isseen (self.msgyx, TOP):
                 self.scr_mgr ['qline'] -= subtrahend
 
@@ -254,7 +254,7 @@ class Interface:
 
             addend = int (addend.decode())
 
-        if self.qmode and self.scr_mgr ['optmap']:
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['optmap']:
             cur = self.scr_mgr ['qscr'].getyx ()
             n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
 
@@ -304,7 +304,7 @@ class Interface:
                           
             return n [0]
 
-        elif not self.qmode:
+        elif not self.scr_mgr ['qmode']:
             if not self.isseen (self.msgyx, BOTTOM):
                 self.scr_mgr ['qline'] += addend
 
@@ -327,74 +327,82 @@ class Interface:
 
     def enter10 (self, c = False):
 
-        if self.qmode and self.scr_mgr ['qst']: 
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']: 
             if c == False:
                 c = self ['instr'] (len (self.scr_mgr ['qmgr'].pseudos [0]))
 
             c = c.decode ()
 
             self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['ans']] = c
-           
-            e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
-
-
-            if self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error' and hasattr (self.scr_mgr ['qmgr'], 'sres'):
-                self.qmode = False
-
-                y = lxml.html.fromstring (self.scr_mgr ['qmgr'].sres.text).text_content ()
-
-                x = re.search (r'(?P<mark>[01])\s+mark for question', y, re.I)
+            
+            try:
+                e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
+    
+                x = re.search (r'(?P<mark>[01])\s+mark for question', self.scr_mgr ['qmgr'].sres.text, re.I)
 
                 if x:
                     self.amgr.check (self.scr_mgr ['qst'], int (x.group ('mark')), e)
+                return self.message (self.scr_mgr ['qmgr'].sres)
 
+            except:
 
-                self.scr_mgr ['qscr'].clear ()
-
-                self.scr_mgr ['qscr'].addstr (0, 0, y)
-
-                self.msgyx = [0]
-                self.msgyx.append ((self.scr_mgr ['qscr'].getyx ()[0] + 1) * self.scr_mgr.scrdim
-                        [1])
-
-                self.scr_mgr ['qline'] = 0
-
-                self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-                        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-                            [1]) - 1)
-
-
-            else:
                 self.scr_mgr ['qst'] = None
                 return self.update_qscr ()
 
         else:
-            qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
+            
+            try:
+                qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
 
-            if not qst:
-                return BREAK
-        
-            elif isinstance (qst, lxml.html.FieldsDict):
+                if qst and isinstance (qst, lxml.html.FieldsDict):
 
-                x = copy.deepcopy (qst)
+                    x = copy.deepcopy (qst)
 
-                x = self.amgr.answer (x)
+                    x = self.amgr.answer (x)
 
-                if x and x != self.amgr.NOANSWER and qst [self.scr_mgr ['qmgr'].qmap ['qid']] == x [self.scr_mgr ['qmgr'].qmap ['qid']]:
-                    qst = x
+                    if x and x != self.amgr.NOANSWER and qst [self.scr_mgr ['qmgr'].qmap ['qid']] == x [self.scr_mgr ['qmgr'].qmap ['qid']]:
+                        qst = x
 
-                self.pq.append ((qst [self.scr_mgr ['qmgr'].qmap ['crscode']], qst
-                    [self.scr_mgr ['qmgr'].qmap ['qid']]))
+                    self.pq.append ((qst [self.scr_mgr ['qmgr'].qmap ['crscode']], qst
+                        [self.scr_mgr ['qmgr'].qmap ['qid']]))
 
-                self.pqlen += 1
+                    self.pqlen += 1
 
-                self.scr_mgr ['lpqidx'] = self.pqlen - 1
-                self.scr_mgr ['pqidx'] = self.scr_mgr ['lpqidx']
+                    self.scr_mgr ['lpqidx'] = self.pqlen - 1
+                    self.scr_mgr ['pqidx'] = self.scr_mgr ['lpqidx']
 
-            self.qmode = True
+                    self.scr_mgr ['qmode'] = True
 
-            return self.update_qscr (qst)
+                    return self.update_qscr (qst)
 
+                else:
+                    return self.message (self.scr_mgr ['qmgr'].qres)
+
+            except:
+                self.scr_mgr ['qst'] = None
+                return self.update_qscr ()
+
+
+    def message (self, res):
+
+        y = lxml.html.fromstring (res.text).text_content ()
+
+        self.scr_mgr ['qscr'].clear ()
+
+        self.scr_mgr ['qscr'].addstr (0, 0, y)
+
+        self.msgyx = [0]
+
+        self.msgyx.append ((self.scr_mgr ['qscr'].getyx ()[0] + 1) * self.scr_mgr.scrdim
+                [1])
+
+        self.scr_mgr ['qline'] = 0
+
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+                (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                    [1]) - 1)
+
+        self.scr_mgr ['qmode'] = False
 
     
     def update_qscr (self, qst = None, keep_qline = False):
@@ -480,12 +488,12 @@ class Interface:
 
         return
 
-    def ctrl_l12 (self):
-        if self.qmode and self.scr_mgr ['qst']:
+    def ctrl_l12 (self, *args):
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             curses.flash ()
             self.update_qscr ()
 
-    def ctrl_c3 (self):
+    def ctrl_c3 (self, *args):
         return BREAK
 
     def key_resize410 (self):
@@ -505,7 +513,7 @@ class Interface:
         else:
             return r
 
-    def ctrl_w23 (self):
+    def ctrl_w23 (self, *args):
         self ['keypad'] (True)
         c = self ['getch'] ()
 
@@ -557,7 +565,7 @@ class Interface:
         self.scr_mgr ['qscr'].move (t[0], 0)
 
     def ctrl_r18 (self):
-        if self.qmode and self.scr_mgr ['qst']:
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             qst = self.scr_mgr['qst'].copy ()
 
             for k, v in self.scr_mgr ['nav'].webmap ['retros'].items ():
@@ -620,7 +628,7 @@ class Interface:
         self.update_qscr (qst, keep_qline = False)
 
 
-    def key_plus42 (self, addend = None):
+    def key_asterik42 (self, addend = None):
         if not addend or not addend.isdigit ():
             addend = 1
         else:
@@ -634,7 +642,7 @@ class Interface:
         self.update_qscr (qst, keep_qline = False)
 
 
-    def keys_minus47 (self, subtrahend = None):
+    def keys_fslash47 (self, subtrahend = None):
         if not subtrahend or not subtrahend.isdigit ():
             subtrahend = 1
         else:
@@ -644,6 +652,38 @@ class Interface:
         n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) - subtrahend
 
         qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
+
+        self.update_qscr (qst, keep_qline = False)
+
+
+    def key_caret94 (self, crscode = bytearray ()):
+        crscode = crscode.decode()
+
+        qst = {}
+
+        for k,v in self.scr_mgr ['qst'].copy ().items ():
+            if isinstance (v, str):
+                v = re.sub (r'(?P<cs>' + self.scr_mgr ['crscode'] + ')',
+                        self.scr_mgr ['qmgr']._copycase (crscode), v, flags =
+                        re.I)
+            qst [k] = v
+
+        self.update_qscr (qst, keep_qline = False)
+
+    def key_qmark33 (self, matno = bytearray ()):
+        matno = matno.decode()
+        
+        if not matno:
+            matno = 'Nou123456789'
+
+        qst = {}
+
+        for k, v in self.scr_mgr ['qst'].copy ().items ():
+            if isinstance (v, str):
+                v = re.sub (r'(?P<cs>' + self.scr_mgr ['matno'] + ')',
+                        self.scr_mgr ['qmgr']._copycase (matno), v, flags =
+                        re.I)
+            qst [k] = v
 
         self.update_qscr (qst, keep_qline = False)
 
@@ -696,17 +736,18 @@ def main (stdscr, args):
             break
 
 
-    if args.updatedb:
-        f = open (args.qstdump, 'w') if args.debug else None
-        dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (), ansmgr.qmap,
-                ansmgr._cur, f)
+    curses.noraw ()
+    curses.echo ()
+    curses.endwin ()
 
     if ansmgr._cur:
         ansmgr.close ()
 
-    curses.noraw ()
-    curses.echo ()
-    curses.endwin ()
+    if args.updatedb:
+        f = open (args.qstdump, 'w') if args.debug else None
+        dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (),
+                ansmgr.qmap, fp = f)
+
 
     return
 

@@ -96,9 +96,6 @@ class QstMgt (object):
 
 
         def fetch (self, url1 = None, **kwargs):
-            if not self.stop:
-                return self.nextq.pop (self.dt1 or self.dt0, None)
-
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
                 
@@ -107,11 +104,11 @@ class QstMgt (object):
                         dogs.mkheader (self.fargs ['url'], self.referer)
                         )
 
-                try:
-                    self.qres = self.session.request(**self.fargs , **kwargs)
+                self.qres = self.session.request(**self.fargs , **kwargs)
 
+                self.referer1 = self.qres.url
+                try:
                     self.qres.raise_for_status ()
-                    self.referer1 = self.qres.url
                     self.nextq = dogs.fill_form (
                             self.qres.text,
                             self.qres.url,
@@ -121,25 +118,9 @@ class QstMgt (object):
                                 }
                             )
 
-                    self.count = int ('0' + self.nextq [self.dt1 or self.dt0][self.qmap ['qn']])
-                    
-                    if self.count == self.stop:
-                        self.stop = False
-
-                except TypeError:
-
-                    if self.interactive:
-                        return self.geterrmsg (self.qres)
-                    else:
-                        raise TypeError ('Invalid question page', self.qres)
-
-                except BaseException as err:
-                    if self.interactive:
-                        return self.geterrmsg (err)
-                    else:
-                        raise TypeError ('Invalid question page', self.qres)
+                except:
+                    return None
            
-            
             if not self.dt1:
                 self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
 
@@ -168,16 +149,6 @@ class QstMgt (object):
 
         def submit (self, qst, **kwargs):
 
-            if qst [self.qmap ['qid']] == 'error':
-                if qst [self.qmap ['ans']] == '1':
-                    self.stop = True
-                    self.pseudos = self.bkpseudo
-                else:
-                    self.stop = False
-
-                return None
-
-
             self.nextq [self.dt1 or self.dt0] = qst
             
             self.totscore = math.trunc (int (qst [self.qmap ['score']] + '0') / 10)
@@ -188,50 +159,21 @@ class QstMgt (object):
                     )
 
             self.sres = self.session.request (**self.nextq, **kwargs)
-
-            #self.sres.raise_for_status ()
-
+            
             x = self.nextq.pop (self.dt1 or self.dt0)
 
             self.referer = self.sres.url
+            try:
+                self.sres.raise_for_status ()
+                res = self.fetch ()
 
-            res = self.fetch ()
-
-            if not res:
-                if self.interactive:
-                    qst = self.geterrmsg (self.sres)
-                    self.nextq [self.dt1] = qst
-                return None
-
-
-            self.nextq [self.dt1 or self.dt0] = res
-            
-            if not res [self.qmap ['qid']] == 'error':
+                self.nextq [self.dt1 or self.dt0] = res
+                
                 s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
 
                 self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
 
                 return int (s)
-            
-        def geterrmsg (self, res):
 
-            if isinstance (res, Exception):
-                res = repr (res)
-            else:
-                res = lxml.html.fromstring (res.text).text_content ()
-
-            self.bkpseudo = self.pseudos
-            self.pseudos = [ curses.A_INVIS | ord (o) for o in ('1', '0') ] if sys.stdout.isatty () else ('1', '0')
-
-            return {
-                    self.qmap ['qdescr']: res,
-                    self.qmap ['ans']: None,
-                    self.qmap ['opta']: 'retry',
-                    self.qmap ['optb']: 'exit',
-                    self.qmap ['qid']: 'error',
-                    self.qmap ['qn']: 'X',
-                    }
-
-
-
-
+            except:
+                return None
