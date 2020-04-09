@@ -290,7 +290,7 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
 
             y = self._cache.get (qst [self.qmap ['qid']], None)
 
-            if y and y [self.qmap ['qdescr']] != qst [self.qmap ['qdescr']]:
+            if y and (y [self.qmap ['qdescr']] != qst [self.qmap ['qdescr']] or y [self.qmap ['crscode']] != qst [self.qmap ['crscode']]):
 
                 self._cache.setdefault (qst [self.qmap ['crscode']], {})
 
@@ -298,12 +298,9 @@ Error: You have entered an invalid option. %d attempt(s) left''') % ( max_retry,
                     [self.qmap ['qid']],
                         qst)])
 
-            elif y:
-
-                y [self.qmap ['ans']] = qst [self.qmap ['ans']]
-
             else:
                 self._cache [qst [self.qmap ['qid']]] = qst
+
 
 
         def resolve (self, qst, sig):

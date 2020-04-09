@@ -8,7 +8,7 @@ import re
 import tmadog_server
 import requests
 import threading
-from navigation import Navigation 
+from navigation import Navigation
 import configparser
 import http.server
 from qstmgt import QstMgt
@@ -27,9 +27,12 @@ BREAK = -1
 
 CONT = 1
 
-TOP = 1
-
-BOTTOM = 0
+TOP = 0b00001
+BOTTOM = 0b00010
+CAPTURED = 0b00100
+BELOW = 0b01000
+ABOVE = 0b10000
+UNCAPTURED = BELOW | ABOVE
 
 class MPCT_Preprocessor:
     CRSCODE = 'crscode'
@@ -66,13 +69,13 @@ class MPCT_Preprocessor:
                 self.param [self.CRSCODE] = self.crscodes [i]
                 self.param [self.TMA] = self.tmas [i]
                 self.param [self.URL] = self.urls [i]
-            
+
             except IndexError:
                 try:
                     self.param [self.CRSCODE] = self.crscodes [i]
                     self.param [self.TMA] = self.tmas [i]
                     self.param [self.URL] = self.urls [i]
-                
+
                 except IndexError:
                     pass
 
@@ -100,7 +103,7 @@ class Interface:
     def __call__ (self, key):
 
         args = bytearray ()
-        c = key 
+        c = key
         self ['keypad'] (True)
         self ['nodelay'] (False)
         self ['notimeout'] (True)
@@ -131,63 +134,63 @@ class Interface:
             return None
 
 
-    def key_left260 (self, subtrahend = 1):
-        if self.scr_mgr ['qmode']:
-            
-            if isinstance (subtrahend, bytearray):
-                if not subtrahend.isdigit ():
-                    return
-                subtrahend = int (subtrahend.decode())
+    def key_left260 (self, subtrahend = b'1'):
+        if self.scr_mgr ['lpqidx'] != None and self.scr_mgr ['pqidx'] != None and self.scr_mgr ['qmode'] and self.pq:
 
-            if self.pq:
-                l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
+            if not subtrahend.isdigit ():
+                return
 
-                self.scr_mgr ['pqidx'] -= subtrahend
-                
-                if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
-                        p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
+            subtrahend = int (subtrahend.decode())
 
-                        if p and l:
-                            self.update_qscr (self.amgr.download (p, l))
-
-                elif self.scr_mgr ['pqidx'] < 0:
-                    self.scr_mgr ['pqidx'] = 0
-
-
-    def key_right261 (self, addend = 1):
-        if self.scr_mgr ['qmode'] and self.pq:
             l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
 
-            if isinstance (addend, bytearray):
-                if not addend.isdigit ():
-                    return
-                addend = int (addend.decode())
+            self.scr_mgr ['pqidx'] -= subtrahend
+
+            if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
+                    p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
+
+                    if p and l:
+                        self.update_qscr (self.amgr.download (p, l))
+
+                    else:
+                        pdb.set_trace ()
+
+            elif self.scr_mgr ['pqidx'] < 0:
+                self.scr_mgr ['pqidx'] = 0
+
+
+    def key_right261 (self, addend = b'1'):
+        if self.scr_mgr ['lpqidx'] != None and self.scr_mgr ['pqidx'] != None and self.scr_mgr ['qmode'] and self.pq:
+            l = self.amgr (*self.pq [self.scr_mgr ['lpqidx']])
+
+            if not addend.isdigit ():
+                return
+
+            addend = int (addend.decode())
 
             self.scr_mgr ['pqidx'] += addend
-            
+
             if 0 <= self.scr_mgr ['pqidx'] < self.pqlen:
                 p = self.amgr (*self.pq [self.scr_mgr ['pqidx']])
 
                 if p and l:
                     self.update_qscr (self.amgr.download (p, l))
 
+                else:
+                    pdb.set_trace ()
+
             elif self.scr_mgr ['pqidx'] >= self.pqlen:
-                if (self.scr_mgr ['pqidx'] - self.scr_mgr ['lpqidx']) == 1:
-                    self.scr_mgr ['pqidx'] = self.pqlen - 1
-                    return 
+                self.scr_mgr ['pqidx'] = self.pqlen
 
-                self.scr_mgr ['pqidx'] = self.pqlen - 1
-
-                if l:
-                    self.update_qscr (l)
+                if l != self.scr_mgr ['qst']:
+                    self.update_qscr (self.amgr.download (l, self.scr_mgr ['qst']))
 
 
-    def key_up259 (self, subtrahend = 1):
-        if isinstance (subtrahend, bytearray):
-            if not subtrahend.isdigit ():
-                return
+    def key_up259 (self, subtrahend = b'1'):
+        if not subtrahend.isdigit ():
+            return
 
-            subtrahend = int (subtrahend.decode())
+        subtrahend = int (subtrahend.decode())
 
         if self.scr_mgr ['qmode'] and self.scr_mgr ['optmap']:
             cur = self.scr_mgr ['qscr'].getyx ()
@@ -197,147 +200,177 @@ class Interface:
                 return
 
             try:
-                t = n [0] - 1
-                
-                if t < 0:
-                    raise IndexError (t)
-                t = self.scr_mgr ['optmap'] [t]
-
-                if self.isseen (self.scr_mgr ['optmap'] [n [0]], TOP):
-                    self.paint (undo = True)
+                if (n [0] - subtrahend) < 0:
+                        raise IndexError (n [0] - subtrahend)
 
 
-                    if self.isseen (t, TOP):
-                        pass
+                t = self.scr_mgr ['optmap'] [n [0]]
+                vis, trange = self.visibility (t)
 
-                    elif self.isseen (t, BOTTOM):
-                        self.scr_mgr ['qline'] -= subtrahend
+                if vis & UNCAPTURED:
+                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                    self.scr_mgr ['qline'] += offset
 
-                    else:
-                        self.scr_mgr ['qline'] -= t[0]
+                elif vis & TOP:
+                    
+                    t = n [0] - subtrahend
 
-                    self.scr_mgr ['qscr'].move (t[0], 0)
+                    t = self.scr_mgr ['optmap'] [t]
 
-                elif self.scr_mgr ['qline'] > 0:
-                    self.scr_mgr ['qline'] -= subtrahend
-
-                self.paint ()
-
-                n [0] -= subtrahend
-
-            except IndexError:
-                if self.scr_mgr ['qline'] == 0:
-                    pass
-                else:
-                    self.scr_mgr ['qline'] -= subtrahend
-
-            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-                [1]) - 1)
-
-            return n [0]
-
-        elif not self.scr_mgr ['qmode']:
-            if not self.isseen (self.msgyx, TOP):
-                self.scr_mgr ['qline'] -= subtrahend
-
-
-            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-                [1]) - 1)
-
-
-    def key_down258 (self, addend = 1):
-        if isinstance (addend, bytearray):
-            if not addend.isdigit ():
-                return
-
-            addend = int (addend.decode())
-
-        if self.scr_mgr ['qmode'] and self.scr_mgr ['optmap']:
-            cur = self.scr_mgr ['qscr'].getyx ()
-            n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
-
-            if not n:
-                return
-
-            try:
-                t = self.scr_mgr ['optmap'] [n [0] + 1]
-
-                if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
-                    self.paint (undo = True)
-
-
-                    if self.isseen (t, 0):
-                        pass
-
-                    elif self.isseen (t, 1):
-                        self.scr_mgr ['qline'] += addend
-
-                    else:
+                    vis, trange = self.visibility (t)
+                    if vis & UNCAPTURED:
                         offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                        self.scr_mgr ['qline'] += offset if offset >= 0 else 1
+                        self.scr_mgr ['qline'] += offset
 
-                    self.scr_mgr ['qscr'].move (t[0], 0)
-
-                elif self.isseen (self.scr_mgr ['optmap'] [n [0]], 1):
-                    self.scr_mgr ['qline'] += addend
 
                 else:
-                    self.scr_mgr ['qline'] += addend
+                    self.scr_mgr ['qline'] -= subtrahend
 
-
-                self.paint ()
-
-                n [0] += addend
 
             except IndexError:
-                if self.isseen (self.scr_mgr ['optmap'] [n [0]]):
-                    pass
+                t = self.scr_mgr ['optmap'] [0]
+                vis, trange = self.visibility (t)
+                if vis & ABOVE:
+                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                    self.scr_mgr ['qline'] += offset
+    
+                else:
+                    self.scr_mgr ['qline'] -= subtrahend
+
+            self.paint (undo = True)
+            
+            self.scr_mgr ['qscr'].move (t[0], 0)
+            self.paint ()
+
+        elif not self.scr_mgr ['qmode']:
+            self.scr_mgr ['qline'] -= subtrahend
+
+
+        if self.scr_mgr ['qline'] < 0:
+            self.scr_mgr ['qline'] = 0
+
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+            [1]) - 1)
+
+
+    def key_down258 (self, addend = b'1'):
+        if not addend.isdigit ():
+            return
+
+        addend = int (addend.decode())
+
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['optmap']:
+            cur = self.scr_mgr ['qscr'].getyx ()
+            n = [i for i,t in enumerate (self.scr_mgr ['optmap']) if t[0] == cur [0]]
+
+            if not n:
+                return
+
+            try:
+                self.scr_mgr ['optmap'] [n [0] + addend]
+                t = self.scr_mgr ['optmap'] [n [0]]
+                vis, trange = self.visibility (t)
+
+                if vis & ABOVE:
+                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                    self.scr_mgr ['qline'] += offset
+
+                elif vis & BOTTOM:
+                    t = self.scr_mgr ['optmap'] [n [0] + addend]
+
+                    vis, trange = self.visibility (t)
+                    if vis & BELOW:
+                        offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                        self.scr_mgr ['qline'] += offset
+
+
                 else:
                     self.scr_mgr ['qline'] += addend
 
+                tl = self.scr_mgr ['optmap'] [-1]
+                visl, trangel = self.visibility (tl)
 
-            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-                [1]) - 1)
-                          
-            return n [0]
+            except IndexError:
+                t = tl = self.scr_mgr ['optmap'] [-1]
+                vis, trange = visl, trangel = self.visibility (t)
+                if vis & UNCAPTURED:
+                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                    self.scr_mgr ['qline'] += offset
+    
+                else:
+                    self.scr_mgr ['qline'] += addend
+
+            bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+            if bot_scry > trangel [-1]:
+                self.scr_mgr ['qline'] -= bot_scry - trangel [-1]
+
+            self.paint (undo = True)
+            
+            self.scr_mgr ['qscr'].move (t[0], 0)
+            self.paint ()
+
 
         elif not self.scr_mgr ['qmode']:
-            if not self.isseen (self.msgyx, BOTTOM):
-                self.scr_mgr ['qline'] += addend
+            self.scr_mgr ['qline'] += addend
+            vis, trange = self.visibility (self.msgyx)
 
-            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
-            (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
-                [1]) - 1)
-                            
+            bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
 
-    def isseen (self, coord, dir = TOP):
-        if dir == BOTTOM:
-            x = math.floor (coord [1] / self.scr_mgr.scrdim [1]) + coord [0]
-            y = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
-            return y >= x >= self.scr_mgr ['qline']
-        
-        elif dir == TOP:
-            x = coord [0]
-            y = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
-            return self.scr_mgr ['qline'] <= x <= y
+            if bot_scry > trange [-1]:
+                self.scr_mgr ['qline'] -= bot_scry - trange [-1]
+
+
+
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+            [1]) - 1)
+
+
+    def visibility (self, coord):
+        flags = 0
+
+        topy = coord [0]
+
+        boty = math.floor (coord [1] / self.scr_mgr.scrdim [1]) + topy
+    
+
+        bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+
+        top_scry = self.scr_mgr ['qline']
+
+        txt_range = (topy, boty)
+        if bot_scry >= boty >= top_scry:
+            flags |= BOTTOM
+
+        if top_scry <= topy <= bot_scry:
+            flags |= TOP
+
+        if top_scry >= topy and bot_scry <= boty:
+            flags |= CAPTURED
+
+        if boty < top_scry:
+            flags |= ABOVE
+
+        if topy > bot_scry:
+            flags |= BELOW
+
+        return (flags, txt_range)
 
 
     def enter10 (self, c = False):
 
-        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']: 
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             if c == False:
                 c = self ['instr'] (len (self.scr_mgr ['qmgr'].pseudos [0]))
 
             c = c.decode ()
 
             self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['ans']] = c
-            
+
             try:
                 e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
-    
+
                 x = re.search (r'(?P<mark>[01])\s+mark for question', self.scr_mgr ['qmgr'].sres.text, re.I)
 
                 if x:
@@ -350,7 +383,7 @@ class Interface:
                 return self.update_qscr ()
 
         else:
-            
+
             try:
                 qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
 
@@ -404,15 +437,15 @@ class Interface:
 
         self.scr_mgr ['qmode'] = False
 
-    
+
     def update_qscr (self, qst = None, keep_qline = False):
 
         if not keep_qline:
             self.scr_mgr ['qline'] = 0
 
 
-        if qst: 
-            
+        if qst:
+
             self.scr_mgr ['qst'] = qst
             self.scr_mgr ['optmap'] = []
 
@@ -423,7 +456,7 @@ class Interface:
                 if f.startswith ('opt'):
                     i = (ord (f[-1]) & 0x1f) - 1
                     x = self.scr_mgr ['qscr'].getyx ()
-                    
+
                     if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int):
                         self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
                         pre = ''
@@ -454,12 +487,12 @@ class Interface:
 
             if not self.scr_mgr ['optmap']:
                 pass #NOTE: Draw a textbox for fill-in-the-gap answer
-           
+
 
             elif qst [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error':
 
                 a = qst [self.scr_mgr ['qmgr'].qmap ['ans']]
-                
+
                 if a:
                     i = self.scr_mgr ['qmgr'].pseudos.index (a)
 
@@ -546,8 +579,8 @@ class Interface:
                 t = t[0]
 
         c = divmod (t [1], self.scr_mgr.scrdim [1])
-        l = t [0] 
-        
+        l = t [0]
+
         x = c[0]
 
         while x:
@@ -558,7 +591,7 @@ class Interface:
 
         self.scr_mgr ['qscr'].chgat (l, 0, c [1], (color) if not undo
                 else t [-1])
-        
+
         if t [2]:
             self.scr_mgr ['qscr'].addch (t[0], 0, t[2])
 
@@ -672,7 +705,7 @@ class Interface:
 
     def key_qmark33 (self, matno = bytearray ()):
         matno = matno.decode()
-        
+
         if not matno:
             matno = 'Nou123456789'
 
@@ -699,11 +732,11 @@ def main (stdscr, args):
     args.wmap = mp
 
     qmap = mp ['qmap']
-    
+
     curses.start_color ()
 
     curses.noecho ()
-   
+
     keys = MPCT_Preprocessor (**args.__dict__)
 
     ansmgr = AnsMgt.AnsMgr (
@@ -718,7 +751,7 @@ def main (stdscr, args):
             stdscr,
             keys,
             ansmgr
-            ) 
+            )
 
     curses.doupdate ()
 
@@ -728,7 +761,7 @@ def main (stdscr, args):
         qa_interface ['nodelay'] (False)
         qa_interface ['notimeout'] (True)
         c = qa_interface ['getch'] ()
-    
+
         c = qa_interface (c)
         curses.doupdate ()
 
@@ -782,10 +815,10 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-   
+
 
     try:
-        
+
         stdscr = curses.initscr ()
 
         main (stdscr, args)

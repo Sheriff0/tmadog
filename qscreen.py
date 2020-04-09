@@ -33,8 +33,8 @@ class QScr:
         self.qmgr = None
         self.qline = 0
         self.optmap = []
-        self.pqidx = -1
-        self.lpqidx = -1
+        self.pqidx = None
+        self.lpqidx = None
         self.id = id
         self.qst = None
         self.qmode = False
