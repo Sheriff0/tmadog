@@ -16,7 +16,6 @@ from ansmgt import AnsMgt
 import dbmgt
 import curses
 import curses.ascii
-import cloudscraper
 import concurrent.futures
 import lxml
 import qscreen
@@ -51,7 +50,7 @@ class MPCT_Preprocessor:
         self.PWD = self.wmap ['kmap']['pwd']
         self.param = {}
         self.param [self.WMAP] = self.wmap
-        self.len = max (len (self.crscodes), len (self.tmas))
+        self.len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
 
     def __len__ (self):
         return self.len
@@ -218,10 +217,8 @@ class Interface:
                     t = self.scr_mgr ['optmap'] [t]
 
                     vis, trange = self.visibility (t)
-                    if vis & UNCAPTURED:
-                        offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                        self.scr_mgr ['qline'] += offset
-
+                    if vis & ABOVE:
+                        self.scr_mgr ['qline'] = trange [-1]
 
                 else:
                     self.scr_mgr ['qline'] -= subtrahend
@@ -231,8 +228,7 @@ class Interface:
                 t = self.scr_mgr ['optmap'] [0]
                 vis, trange = self.visibility (t)
                 if vis & ABOVE:
-                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                    self.scr_mgr ['qline'] += offset
+                    self.scr_mgr ['qline'] = trange [-1]
     
                 else:
                     self.scr_mgr ['qline'] -= subtrahend
@@ -273,16 +269,14 @@ class Interface:
                 vis, trange = self.visibility (t)
 
                 if vis & ABOVE:
-                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                    self.scr_mgr ['qline'] += offset
+                    self.scr_mgr ['qline'] = trange [-1]
 
                 elif vis & BOTTOM:
                     t = self.scr_mgr ['optmap'] [n [0] + addend]
 
                     vis, trange = self.visibility (t)
                     if vis & BELOW:
-                        offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                        self.scr_mgr ['qline'] += offset
+                        self.scr_mgr ['qline'] = trange [0]
 
 
                 else:
@@ -294,9 +288,9 @@ class Interface:
             except IndexError:
                 t = tl = self.scr_mgr ['optmap'] [-1]
                 vis, trange = visl, trangel = self.visibility (t)
+
                 if vis & UNCAPTURED:
-                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
-                    self.scr_mgr ['qline'] += offset
+                    self.scr_mgr ['qline'] = trange [0]
     
                 else:
                     self.scr_mgr ['qline'] += addend
@@ -321,7 +315,6 @@ class Interface:
                 self.scr_mgr ['qline'] -= bot_scry - trange [-1]
 
 
-
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
@@ -340,6 +333,7 @@ class Interface:
         top_scry = self.scr_mgr ['qline']
 
         txt_range = (topy, boty)
+
         if bot_scry >= boty >= top_scry:
             flags |= BOTTOM
 
@@ -546,16 +540,20 @@ class Interface:
         else:
             return r
 
-    def ctrl_w23 (self, *args):
+    def ctrl_w23 (self, offset = b'1'):
+        if not offset.isdigit ():
+            return
+        
+        offset = int (offset.decode ())
         self ['keypad'] (True)
         c = self ['getch'] ()
 
         if c == curses.KEY_UP or c == curses.KEY_LEFT:
-            self.scr_mgr.scroll_up ()
+            self.scr_mgr.scroll (-offset)
             self.update_qscr (keep_qline = True)
 
         elif c == curses.KEY_DOWN or c == curses.KEY_RIGHT:
-            self.scr_mgr.scroll_down ()
+            self.scr_mgr.scroll (offset)
             self.update_qscr (keep_qline = True)
 
 

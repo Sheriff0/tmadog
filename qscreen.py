@@ -23,6 +23,31 @@ class QScrList (list):
                     (value)))
 
 
+class Pscr:
+    def __init__ (self, screen):
+        self.screen = screen
+    
+    def acquire (self, vscr):
+        self.vscr = vscr
+
+    def __getitem__ (self, key):
+        return getattr (self.screen, key)
+
+    def __setitem__ (self, key, value):
+        setattr (self.screen, key, value)
+
+    def owner (self):
+        if hasattr (self, 'vscr'):
+            return self.vscr
+        else:
+            return None
+
+    def release (self):
+        self.vscr = None
+
+
+
+
 class QScr:
     def __init__ (self, nav, qscr, matno, crscode, tma, id = None):
         self.nav = nav
@@ -39,8 +64,6 @@ class QScr:
         self.qst = None
         self.qmode = False
 
-    def __eq__ (self, value):
-        return self.qscr == value
 
     def boot (self):
         if not self.qmgr:
@@ -67,17 +90,19 @@ class QScr:
 
     def acquire_screen (self, pscreen, scrparams = None):
         self.pscr = pscreen
+        
+        self.pscr.acquire (self)
 
-        self.scord, self.scrdim = scrparams if scrparams else (self.pscr.getbegyx (), self.pscr.getmaxyx ())
+        self.scord, self.scrdim = scrparams if scrparams else (self.pscr ['getbegyx'] (), self.pscr ['getmaxyx'] ())
 
     def has_screen (self):
-        return hasattr (self, 'pscr') and self.pscr
+        return hasattr (self, 'pscr') and self.pscr and self is self.pscr.owner ()
 
     def release_screen (self):
-        ret = [self.pscr, (self.scord, self.scrdim)]
-        self.pscr = None
-        self.scord = self.scrdim = None
-        return ret
+        if hasattr (self, 'pscr') and self.pscr and self is self.pscr.owner ():
+            ret = [self.pscr, (self.scord, self.scrdim)]
+            self.pscr.release ()
+            return ret
 
     def resize (self, lines = None, cols = None):
         pass
@@ -120,12 +145,13 @@ class QscrMuxer:
 
         for i in range (d):
             self.subscreens.append (
-                    self.qst_scr.derwin (minlines, scrdim [1], i * minlines, 0)
+                    Pscr (self.qst_scr.derwin (minlines, scrdim [1], i *
+                        minlines, 0))
                     )
 
         i += 1
 
-        self.subscreens [-1].resize (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
+        self.subscreens [-1] ['resize'] (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
 
         self.vscreen = curses.newpad (self.V_GRANULARITY * len (keys), scrdim
                 [1] - 2)
@@ -191,17 +217,16 @@ class QscrMuxer:
         setattr (self.qscrs [self.qscr_pointer], key, value)
 
 
-    def scroll_up (self, p = None):
-        self.unload ()
+    def scroll (self, offset):
 
-        if not p:
-            p = self.qscr_pointer
-            self.qscr_pointer -= 1
+        p = self.qscr_pointer
 
-        else:
-            self.qscr_pointer, p = p, self.qscr_pointer
+        self.qscr_pointer += offset
 
-        if self.qscr_pointer < 0:
+        if self.qscr_pointer >= self.qscr_len:
+            self.qscr_pointer = 0
+
+        elif self.qscr_pointer < 0:
             self.qscr_pointer = self.qscr_len - 1
 
         if not self.qscrs [self.qscr_pointer].has_screen ():
@@ -209,31 +234,7 @@ class QscrMuxer:
                 self.qscrs [self.qscr_pointer].acquire_screen (
                         *self.qscrs [p].release_screen ()
                         )
-            else:
-                self.qscr_pointer = p
-                return -1
 
-        self.load ()
-
-
-    def scroll_down (self, p = None):
-        self.unload ()
-
-        if not p:
-            p = self.qscr_pointer
-            self.qscr_pointer += 1
-
-        else:
-            self.qscr_pointer, p = p, self.qscr_pointer
-
-        if self.qscr_pointer >= self.qscr_len:
-            self.qscr_pointer = 0
-
-        if not self.qscrs [self.qscr_pointer].has_screen ():
-            if self.qscrs [p].has_screen ():
-                self.qscrs [self.qscr_pointer].acquire_screen (
-                        *self.qscrs [p].release_screen ()
-                        )
             else:
                 self.qscr_pointer = p
                 return -1
@@ -248,41 +249,26 @@ class QscrMuxer:
 
         scr.boot ()
 
-        self.scrdim = (scr.scrdim [0] - 2, scr.scrdim [1] - 2)
-        self.scord = (scr.scord [0] + 1, scr.scord [1] + 1)
+        self.scrdim = (scr.scrdim [0] - 2, scr.scrdim [1])
+        self.scord = (scr.scord [0] , scr.scord [1])
 
-        scr.pscr.box ()
-        scr.pscr.noutrefresh ()
-        scr.qscr.noutrefresh (scr.qline, 0, self.scord[0], self.scord [1],
-                (self.scrdim [0] + self.scord [0]) - 1, (self.scrdim [1] + self.scord
-                    [1]) - 1)
 
+        scr.pscr ['addnstr'] (self.scrdim [0], 0,
+                '%s %s TMA%s' % (scr.matno.upper (), scr.crscode.upper (),
+                    scr.tma), self.scrdim [1])
+
+        scr.pscr ['chgat'] (self.scrdim [0], 0 ,
+                curses.A_REVERSE)
+
+        scr.pscr ['noutrefresh'] ()
 
         return self
 
     
-    def unload (self, scr = None, touch_screen = True):
-        if not scr:
-            scr = self.qscrs [self.qscr_pointer]
-
-        if touch_screen:
-            scr.pscr.box (' ', ' ')
-            scr.pscr.noutrefresh ()
-            scr.qscr.noutrefresh (scr.qline, 0, self.scord[0], self.scord [1],
-                    (self.scrdim [0] + self.scord [0]) - 1, (self.scrdim [1] + self.scord
-                        [1]) - 1)
-
-
-        self.scrdim = self.scord = None
-        return self
-
-
     def resize (self, pscreen):
         self.pscreen = pscreen
 
         self.pscreen.clear ()
-
-        self.unload (touch_screen = False)
 
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
 
@@ -315,12 +301,13 @@ class QscrMuxer:
 
         for i in range (d):
             self.subscreens.append (
-                    self.qst_scr.derwin (minlines, scrdim [1], i * minlines, 0)
+                    Pscr (self.qst_scr.derwin (minlines, scrdim [1], i *
+                        minlines, 0))
                     )
 
         i += 1
 
-        self.subscreens [-1].resize (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
+        self.subscreens [-1] ['resize'] (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
 
         self.vscreen.resize (self.V_GRANULARITY * self.qscr_len,
                 scrdim [1] - 2)
@@ -342,7 +329,6 @@ class QscrMuxer:
                     idx = scr.id
                     self.qscr_pointer = idx
                     yield (self.load (), scrdim [1] >= self.dimref [1])
-                    self.unload ()
                     i += 1
 
                 except IndexError:
