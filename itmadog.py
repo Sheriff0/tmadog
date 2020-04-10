@@ -21,6 +21,7 @@ import lxml
 import qscreen
 import copy
 import pdb
+import json
 
 BREAK = -1
 
@@ -774,11 +775,20 @@ def main (stdscr, args):
     if ansmgr._cur:
         ansmgr.close ()
 
+    f = open (args.qstdump, 'w') if args.debug else None
+
     if args.updatedb:
-        f = open (args.qstdump, 'w') if args.debug else None
         dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (),
                 ansmgr.qmap, fp = f)
+    elif args.debug:
+        arr = []
+        for qst in ansmgr.iter_cache ():
+           arr.append (qst)
 
+        json.dump (arr, f)
+
+    if f:
+        f.close ()
 
     return
 

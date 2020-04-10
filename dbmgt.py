@@ -57,14 +57,15 @@ class DbMgt (object):
             fp.write ('[')
 
         ierr = None
+        
+        arr = []
 
         dogid, cid, = None, None
 
         for datum in data:
-
+            
             if fp:
-                json.dump (datum, fp)
-                fp.write (',')
+                arr.append (datum)
 
             try:
                 cid = cl.updatedb (db, [datum], qmap, cur)['cid']
@@ -86,8 +87,8 @@ class DbMgt (object):
                 conn.close ()
                 return -1
 
-        if fp:
-            fp.write (']')
+        if arr and fp:
+            json.dump (arr, fp)
 
         try:
             conn.commit ()
