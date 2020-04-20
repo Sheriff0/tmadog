@@ -14,7 +14,7 @@ pwd = [Password]
 
 
 [home_page]
-url = https://www.nouonline.net/
+path = /
 requires =
 
 [login_page]

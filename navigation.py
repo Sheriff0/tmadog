@@ -3,36 +3,36 @@ import dogs
 import requests
 import urllib.parse
 import re
-    
+import pdb
+
 class InvalidPath (TypeError):
     def __init__ (self, *pargs, **kwargs):
         return super ().__init__ (*pargs, **kwargs)
 
 
 class Recipe (object):
-    def __init__ (self, steps, indices, keys, start, name):
-        if not isinstance (start, requests.models.Response):
-            raise TypeError ('Recipe: start must of type requests.models.Response', start)
-
+    def __init__ (self, steps, indices, keys, start, name_or_url):
+        self (start)
         self.steps = steps.split (',')
         self.indices = indices.split (',')
-        self.start = start
         self.keys = keys
-        self.name = name
+        self.name_or_url = name_or_url
         self.len = len (self.steps)
 
     def __call__ (self, start):
         if start:
-            if not isinstance (start, requests.models.Response):
+            if not isinstance (start, requests.Response):
                 raise TypeError ('Recipe: start must of type requests.models.Response', start)
 
             else: 
                 self.start = start
+        else:
+            self.start = requests.Response ()
 
         return self
 
     def __repr__ (self):
-        return '<Recipe for %s>' % (self.name,)
+        return '<Recipe for %s>' % (self.name_or_url,)
 
     def __iter__ (self):
         return self.__next__()
@@ -41,29 +41,54 @@ class Recipe (object):
         
         for s,i in zip (self.steps, self.indices):
             s = s.strip ()
-            if s.startswith (('[', '<')):
-                data = {
-                        k: self.keys[k] for k in s.split ('/')
-                        }
+            req = {}
 
-                yield dogs.fill_form (
-                        url = self.start.url,
-                        idx = int (i),
-                        html = self.start.text,
-                        data = data,
-                        flags = dogs.FILL_FLG_EXTRAS
-                        )
+            if s.startswith (('/', 'http')):
+                a = s.split (':')
+
+                req ['url'] = urllib.parse.urljoin (self.name_or_url, a [0])
+
+                if len (a) > 1:
+                
+                    req ['data'] = {
+                            k: self.keys[k] for k in a [-1].split ('/') if k in self.keys
+                            }
+                    req ['method'] = 'POST'
+
+                else:
+                    req ['method'] = 'GET'
+
+            elif self.start.url and self.start.text: 
+                if s.startswith (('[', '<')):
+                    data = {
+                            k: self.keys[k] for k in s.split ('/')
+                            }
+
+                    req.update (
+                            dogs.fill_form (
+                                url = self.start.url,
+                                idx = int (i),
+                                html = self.start.text,
+                                data = data,
+                                flags = dogs.FILL_FLG_EXTRAS
+                                )
+                            )
+                else:
+                    req.update (
+                            dogs.click (
+                                url = self.start.url,
+                                idx = int (i),
+                                html = self.start.text,
+                                button = s,
+                                flags = dogs.FILL_FLG_EXTRAS
+
+                                )
+                            )
 
             else:
-                yield dogs.click (
-                        url = self.start.url,
-                        idx = int (i),
-                        html = self.start.text,
-                        button = s,
-                        flags = dogs.FILL_FLG_EXTRAS
-                        
-                        )
+                raise TypeError ()
 
+            yield req
 
 
 class Navigation (object):
@@ -78,6 +103,7 @@ class Navigation (object):
             self.traverse_deps = True
             self.kwargs = kwargs
             self.refcount = 1
+            self.kwargs.setdefault ('headers', {})
 
         def __repr__ (self):
             return self.cache[self.lp].url
@@ -102,46 +128,56 @@ class Navigation (object):
             self.kwargs = kwargs if kwargs else self.kwargs
 
             if 'home_page' not in self or self ['home_page'].url != home_url:
-                self.boot ('home_page')
+                self.cache.pop ('home_page', None)
 
-        def __getitem__ (self, sl):
-            if isinstance (sl, int):
-                sl = slice (None, sl)
+        def __getitem__ (self, sla):
+            if isinstance (sla, int):
+                sl = slice (None, sla)
                 s = self.lp 
             
-            elif isinstance (sl, slice):
+            elif isinstance (sla, slice):
                 s = self.lp 
+                sl = sla
             
-            elif isinstance (sl, str):
-                s = sl
+            elif isinstance (sla, str):
+                s = sla
                 sl = slice (None, None)
 
             v = self.webmap.get (s, 'volatile', fallback = '')
 
-            if s in self and ((not v or v not in self) or
-                    (re.match (r'\w+:-?\d', s))):
-                return self.cache[s]
+            if s in self and (not v or v not in self):
+                return self.cache [s]
+
+            elif '%s:%s' % (s, sl.stop) in self:
+                return self.cache ['%s:%s' % (s, sl.stop)]
             
             elif s in self.webmap:
                 if self.traverse_deps:
                     deps = [s]
-                    while True:
-                        s1 = self.webmap [deps [-1]]['requires']
-                        if not s1:
-                            break
+                    
+                    if not self.webmap [s]['path'].startswith (('/', 'http')):
+                        while True:
+                            s1 = self.webmap [deps [-1]]['requires']
 
-                        v = self.webmap [s1]['volatile']
-                        if not v and s1 in self:
-                            if urllib.parse.urlparse (self.cache [s1].url).hostname == urllib.parse.urlparse (self.cache ['home_page'].url).hostname:
+                            if not s1:
                                 break
+
+                            elif self.webmap [s1]['path'].startswith (('/', 'http')):
+                                deps.append (s1)
+                                break
+
+                            v = self.webmap [s1]['volatile']
+                            if not v and s1 in self:
+                                if urllib.parse.urlparse (self.cache [s1].url).hostname == urllib.parse.urlparse (self.cache ['home_page'].url).hostname:
+                                    break
+                                else:
+                                    deps.append (s1)
+                            
+                            elif v and v not in self and s1 in self:
+                                break
+
                             else:
                                 deps.append (s1)
-                        
-                        elif v and v not in self and s1 in self:
-                            break
-
-                        else:
-                            deps.append (s1)
                     deps.reverse ()
 
                     for s1 in deps [:-1]:
@@ -167,13 +203,10 @@ class Navigation (object):
 
             lp = lp if lp else self.lp
 
-            if not self.webmap [lp]['requires']:
-                return self.boot (lp)
-
-            x = self.cache [self.webmap [lp]['requires']]
+            x = self.cache.get (self.webmap [lp]['requires'], None)
 
             req_gen = Recipe (self.webmap [lp]['path'], self.webmap[lp]['indices'],
-                    self.keys, x, lp)
+                    self.keys, x, self.home_url)
 
             gen = next (req_gen)
 
@@ -212,25 +245,4 @@ class Navigation (object):
                 self.lp = lp
                 return res
         
-        def boot (self, page):
-
-            self.kwargs.setdefault ('headers', {})
-
-            self.kwargs ['headers'].update (
-                    {
-                        'host': urllib.parse.urlparse (self.home_url).hostname,
-                        'referer': self.home_url,
-                        'sec-fetch-mode': 'navigate',
-                        'sec-fetch-user': '?1',
-                        'sec-fetch-site': 'none'
-                        }
-                    )
-
-            res = self.session.get (self.home_url, **self.kwargs)
-            res.raise_for_status ()
-
-            self.cache[page] = res
-            self.lp = page
-
-            return res
 

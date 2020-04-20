@@ -3,6 +3,7 @@ from qstmgt import QstMgt
 import cloudscraper
 import curses
 import math
+import copy
 import pdb
 
 class QScrList (list):
@@ -67,15 +68,13 @@ class QScr:
 
     def boot (self):
         if not self.qmgr:
-            if 'tma_page:-1' not in self.nav:
-                self.nav ('qst_page')[:-1]
 
-            to, fro = self.nav ['qst_page:-1']
+            to, fro = self.nav ('qst_page')[:-1]
             self.qmgr = QstMgt.QstMgr (
                     matno = self.matno,
                     crscode = self.crscode,
                     tma = self.tma,
-                    fargs = to,
+                    fargs = copy.deepcopy (to),
                     stop = 10,
                     url = fro.url,
                     qmap = self.nav.webmap ['qmap'],
