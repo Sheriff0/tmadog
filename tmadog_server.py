@@ -6,6 +6,7 @@ import random
 import math
 from urllib import parse
 import re
+import ssl
 
 def nolog (*args):
     pass
@@ -306,6 +307,14 @@ def main (argv = sys.argv):
     
     parser.add_argument ('--port', default = 3000, type = int, help = 'The port for the server')
 
+    parser.add_argument ('--https', action = 'store_true', help = 'To setup an https server')
+
+    parser.add_argument ('--tls_cert', '--https_cert', default = 'pg/cert.pem',
+            dest = 'tls_cert', help = 'HTTPS server certificate')
+
+    parser.add_argument ('--tls_key', '--https_key', default = 'pg/key.pem',
+            dest = 'tls_key', help = 'HTTPS server key')
+
     parser.add_argument ('--cfmode', action = 'store_true', help = 'To use cfmode')
     
     parser.add_argument ('--no-run', dest = 'run', action = 'store_false', help = 'Run the server')
@@ -323,6 +332,11 @@ def main (argv = sys.argv):
         RequestHandler.log_req = nolog
     
     server = http.server.HTTPServer ((args.host, args.port), RequestHandler)
+
+    if args.https:
+        tlscxt = ssl.SSLContext ()
+        tlscxt.load_cert_chain (certfile = args.tls_cert, keyfile = args.tls_key)
+        server.socket = tlscxt.wrap_socket (server.socket, server_side = True)
    
     if not args.silent and args.run:
         print ('root set to %s' % (RequestHandler.root,))

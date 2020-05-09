@@ -39,12 +39,14 @@ class MPCT_Preprocessor:
     TMA = 'tma'
     URL = 'url'
     WMAP = 'wmap'
+    COOKIES = 'cookies'
 
     def __init__ (self, **args):
         self.matnos = args ['matno']
         self.pwds = args ['pwd']
         self.crscodes = args ['crscode']
         self.tmas = args ['tma']
+        self.cookies = args ['cookies']
         self.urls = args ['url']
         self.wmap = args ['wmap']
         self.MATNO = self.wmap ['kmap']['matno']
@@ -69,12 +71,14 @@ class MPCT_Preprocessor:
                 self.param [self.CRSCODE] = self.crscodes [i]
                 self.param [self.TMA] = self.tmas [i]
                 self.param [self.URL] = self.urls [i]
+                self.param [self.COOKIES] = self.cookies [i]
 
             except IndexError:
                 try:
                     self.param [self.CRSCODE] = self.crscodes [i]
                     self.param [self.TMA] = self.tmas [i]
                     self.param [self.URL] = self.urls [i]
+                    self.param [self.COOKIES] = self.cookies [i]
 
                 except IndexError:
                     pass
@@ -433,7 +437,7 @@ class Interface:
         self.scr_mgr ['qmode'] = False
 
 
-    def update_qscr (self, qst = None, keep_qline = False):
+    def update_qscr (self, qst = None, keep_qline = False, qpaint = curses.A_NORMAL, opaint = curses.A_NORMAL, apaint = curses.A_BLINK):
 
         if not keep_qline:
             self.scr_mgr ['qline'] = 0
@@ -464,7 +468,7 @@ class Interface:
                         x[0],
                         (cur [0] - x[0]) * (self.scr_mgr.scrdim [1]) + cur [1],
                         self.scr_mgr ['qmgr'].pseudos [i] if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int) else None,
-                        curses.A_NORMAL
+                        opaint
                         ])
 
                     self.scr_mgr ['qscr'].addch ('\n')
@@ -476,7 +480,7 @@ class Interface:
                     else:
                         pre = str (qst [self.scr_mgr ['qmgr'].qmap ['qn']]) + '. '
 
-                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip () + '\n')
+                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip () + '\n', qpaint)
 
                 self.scr_mgr ['qscr'].addch ('\n')
 
@@ -491,7 +495,7 @@ class Interface:
                 if a:
                     i = self.scr_mgr ['qmgr'].pseudos.index (a)
 
-                    self.scr_mgr ['optmap'] [i][-1] = curses.A_BLINK
+                    self.scr_mgr ['optmap'] [i][-1] = apaint 
 
                 else:
                     i = 0
@@ -717,7 +721,7 @@ class Interface:
                         re.I)
             qst [k] = v
 
-        self.update_qscr (qst, keep_qline = False)
+        self.update_qscr (qst, keep_qline = False, qpaint = curses.A_DIM)
 
 
 def main (stdscr, args):
@@ -735,6 +739,9 @@ def main (stdscr, args):
     curses.start_color ()
 
     curses.noecho ()
+
+    if not args.cookies:
+        args.cookies = ['']
 
     keys = MPCT_Preprocessor (**args.__dict__)
 
@@ -821,6 +828,8 @@ if __name__ == '__main__':
 
     parser.add_argument ('--tma', help = 'Your target TMA for the chosen course', action = 'append')
 
+
+    parser.add_argument ('--cookies', help = 'Website cookies', action = 'append')
 
     args = parser.parse_args()
 

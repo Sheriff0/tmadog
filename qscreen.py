@@ -5,6 +5,8 @@ import curses
 import math
 import copy
 import pdb
+import cookie_parse
+import requests
 
 class QScrList (list):
     def index (self, value, attr = None, start = 0, stop = 2147483647):
@@ -156,6 +158,7 @@ class QscrMuxer:
                 [1] - 2)
 
         qscrs = QScrList ()
+        nav = None
 
         for i, key in enumerate (keys):
             pk = key [keys.MATNO]
@@ -171,7 +174,7 @@ class QscrMuxer:
                         key [keys.URL],
                         key [keys.WMAP], 
                         key,
-                        session = cloudscraper.create_scraper ()
+                        session = self.mksess (key [keys.URL], key [keys.COOKIES])
                         )
 
             finally:
@@ -208,6 +211,38 @@ class QscrMuxer:
     def replace (self, keys):
         pass
 
+    def mksess (self, url, cookie_file = ''):
+        session = None
+
+        if cookie_file:
+            with open (cookie_file) as f:
+                cookie_str = f.read ()
+
+                session = requests.Session ()
+                cookt = cookie_parse.bake_cookies (cookie_str, url)
+
+                session.headers = requests.structures.OrderedDict(
+                        (
+                            ("Host", None),
+                            ("Connection", "keep-alive"),
+                            ("Upgrade-Insecure-Requests", "1"),
+                            ("User-Agent", cookt [0]['User-Agent']),
+                            (
+                                "Accept",
+                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                                ),
+                            ("Accept-Language", "en-US,en;q=0.9"),
+                            ("Accept-Encoding", "gzip, deflate"),
+                            )
+                        )
+
+                session.cookies = cookt [1]
+
+        else:
+            session = cloudscraper.create_scraper ()
+
+        
+        return session
 
     def __getitem__ (self, key):
         return getattr (self.qscrs [self.qscr_pointer], key)

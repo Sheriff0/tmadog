@@ -14,7 +14,7 @@ pwd = [Password]
 
 
 [home_page]
-url = https://www.nouonline.net/
+path = /
 requires =
 
 [login_page]
@@ -26,12 +26,12 @@ path = Logout
 requires = tma_page
 
 [qst_page]
-path = TMA1
+path = TMA2
 requires = tma_page
 volatile = logout_page
 
 [tma_page]
-path = TMA1,${login_page:keys}
+path = TMA2,${login_page:keys}
 volatile = logout_page
 
 [profile_page]
