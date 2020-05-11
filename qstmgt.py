@@ -26,7 +26,7 @@ class QstMgt (object):
                     self.append (x)
 
             def append (self, value):
-                
+
                 v = str (value).lower ()
                 try:
                     i = self.index (v)
@@ -36,7 +36,7 @@ class QstMgt (object):
                     super ().extend ([v, 1])
 
                 return
-            
+
             def extend (self, iter):
                 return self.__init__ (iter)
 
@@ -71,7 +71,7 @@ class QstMgt (object):
             self.fargs = self._transform_req (fargs, matno, tma, crscode)
 
         def _transform_req (self, req, matno, tma , crscode):
-            
+
             tma = str (tma)
             tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma
             self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
@@ -81,7 +81,7 @@ class QstMgt (object):
                     self._copycase (crscode), req['url'], flags = re.IGNORECASE)
 
             req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(tma), req['url'], flags = re.IGNORECASE)
-            
+
 
             for k in req.get(self.dt0, {}):
                 req[self.dt0][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.dt0][k], flags = re.IGNORECASE)
@@ -98,7 +98,7 @@ class QstMgt (object):
         def fetch (self, url1 = None, **kwargs):
             if (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
-                
+
                 kwargs.setdefault (
                         'headers',
                         dogs.mkheader (self.fargs ['url'], self.referer)
@@ -120,7 +120,7 @@ class QstMgt (object):
 
                 except:
                     return None
-           
+
             if not self.dt1:
                 self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
 
@@ -150,7 +150,7 @@ class QstMgt (object):
         def submit (self, qst, **kwargs):
 
             self.nextq [self.dt1 or self.dt0] = qst
-            
+
             self.totscore = math.trunc (int (qst [self.qmap ['score']] + '0') / 10)
 
             kwargs.setdefault (
@@ -159,16 +159,16 @@ class QstMgt (object):
                     )
 
             self.sres = self.session.request (**self.nextq, **kwargs)
-            
+
+            self.sres.raise_for_status ()
             x = self.nextq.pop (self.dt1 or self.dt0)
 
             self.referer = self.sres.url
             try:
-                self.sres.raise_for_status ()
                 res = self.fetch ()
 
                 self.nextq [self.dt1 or self.dt0] = res
-                
+
                 s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
 
                 self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)

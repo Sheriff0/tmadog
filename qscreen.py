@@ -52,42 +52,23 @@ class Pscr:
 
 
 class QScr:
-    def __init__ (self, nav, qscr, matno, crscode, tma, id = None):
-        self.nav = nav
-        self.tma = tma
-        self.crscode = crscode
-        self.matno = matno
+    def __init__ (self, qscr, id = None, **kwargs):
         self.qscr = qscr
-        self.qmgr = None
-        self.qline = 0
-        self.optmap = []
-        self.pqidx = None
-        self.lpqidx = None
         self.id = id
-        self.qst = None
-        self.qmode = False
+        self.extras = kwargs
 
+    def __getitem__ (self, key):
+        if hasattr (self, key):
+            return getattr (self, key)
 
-    def boot (self):
-        if not self.qmgr:
+        else:
+            return self.extras [key]
 
-            to, fro = self.nav ('qst_page')[:-1]
-            self.qmgr = QstMgt.QstMgr (
-                    matno = self.matno,
-                    crscode = self.crscode,
-                    tma = self.tma,
-                    fargs = copy.deepcopy (to),
-                    stop = 10,
-                    url = fro.url,
-                    qmap = self.nav.webmap ['qmap'],
-                    session = self.nav.session
+    def __setitem__ (self, key, value):
+        self.extras [key] = value
 
-                    )
-            
-            self.qmgr.interactive = True
-
-        return self.qmgr
-
+    def __contains__ (self, key):
+        return key in self.extras
 
     def acquire_screen (self, pscreen, scrparams = None):
         self.pscr = pscreen
@@ -113,7 +94,7 @@ class QScr:
 class QscrMuxer:
     V_GRANULARITY = 1000
 
-    def __init__ (self, pscreen, keys): 
+    def __init__ (self, pscreen, params): 
         
         self.pscreen = pscreen
 
@@ -130,7 +111,7 @@ class QscrMuxer:
             if scrdim [0] == 3:
                 self.qst_scr = self.pscreen
             else:
-                d = min (2, len (keys))
+                d = min (2, len (params))
 
                 self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
 
@@ -154,50 +135,31 @@ class QscrMuxer:
 
         self.subscreens [-1] ['resize'] (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
 
-        self.vscreen = curses.newpad (self.V_GRANULARITY * len (keys), scrdim
+        self.vscreen = curses.newpad (self.V_GRANULARITY * len (params), scrdim
                 [1] - 2)
 
         qscrs = QScrList ()
         nav = None
 
-        for i, key in enumerate (keys):
-            pk = key [keys.MATNO]
-            
-            try:
-                idx = qscrs.index (pk, attr = 'matno', start = 0, stop = i)
-                nav = qscrs [idx].nav
-                nav.refcount += 1
-
-            except ValueError:
-
-                nav = Navigation.Navigator (
-                        key [keys.URL],
-                        key [keys.WMAP], 
-                        key,
-                        session = self.mksess (key [keys.URL], key [keys.COOKIES])
+        for i, extattrs in enumerate (params):
+            qscrs.append (
+                    QScr (
+                        self.vscreen.derwin (self.V_GRANULARITY, scrdim [1] - 2, self.V_GRANULARITY * i, 0),
+                        id = i,
+                        **extattrs
                         )
-
-            finally:
-
-                qscrs.append (
-                        QScr (
-                            nav,
-                            self.vscreen.derwin (self.V_GRANULARITY, scrdim [1] - 2, self.V_GRANULARITY * i, 0),
-                            pk,
-                            key [keys.CRSCODE],
-                            key [keys.TMA],
-                            id = i
-                            )
-                        )
+                    )
 
 
         self.qscrs = qscrs
 
-        self.qscr_len = len (keys)
+        self.qscr_len = len (qscrs)
 
         self.qscr_pointer = 0
         
         self.dimref = scrdim
+
+        self.params = params
 
         self.post_init ()
 
@@ -211,44 +173,14 @@ class QscrMuxer:
     def replace (self, keys):
         pass
 
-    def mksess (self, url, cookie_file = ''):
-        session = None
-
-        if cookie_file:
-            with open (cookie_file) as f:
-                cookie_str = f.read ()
-
-                session = requests.Session ()
-                cookt = cookie_parse.bake_cookies (cookie_str, url)
-
-                session.headers = requests.structures.OrderedDict(
-                        (
-                            ("Host", None),
-                            ("Connection", "keep-alive"),
-                            ("Upgrade-Insecure-Requests", "1"),
-                            ("User-Agent", cookt [0]['User-Agent']),
-                            (
-                                "Accept",
-                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                                ),
-                            ("Accept-Language", "en-US,en;q=0.9"),
-                            ("Accept-Encoding", "gzip, deflate"),
-                            )
-                        )
-
-                session.cookies = cookt [1]
-
-        else:
-            session = cloudscraper.create_scraper ()
-
-        
-        return session
-
     def __getitem__ (self, key):
-        return getattr (self.qscrs [self.qscr_pointer], key)
+        return self.qscrs [self.qscr_pointer][key]
 
     def __setitem__ (self, key, value):
-        setattr (self.qscrs [self.qscr_pointer], key, value)
+        self.qscrs [self.qscr_pointer] [key] = value
+
+    def __contains__ (self, key):
+        return key in self.qscrs [self.qscr_pointer]
 
 
     def scroll (self, offset):
@@ -281,18 +213,12 @@ class QscrMuxer:
         if scr == None:
             scr = self.qscrs [self.qscr_pointer]
 
-        scr.boot ()
-
         self.scrdim = (scr.scrdim [0] - 2, scr.scrdim [1])
         self.scord = (scr.scord [0] , scr.scord [1])
 
 
-        scr.pscr ['addnstr'] (self.scrdim [0], 0,
-                '%s %s TMA%s' % (scr.matno.upper (), scr.crscode.upper (),
-                    scr.tma), self.scrdim [1])
-
-        scr.pscr ['chgat'] (self.scrdim [0], 0 ,
-                curses.A_REVERSE)
+        scr.pscr ['addnstr'] (self.scrdim [0], 0, '%s %s TMA%s' % (scr [self.params.UID].upper (), scr [self.params.UID1].upper (), scr [self.params.UID2]), self.scrdim [1]) 
+        scr.pscr ['chgat'] (self.scrdim [0], 0 , curses.A_REVERSE)
 
         scr.pscr ['noutrefresh'] ()
 

@@ -22,6 +22,8 @@ import qscreen
 import copy
 import pdb
 import json
+import cloudscraper
+import cookie_parse
 
 BREAK = -1
 
@@ -49,7 +51,9 @@ class MPCT_Preprocessor:
         self.cookies = args ['cookies']
         self.urls = args ['url']
         self.wmap = args ['wmap']
-        self.MATNO = self.wmap ['kmap']['matno']
+        self.UID = self.wmap ['kmap']['matno']
+        self.UID1 = self.CRSCODE
+        self.UID2 = self.TMA
         self.PWD = self.wmap ['kmap']['pwd']
         self.param = {}
         self.param [self.WMAP] = self.wmap
@@ -66,7 +70,7 @@ class MPCT_Preprocessor:
         for i in range (self.len):
 
             try:
-                self.param [self.MATNO] = self.matnos [i]
+                self.param [self.UID] = self.matnos [i]
                 self.param [self.PWD] = self.pwds [i]
                 self.param [self.CRSCODE] = self.crscodes [i]
                 self.param [self.TMA] = self.tmas [i]
@@ -94,15 +98,70 @@ class Interface:
         self.keys = keys
         self.amgr = amgr
         curses.curs_set (0)
-        self.scr_mgr ['qst'] = None
-        self.scr_mgr ['qmode'] = False
         self.pq = []
         self.pqlen = 0
         self.stdscr = stdscr
+        self.boot ()
         self.update_qscr ()
 
     def __getitem__ (self, attr):
         return getattr (self.scr_mgr ['qscr'], attr)
+
+
+    def boot (self, qscr = None):
+        if not hasattr (self, 'navtab'):
+            self.navtab = qscreen.QScrList ()
+
+        if not qscr:
+            qscr = self.scr_mgr
+
+        if 'nav' not in qscr or 'qmgr' not in qscr or not qscr ['nav'] or not qscr ['qmgr']:
+            if 'nav' not in qscr or not qscr ['nav']:
+
+                try:
+                    idx = self.navtab.index (qscr [self.keys.UID], attr = 'refcount')
+                    qscr ['nav'] = self.navtab [idx]
+
+                except ValueError:
+
+                    nav = Navigation.Navigator (
+                            qscr [self.keys.URL],
+                            qscr [self.keys.WMAP],
+                            qscr, #dangerous maybe
+                            session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
+                            )
+
+                    qscr ['nav'] = nav
+
+                    nav.refcount = qscr [self.keys.UID]
+
+                    self.navtab.append (nav)
+
+
+
+            to, fro = qscr ['nav'] ('qst_page')[:-1]
+            qscr ['qmgr'] = QstMgt.QstMgr (
+                    matno = qscr [self.keys.UID],
+                    crscode = qscr [self.keys.CRSCODE],
+                    tma = qscr [self.keys.TMA],
+                    fargs = copy.deepcopy (to),
+                    stop = 10,
+                    url = fro.url,
+                    qmap = qscr [self.keys.WMAP]['qmap'],
+                    session = qscr ['nav'].session
+
+                    )
+
+            qscr ['qline'] = 0
+            qscr ['optmap'] = []
+            qscr ['pqidx'] = None
+            qscr ['lpqidx'] = None
+            qscr ['qst'] = None
+            qscr ['qmode'] = False
+            qscr ['qmgr'].interactive = True
+
+        return qscr ['qmgr']
+
 
     def __call__ (self, key):
 
@@ -138,6 +197,40 @@ class Interface:
             return None
 
 
+    def mksess (self, url, cookie_file = ''):
+        session = None
+
+        if cookie_file:
+            with open (cookie_file) as f:
+                cookie_str = f.read ()
+
+                session = requests.Session ()
+                cookt = cookie_parse.bake_cookies (cookie_str, url)
+
+                session.headers = requests.structures.OrderedDict(
+                        (
+                            ("Host", None),
+                            ("Connection", "keep-alive"),
+                            ("Upgrade-Insecure-Requests", "1"),
+                            ("User-Agent", cookt [0]['User-Agent']),
+                            (
+                                "Accept",
+                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                                ),
+                            ("Accept-Language", "en-US,en;q=0.9"),
+                            ("Accept-Encoding", "gzip, deflate"),
+                            )
+                        )
+
+                session.cookies = cookt [1]
+
+        else:
+            session = cloudscraper.create_scraper ()
+
+
+        return session
+
+
     def key_left260 (self, subtrahend = b'1'):
         if self.scr_mgr ['lpqidx'] != None and self.scr_mgr ['pqidx'] != None and self.scr_mgr ['qmode'] and self.pq:
 
@@ -157,7 +250,7 @@ class Interface:
                         self.update_qscr (self.amgr.download (p, l))
 
                     else:
-                        pdb.set_trace ()
+                        pass #pdb.set_trace ()
 
             elif self.scr_mgr ['pqidx'] < 0:
                 self.scr_mgr ['pqidx'] = 0
@@ -181,7 +274,7 @@ class Interface:
                     self.update_qscr (self.amgr.download (p, l))
 
                 else:
-                    pdb.set_trace ()
+                    pass #pdb.set_trace ()
 
             elif self.scr_mgr ['pqidx'] >= self.pqlen:
                 self.scr_mgr ['pqidx'] = self.pqlen
@@ -216,7 +309,7 @@ class Interface:
                     self.scr_mgr ['qline'] += offset
 
                 elif vis & TOP:
-                    
+
                     t = n [0] - subtrahend
 
                     t = self.scr_mgr ['optmap'] [t]
@@ -234,12 +327,12 @@ class Interface:
                 vis, trange = self.visibility (t)
                 if vis & ABOVE:
                     self.scr_mgr ['qline'] = trange [-1]
-    
+
                 else:
                     self.scr_mgr ['qline'] -= subtrahend
 
             self.paint (undo = True)
-            
+
             self.scr_mgr ['qscr'].move (t[0], 0)
             self.paint ()
 
@@ -296,7 +389,7 @@ class Interface:
 
                 if vis & UNCAPTURED:
                     self.scr_mgr ['qline'] = trange [0]
-    
+
                 else:
                     self.scr_mgr ['qline'] += addend
 
@@ -305,7 +398,7 @@ class Interface:
                 self.scr_mgr ['qline'] -= bot_scry - trangel [-1]
 
             self.paint (undo = True)
-            
+
             self.scr_mgr ['qscr'].move (t[0], 0)
             self.paint ()
 
@@ -331,7 +424,7 @@ class Interface:
         topy = coord [0]
 
         boty = math.floor (coord [1] / self.scr_mgr.scrdim [1]) + topy
-    
+
 
         bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
 
@@ -370,7 +463,7 @@ class Interface:
             try:
                 e = self.scr_mgr ['qmgr'].submit (self.scr_mgr ['qst'])
 
-                x = re.search (r'(?P<mark>[01])\s+mark for question', self.scr_mgr ['qmgr'].sres.text, re.I)
+                x = re.search (r'(?P<mark>[01])\s*' + self.scr_mgr ['nav'].webmap ['fb']['on_qst_submit'].strip (), self.scr_mgr ['qmgr'].sres.text, re.I)
 
                 if x:
                     self.amgr.check (self.scr_mgr ['qst'], int (x.group ('mark')), e)
@@ -495,7 +588,7 @@ class Interface:
                 if a:
                     i = self.scr_mgr ['qmgr'].pseudos.index (a)
 
-                    self.scr_mgr ['optmap'] [i][-1] = apaint 
+                    self.scr_mgr ['optmap'] [i][-1] = apaint
 
                 else:
                     i = 0
@@ -548,17 +641,19 @@ class Interface:
     def ctrl_w23 (self, offset = b'1'):
         if not offset.isdigit ():
             return
-        
+
         offset = int (offset.decode ())
         self ['keypad'] (True)
         c = self ['getch'] ()
 
         if c == curses.KEY_UP or c == curses.KEY_LEFT:
             self.scr_mgr.scroll (-offset)
+            self.boot ()
             self.update_qscr (keep_qline = True)
 
         elif c == curses.KEY_DOWN or c == curses.KEY_RIGHT:
             self.scr_mgr.scroll (offset)
+            self.boot ()
             self.update_qscr (keep_qline = True)
 
 
@@ -638,90 +733,96 @@ class Interface:
         return self.enter10 (c)
 
     def keys_minus45 (self, subtrahend = None):
-        if not subtrahend or not subtrahend.isdigit ():
-            subtrahend = 1
-        else:
-            subtrahend = int (subtrahend.decode())
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            if not subtrahend or not subtrahend.isdigit ():
+                subtrahend = 1
+            else:
+                subtrahend = int (subtrahend.decode())
 
-        qst = self.scr_mgr ['qst'].copy ()
-        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) - subtrahend
+            qst = self.scr_mgr ['qst'].copy ()
+            n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) - subtrahend
 
-        qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
+            qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
 
-        self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, keep_qline = False)
 
     def key_plus43 (self, addend = None):
-        if not addend or not addend.isdigit ():
-            addend = 1
-        else:
-            addend = int (addend.decode())
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            if not addend or not addend.isdigit ():
+                addend = 1
+            else:
+                addend = int (addend.decode())
 
-        qst = self.scr_mgr ['qst'].copy ()
-        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) + addend
+            qst = self.scr_mgr ['qst'].copy ()
+            n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['qn']] + '0') / 10) + addend
 
-        qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
+            qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
 
-        self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, keep_qline = False)
 
 
     def key_asterik42 (self, addend = None):
-        if not addend or not addend.isdigit ():
-            addend = 1
-        else:
-            addend = int (addend.decode())
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            if not addend or not addend.isdigit ():
+                addend = 1
+            else:
+                addend = int (addend.decode())
 
-        qst = self.scr_mgr ['qst'].copy ()
-        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) + addend
+            qst = self.scr_mgr ['qst'].copy ()
+            n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) + addend
 
-        qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
+            qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
 
-        self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, keep_qline = False)
 
 
     def keys_fslash47 (self, subtrahend = None):
-        if not subtrahend or not subtrahend.isdigit ():
-            subtrahend = 1
-        else:
-            subtrahend = int (subtrahend.decode())
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            if not subtrahend or not subtrahend.isdigit ():
+                subtrahend = 1
+            else:
+                subtrahend = int (subtrahend.decode())
 
-        qst = self.scr_mgr ['qst'].copy ()
-        n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) - subtrahend
+            qst = self.scr_mgr ['qst'].copy ()
+            n = math.trunc (int (qst [self.scr_mgr ['qmgr'].qmap ['score']] + '0') / 10) - subtrahend
 
-        qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
+            qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
 
-        self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, keep_qline = False)
 
 
     def key_caret94 (self, crscode = bytearray ()):
-        crscode = crscode.decode()
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            crscode = crscode.decode()
 
-        qst = {}
+            qst = {}
 
-        for k,v in self.scr_mgr ['qst'].copy ().items ():
-            if isinstance (v, str):
-                v = re.sub (r'(?P<cs>' + self.scr_mgr ['crscode'] + ')',
-                        self.scr_mgr ['qmgr']._copycase (crscode), v, flags =
-                        re.I)
-            qst [k] = v
+            for k,v in self.scr_mgr ['qst'].copy ().items ():
+                if isinstance (v, str):
+                    v = re.sub (r'(?P<cs>' + self.scr_mgr ['crscode'] + ')',
+                            self.scr_mgr ['qmgr']._copycase (crscode), v, flags =
+                            re.I)
+                qst [k] = v
 
-        self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, keep_qline = False)
 
     def key_qmark33 (self, matno = bytearray ()):
-        matno = matno.decode()
+        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            matno = matno.decode()
 
-        if not matno:
-            matno = 'Nou123456789'
+            if not matno:
+                matno = 'Nou123456789'
 
-        qst = {}
+            qst = {}
 
-        for k, v in self.scr_mgr ['qst'].copy ().items ():
-            if isinstance (v, str):
-                v = re.sub (r'(?P<cs>' + self.scr_mgr ['matno'] + ')',
-                        self.scr_mgr ['qmgr']._copycase (matno), v, flags =
-                        re.I)
-            qst [k] = v
+            for k, v in self.scr_mgr ['qst'].copy ().items ():
+                if isinstance (v, str):
+                    v = re.sub (r'(?P<cs>' + self.scr_mgr [self.keys.UID] + ')',
+                            self.scr_mgr ['qmgr']._copycase (matno), v, flags =
+                            re.I)
+                qst [k] = v
 
-        self.update_qscr (qst, keep_qline = False, qpaint = curses.A_DIM)
+            self.update_qscr (qst, keep_qline = False, qpaint = curses.A_DIM)
 
 
 def main (stdscr, args):
