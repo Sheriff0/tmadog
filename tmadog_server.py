@@ -70,7 +70,7 @@ class RequestHandler (http.server.BaseHTTPRequestHandler):
 
 	    {'qdescr': 'Conflict management according to Wilmot and Hocker begins from', 'opta': 'Remaining rational', 'crscode': 'PCR811', 'qid': '15086', 'ans': 'D', 'optb': 'Negotiation', 'optc': 'Mediation', 'optd': 'Communication and perception'},
 
-	    {'qdescr': 'The process whereby trans-border transactions are increasingly shrinking the entire universe into a relatively borderless sphere is referred to as _______', 'opta': 'Treaties', 'crscode': 'PCR811', 'qid': '15082', 'ans': 'D', 'optb': 'Commonwealth of nations', 'optc': 'Africa and European Unions', 'optd': 'Globalization'},
+	    {'qdescr': 'The process whereby trans-border transactions are increasingly shrinking the entire universe into a relatively borderless sphere is referred to as _______The process whereby trans-border transactions are increasingly shrinking the entire universe into a relatively borderless sphere is referred to as _______The process whereby trans-border transactions are increasingly shrinking the entire universe into a relatively borderless sphere is referred to as _______The process whereby trans-border transactions are increasingly shrinking the entire universe into a relatively borderless sphere is referred to as _______', 'opta': 'Treaties', 'crscode': 'PCR811', 'qid': '15082', 'ans': 'D', 'optb': 'Commonwealth of nations', 'optc': 'Africa and European Unions', 'optd': 'Globalization'},
 
 	    {'qdescr': 'Which of the following is not among the wide range of mediation activities?', 'opta': 'message carrying', 'crscode': 'PCR811', 'qid': '15083', 'ans': 'D', 'optb': 'fact finding', 'optc': 'good officers', 'optd': 'host-taking strategy'},
 

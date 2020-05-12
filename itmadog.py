@@ -36,6 +36,11 @@ BELOW = 0b01000
 ABOVE = 0b10000
 UNCAPTURED = BELOW | ABOVE
 
+PRT_PRINT_QST = 0b001
+PRT_PRINT_CHOICES = 0x80
+PRT_KEEPLINE = 0b010
+PRT_KEEPCUR = 0b0100
+
 class MPCT_Preprocessor:
     CRSCODE = 'crscode'
     TMA = 'tma'
@@ -176,7 +181,7 @@ class Interface:
             if comm:
                 return comm (args) if args else comm ()
 
-            elif c <= 255:
+            elif c >= 0 and c <= 255:
                 args.append (c)
                 c = self ['getch'] ()
 
@@ -404,13 +409,14 @@ class Interface:
 
 
         elif not self.scr_mgr ['qmode']:
-            self.scr_mgr ['qline'] += addend
-            vis, trange = self.visibility (self.msgyx)
+            if hasattr (self, 'msgyx') and self.msgyx:
+                self.scr_mgr ['qline'] += addend
+                vis, trange = self.visibility (self.msgyx)
 
-            bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+                bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
 
-            if bot_scry > trange [-1]:
-                self.scr_mgr ['qline'] -= bot_scry - trange [-1]
+                if bot_scry > trange [-1]:
+                    self.scr_mgr ['qline'] -= bot_scry - trange [-1]
 
 
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
@@ -476,6 +482,9 @@ class Interface:
 
         else:
 
+            post_fetch_h = self.update_qscr
+            post_fetch_arg = ()
+
             try:
                 qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
 
@@ -498,14 +507,17 @@ class Interface:
 
                     self.scr_mgr ['qmode'] = True
 
-                    return self.update_qscr (qst)
+                    post_fetch_arg = (qst,)
+                    curses.flushinp() #For safety
 
                 else:
-                    return self.message (self.scr_mgr ['qmgr'].qres)
+                    post_fetch_h = self.message
+                    post_fetch_arg = (self.scr_mgr ['qmgr'].qres,)
 
             except:
+                post_fetch_arg = (None,)
                 self.scr_mgr ['qst'] = None
-                return self.update_qscr ()
+            return post_fetch_h (*post_fetch_arg)
 
 
     def message (self, res):
@@ -530,24 +542,73 @@ class Interface:
         self.scr_mgr ['qmode'] = False
 
 
-    def update_qscr (self, qst = None, keep_qline = False, qpaint = curses.A_NORMAL, opaint = curses.A_NORMAL, apaint = curses.A_BLINK):
-
-        if not keep_qline:
-            self.scr_mgr ['qline'] = 0
-
+    def update_qscr (
+            self,
+            qst = None,
+            flags = PRT_PRINT_QST | PRT_PRINT_CHOICES,
+            qpaint = curses.A_NORMAL,
+            opaint = curses.A_NORMAL,
+            apaint = curses.A_BLINK
+            ):
 
         if qst:
-
             self.scr_mgr ['qst'] = qst
-            self.scr_mgr ['optmap'] = []
 
-            self.scr_mgr ['qscr'].move (0, 0)
+        elif not self.scr_mgr ['qst']:
+            self.scr_mgr ['qline'] = 0
+            self.scr_mgr ['qscr'].clear ()
+            self.scr_mgr ['qscr'].addstr (0, 0, 'Hit Enter to start')
+            self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+                    (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+                        [1]) - 1)
+            return
+
+
+
+        if not (PRT_KEEPLINE & flags):
+            self.scr_mgr ['qline'] = 0
+            fcur = None
+
+        else:
+            fcur = self.scr_mgr ['qscr'].getyx ()
+
+        if (PRT_PRINT_CHOICES & flags) and (PRT_PRINT_QST & flags):
             self.scr_mgr ['qscr'].clear ()
 
-            for f in ['qdescr'] + ['opt' + chr (97 + i) for i in range (len (self.scr_mgr ['qmgr'].pseudos))]:
-                if f.startswith ('opt'):
-                    i = (ord (f[-1]) & 0x1f) - 1
-                    x = self.scr_mgr ['qscr'].getyx ()
+
+        if PRT_PRINT_QST & flags:
+            if isinstance (self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qn']], int):
+                self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
+                pre = ''
+            else:
+                pre = str (self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qn']]) + '. '
+
+            self.scr_mgr ['qscr'].addstr (0, 0, pre + self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qdescr']].strip () + '\n\n', qpaint)
+
+
+        obitmap = 1 if PRT_PRINT_CHOICES & flags else (flags & 0x7f) >> 3
+
+        if obitmap:
+            ol = len (self.scr_mgr ['optmap'])
+
+            for opt in ['opt' + chr (97 + i) for i in range (len (self.scr_mgr ['qmgr'].pseudos))]:
+                if obitmap & 1:
+                    i = (ord (opt[-1]) & 0x1f) - 1
+                    df = ol - i
+
+                    if df <= 0:
+                        self.scr_mgr ['optmap'].extend (range (abs (df) + 1))
+                        ol += abs (df + 1)
+
+                    if PRT_PRINT_QST & flags:
+                        w = self.scr_mgr ['qscr'].getyx ()
+                    else:
+                        if df > 0:
+                            w = self.scr_mgr ['optmap'][i]
+                        else:
+                            w = self.scr_mgr ['qscr'].getyx ()
+
+                    y, x = w[0], 0
 
                     if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int):
                         self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
@@ -555,35 +616,37 @@ class Interface:
                     else:
                         pre = self.scr_mgr ['qmgr'].pseudos [i] + ': '
 
-                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip ())
-                    cur = self.scr_mgr ['qscr'].getyx ()
-                    self.scr_mgr ['optmap'].append ([
-                        x[0],
-                        (cur [0] - x[0]) * (self.scr_mgr.scrdim [1]) + cur [1],
+
+                    self.scr_mgr ['qscr'].addstr (y, x, pre + self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap [opt]].strip ())
+
+                    if PRT_PRINT_QST & flags:
+                        cur = self.scr_mgr ['qscr'].getyx ()
+                        l = (cur [0] - w[0]) * (self.scr_mgr.scrdim [1]) + cur [1]
+
+                    else:
+                        l = self.scr_mgr ['optmap'][i][1]
+
+                    self.scr_mgr ['optmap'][i] = [
+                        w[0],
+                        l,
                         self.scr_mgr ['qmgr'].pseudos [i] if isinstance (self.scr_mgr ['qmgr'].pseudos [i], int) else None,
                         opaint
-                        ])
+                        ]
 
                     self.scr_mgr ['qscr'].addch ('\n')
 
-                elif f == 'qdescr':
-                    if isinstance (qst [self.scr_mgr ['qmgr'].qmap ['qn']], int):
-                        self.scr_mgr ['qscr'].addch (self.scr_mgr ['qmgr'].pseudos [i])
-                        pre = ''
-                    else:
-                        pre = str (qst [self.scr_mgr ['qmgr'].qmap ['qn']]) + '. '
+                if not PRT_PRINT_CHOICES & flags:
+                    obitmap >>= 1
 
-                    self.scr_mgr ['qscr'].addstr (pre + qst [self.scr_mgr ['qmgr'].qmap [f]].strip () + '\n', qpaint)
 
-                self.scr_mgr ['qscr'].addch ('\n')
 
             if not self.scr_mgr ['optmap']:
                 pass #NOTE: Draw a textbox for fill-in-the-gap answer
 
 
-            elif qst [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error':
+            elif self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['qid']] != 'error':
 
-                a = qst [self.scr_mgr ['qmgr'].qmap ['ans']]
+                a = self.scr_mgr ['qst'] [self.scr_mgr ['qmgr'].qmap ['ans']]
 
                 if a:
                     i = self.scr_mgr ['qmgr'].pseudos.index (a)
@@ -598,14 +661,8 @@ class Interface:
 
             self.paint (self.scr_mgr ['optmap'] [i])
 
-        elif self.scr_mgr ['qst']:
-            pass
-
-        else:
-            self.scr_mgr ['qline'] = 0
-            self.scr_mgr ['qscr'].clear ()
-            self.scr_mgr ['qscr'].addstr (0, 0, 'Hit Enter to start')
-
+        if PRT_KEEPCUR & flags:
+            self.scr_mgr ['qscr'].move (*fcur)
 
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
@@ -631,7 +688,7 @@ class Interface:
             for scr, inc in r:
                 self.update_qscr (
                         scr ['qst'] if not inc else None,
-                        keep_qline = True if inc else False)
+                        flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE if inc else PRT_PRINT_QST | PRT_PRINT_CHOICES)
 
             return inc
 
@@ -649,12 +706,12 @@ class Interface:
         if c == curses.KEY_UP or c == curses.KEY_LEFT:
             self.scr_mgr.scroll (-offset)
             self.boot ()
-            self.update_qscr (keep_qline = True)
+            self.update_qscr (flags = PRT_KEEPLINE)
 
         elif c == curses.KEY_DOWN or c == curses.KEY_RIGHT:
             self.scr_mgr.scroll (offset)
             self.boot ()
-            self.update_qscr (keep_qline = True)
+            self.update_qscr (flags = PRT_KEEPLINE)
 
 
     def paint (self, t = None, color = curses.A_BOLD | curses.A_REVERSE,
@@ -744,7 +801,7 @@ class Interface:
 
             qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
 
-            self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
     def key_plus43 (self, addend = None):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
@@ -758,7 +815,7 @@ class Interface:
 
             qst [self.scr_mgr ['qmgr'].qmap ['qn']] = str (n)
 
-            self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
     def key_asterik42 (self, addend = None):
@@ -773,7 +830,7 @@ class Interface:
 
             qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
 
-            self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
     def keys_fslash47 (self, subtrahend = None):
@@ -788,7 +845,7 @@ class Interface:
 
             qst [self.scr_mgr ['qmgr'].qmap ['score']] = str (n)
 
-            self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
     def key_caret94 (self, crscode = bytearray ()):
@@ -804,7 +861,7 @@ class Interface:
                             re.I)
                 qst [k] = v
 
-            self.update_qscr (qst, keep_qline = False)
+            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
     def key_qmark33 (self, matno = bytearray ()):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
@@ -822,7 +879,7 @@ class Interface:
                             re.I)
                 qst [k] = v
 
-            self.update_qscr (qst, keep_qline = False, qpaint = curses.A_DIM)
+            self.update_qscr (qst, flags = PRT_PRINT_QST | PRT_KEEPLINE | PRT_KEEPCUR, qpaint = curses.A_DIM)
 
 
 def main (stdscr, args):
