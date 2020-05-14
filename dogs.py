@@ -2,6 +2,7 @@ import requests_html
 import re
 from urllib import parse
 import lxml
+import pdb
 
 requests = requests_html.requests
 
@@ -17,7 +18,7 @@ class FDict (lxml.html.FieldsDict):
         return len (dict (self))
 
     def copy (self):
-        return dict (self)
+        return requests.structures.OrderedDict (self)
     
     def resolve_key (self, s):
 
@@ -65,6 +66,121 @@ class FDict (lxml.html.FieldsDict):
         return self
 
 
+
+class AnyheadList:
+    def __init__ (self, arr, svalue = None, sidx = None):
+        self.garr = (x for x in arr)
+
+        self._arr = {}
+
+        self.sidx = sidx
+
+        if not sidx or svalue == None:
+            for i, v in enumerate (self.garr):
+
+                if svalue != None and svalue == v:
+                    self.sidx = i
+                    break
+                elif svalue == None:
+                    self.sidx = i
+                    svalue = v
+                    break
+
+                self._arr ['-' + str (i)] = v
+
+        self.iidx = 0
+        self._arr ['-' + str (self.sidx)] = svalue
+        self._arr [str (self.iidx)] = svalue
+
+        self.pidx = self.sidx + 1
+        self.exhausted = False
+    
+    def __repr__ (self):
+        strv = '['
+
+        vgen = iter (self)
+        
+        try:
+            strv += str (next (vgen))
+        except StopIteration:
+            return '[]'
+
+        for v in vgen:
+            strv += ', ' + str (v)
+        
+        return strv + ']'
+
+    def __iter__ (self):
+        idx = 0
+
+        while True:
+            try:
+                yield self [idx]
+
+            except IndexError:
+                return
+
+            idx += 1
+
+    def __next__ (self):
+        yield from self.__iter__ ()
+    
+    def origin (self):
+        return self.Orderly (self._arr)
+
+    def __setitem__ (self, idx, value):
+        self [idx]
+        self._arr [str (idx)] = value
+
+    def __getitem__ (self, idx):
+        idx = str (idx)
+        if not self.exhausted and idx not in self._arr:
+            while self.pidx != self.sidx:
+                try:
+                    self.iidx += 1
+                    y = next (self.garr)
+                    self._arr [str (self.iidx)] = y
+                    self._arr ['-' + str (self.pidx)] = y
+                    
+                    self.pidx += 1
+
+                    if int (idx) == self.iidx:
+                        break
+
+                except StopIteration:
+                    self.iidx -= 1
+                    self.pidx = 0
+                    self.garr = iter (self.Orderly (self._arr))
+
+            if self.pidx == self.sidx:
+                self.exhausted = True
+
+        elif self.exhausted and idx not in self._arr:
+            raise IndexError (idx)
+
+        return self._arr [idx]
+
+    class Orderly:
+        def __init__ (self, dict_arr):
+            self.dict_arr = dict_arr
+
+        def __iter__ (self):
+
+            for k in sorted (self.dict_arr.keys ()):
+                if re.fullmatch (r'-\d+', k):
+                    yield self.dict_arr [k]
+                else:
+                    return
+
+        def __next__ (self):
+            yield from self.__iter__ ()
+
+        def __setitem__ (self, idx, value):
+            self.dict_arr ['-' + str (idx)] = value
+
+        def __getitem__ (self, idx):
+
+            return self.dict_arr ['-' + str (idx)]
 
 
 #__all__ = ['click', 'fill_form', 'getdef_value']

@@ -24,6 +24,7 @@ import pdb
 import json
 import cloudscraper
 import cookie_parse
+import dogs
 
 BREAK = -1
 
@@ -96,7 +97,6 @@ class MPCT_Preprocessor:
                 yield self.param.copy ()
 
 
-
 class Interface:
     def __init__ (self, stdscr, keys, amgr):
         self.scr_mgr = qscreen.QscrMuxer (stdscr, keys)
@@ -106,8 +106,29 @@ class Interface:
         self.pq = []
         self.pqlen = 0
         self.stdscr = stdscr
+        self.LINES, self.COLS = stdscr.getmaxyx ()
         self.boot ()
         self.update_qscr ()
+    
+    def echo (self, msg):
+        if not hasattr (self, 'echopad'):
+            self.echopad = curses.newpad (50, 1000)
+            self.echopad.scrollok (True)
+        
+        self.echopad.clear ()
+        self.echopad.addstr (0, 0, msg)
+        self.echopad.overwrite (self.stdscr, 0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
+        self.stdscr.noutrefresh ()
+        self.doupdate ()
+
+    def getstr (self, prompt = ''):
+
+        out = self.stdscr.getstr ()
+        
+        return out
+        
+    def updateCookie_keyAmp38 (self, idx = bytearray ()):
+        session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
 
     def __getitem__ (self, attr):
         return getattr (self.scr_mgr ['qscr'], attr)
@@ -352,6 +373,7 @@ class Interface:
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
 
+        self.doupdate ()
 
     def key_down258 (self, addend = b'1'):
         if not addend.isdigit ():
@@ -423,6 +445,7 @@ class Interface:
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
 
+        self.doupdate ()
 
     def visibility (self, coord):
         flags = 0
@@ -539,6 +562,7 @@ class Interface:
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
 
+        self.doupdate ()
         self.scr_mgr ['qmode'] = False
 
 
@@ -561,6 +585,8 @@ class Interface:
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                     (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                         [1]) - 1)
+        
+            self.doupdate ()
             return
 
 
@@ -668,6 +694,8 @@ class Interface:
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
 
+        self.doupdate ()
+
         return
 
     def ctrl_l12 (self, *args):
@@ -682,6 +710,7 @@ class Interface:
         curses.update_lines_cols ()
 
         self.stdscr.resize (curses.LINES, curses.COLS)
+        self.LINES, self.COLS = self.stdscr.getmaxyx ()
 
         r = self.scr_mgr.resize (self.stdscr)
         if r and r != -1:
@@ -789,7 +818,7 @@ class Interface:
         self ['timeout'] (-1)
         return self.enter10 (c)
 
-    def keys_minus45 (self, subtrahend = None):
+    def decreaseQn_keyMinus45 (self, subtrahend = None):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             if not subtrahend or not subtrahend.isdigit ():
                 subtrahend = 1
@@ -803,7 +832,7 @@ class Interface:
 
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
-    def key_plus43 (self, addend = None):
+    def increaseQn_keyPlus43 (self, addend = None):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             if not addend or not addend.isdigit ():
                 addend = 1
@@ -818,7 +847,7 @@ class Interface:
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
-    def key_asterik42 (self, addend = None):
+    def increaseTotscrore_keyAsterik42 (self, addend = None):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             if not addend or not addend.isdigit ():
                 addend = 1
@@ -833,7 +862,7 @@ class Interface:
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
-    def keys_fslash47 (self, subtrahend = None):
+    def decreaseTotscore_keyFslash47 (self, subtrahend = None):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             if not subtrahend or not subtrahend.isdigit ():
                 subtrahend = 1
@@ -848,7 +877,7 @@ class Interface:
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
 
-    def key_caret94 (self, crscode = bytearray ()):
+    def chCrscode_keyCaret94 (self, crscode = bytearray ()):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             crscode = crscode.decode()
 
@@ -863,24 +892,130 @@ class Interface:
 
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
-    def key_qmark33 (self, matno = bytearray ()):
+    def discoverAns_keyQuotemark33 (self, mod = bytearray ()):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
+            
+            matno = self.getstr ('Enter mask: ')
+
             matno = matno.decode()
 
             if not matno:
                 matno = 'Nou123456789'
+            
+            try:
+                mod = 0 if not mod else int (mod.decode ()) - 1
 
-            qst = {}
+            except ValueError:
+                return
+            
+            def mask (dic, pat, sub):
+                dic1 = requests.structures.OrderedDict ()
+                for k, v in dic.items ():
+                    if isinstance (v, str):
+                        v = re.sub (r'(?P<cs>' + pat + ')',
+                                self.scr_mgr ['qmgr']._copycase (sub), v, flags =
+                                re.I)
+                    dic1 [k] = v
 
-            for k, v in self.scr_mgr ['qst'].copy ().items ():
-                if isinstance (v, str):
-                    v = re.sub (r'(?P<cs>' + self.scr_mgr [self.keys.UID] + ')',
-                            self.scr_mgr ['qmgr']._copycase (matno), v, flags =
-                            re.I)
-                qst [k] = v
+                return dic1
 
-            self.update_qscr (qst, flags = PRT_PRINT_QST | PRT_KEEPLINE | PRT_KEEPCUR, qpaint = curses.A_DIM)
 
+            count = 0
+
+            submit_tray = []
+
+            qst = self.scr_mgr ['qst']
+            c = self ['instr'] (len (self.scr_mgr ['qmgr'].pseudos [0]))
+
+            c = c.decode ()
+
+            qst [self.scr_mgr ['qmgr'].qmap ['ans']] = c
+
+            while mod: #Answer Discovery loop
+                self.echo ('Trying to discover answer to question %s, Please wait...' % (qst
+                    [self.scr_mgr ['qmgr'].qmap ['qn']],))
+
+                qst1 = mask (qst, self.scr_mgr [self.keys.UID], matno)
+
+                for a in dogs.AnyheadList (self.scr_mgr ['qmgr'].pseudos, qst1 [self.scr_mgr ['qmgr'].qmap ['ans']]):
+
+                    qst1 [self.scr_mgr ['qmgr'].qmap ['ans']] = a
+
+                    try:
+                        e = self.scr_mgr ['qmgr'].submit (qst1)
+
+                        x = re.search (r'(?P<mark>[01])\s*' + self.scr_mgr ['nav'].webmap ['fb']['on_qst_submit'].strip (), self.scr_mgr ['qmgr'].sres.text, re.I)
+
+                        if x:
+                            x = int (x.group ('mark'))
+                            self.amgr.check (qst1, x, e)
+                            if x == 1:
+                                qst [self.scr_mgr ['qmgr'].qmap ['ans']] = a
+
+                                submit_tray.append (qst)
+                                break
+                        
+                        else:
+                            self.echo ('Error.')
+                            raise TypeError ()
+                    except:
+                        return self.message (self.scr_mgr ['qmgr'].sres) if hasattr (self.scr_mgr ['qmgr'], 'sres') else None
+
+                qst = self.scr_mgr ['qmgr'].fetch (timeout = (30.5, 60))
+
+                if not qst or not isinstance (qst, lxml.html.FieldsDict):
+                    return self.message (self.scr_mgr ['qmgr'].qres) if hasattr (self.scr_mgr ['qmgr'], 'qres') else None
+
+                x = copy.deepcopy (qst)
+
+                x = self.amgr.answer (x)
+
+                if x and x != self.amgr.NOANSWER and qst [self.scr_mgr ['qmgr'].qmap ['qid']] == x [self.scr_mgr ['qmgr'].qmap ['qid']]:
+                    qst = x
+
+                self.pq.append ((qst [self.scr_mgr ['qmgr'].qmap ['crscode']], qst
+                    [self.scr_mgr ['qmgr'].qmap ['qid']]))
+
+                self.pqlen += 1
+
+                self.scr_mgr ['lpqidx'] = self.pqlen - 1
+                self.scr_mgr ['pqidx'] = self.scr_mgr ['lpqidx']
+
+                self.echo ('Done.')
+                count += 1
+                mod -= 1
+
+
+            qst1 = mask (qst, self.scr_mgr [self.keys.UID], matno)
+
+            if count == 0:
+
+                self.update_qscr (qst1, flags = PRT_PRINT_QST | PRT_KEEPLINE | PRT_KEEPCUR, qpaint = curses.A_DIM)
+
+            else:
+                for qst in submit_tray:
+
+                    self.echo ('Done. Unmasking for %s submission' % (self.scr_mgr [self.keys.UID],))
+                    try:
+                        e = self.scr_mgr ['qmgr'].submit (qst)
+
+                        x = re.search (r'(?P<mark>[01])\s*' + self.scr_mgr ['nav'].webmap ['fb']['on_qst_submit'].strip (), self.scr_mgr ['qmgr'].sres.text, re.I)
+
+                        if not x:
+                            self.echo ('Error.')
+                            raise TypeError ()
+                    except:
+                        return self.message (self.scr_mgr ['qmgr'].sres) if hasattr (self.scr_mgr ['qmgr'], 'sres') else None
+
+                    self.echo ('Done.')
+
+                self.update_qscr (qst1, qpaint = curses.A_DIM)
+
+            curses.flushinp() #For safety
+
+    def doupdate (self):
+        return curses.doupdate ()
+    
 
 def main (stdscr, args):
 
@@ -906,7 +1041,7 @@ def main (stdscr, args):
     ansmgr = AnsMgt.AnsMgr (
             qmap = qmap,
             database = args.database,
-            mode = AnsMgt.AnsMgr.ANS_MODE_HACK | AnsMgt.AnsMgr.ANS_MODE_NORM,
+            mode = AnsMgt.AnsMgr.ANS_MODE_NORM,
             pseudo_ans = qmap ['pseudo_ans'].split (','),
             interactive = False,
             )
@@ -917,7 +1052,7 @@ def main (stdscr, args):
             ansmgr
             )
 
-    curses.doupdate ()
+    qa_interface.doupdate ()
 
     while True:
         curses.raw ()
@@ -927,7 +1062,6 @@ def main (stdscr, args):
         c = qa_interface ['getch'] ()
 
         c = qa_interface (c)
-        curses.doupdate ()
 
         if c == BREAK:
             break
