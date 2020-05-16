@@ -107,6 +107,7 @@ class Interface:
         self.pqlen = 0
         self.stdscr = stdscr
         self.LINES, self.COLS = stdscr.getmaxyx ()
+        curses.endwin ()
         self.boot ()
         self.update_qscr ()
     
@@ -122,16 +123,25 @@ class Interface:
         self.doupdate ()
 
     def getstr (self, prompt = ''):
-
-        out = self.stdscr.getstr ()
-        
-        return out
+        pass #FIXME
         
     def updateCookie_keyAmp38 (self, idx = bytearray ()):
         session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
 
     def __getitem__ (self, attr):
         return getattr (self.scr_mgr ['qscr'], attr)
+
+    def printi (self, text = ''):
+        if curses.isendwin ():
+            print (text)
+        else:
+            self.echo (text)
+
+    def bootable (self, qscr = None):
+        if not qscr:
+            qscr = self.scr_mgr
+
+        return 'nav' not in qscr or 'qmgr' not in qscr or not qscr ['nav'] or not qscr ['qmgr']
 
 
     def boot (self, qscr = None):
@@ -141,50 +151,58 @@ class Interface:
         if not qscr:
             qscr = self.scr_mgr
 
-        if 'nav' not in qscr or 'qmgr' not in qscr or not qscr ['nav'] or not qscr ['qmgr']:
-            if 'nav' not in qscr or not qscr ['nav']:
+        try:
+            self.printi ('Looking for existing navigator for %s' % (qscr [self.keys.UID],))
 
-                try:
-                    idx = self.navtab.index (qscr [self.keys.UID], attr = 'refcount')
-                    qscr ['nav'] = self.navtab [idx]
+            idx = self.navtab.index (qscr [self.keys.UID], attr = 'refcount')
+            qscr ['nav'] = self.navtab [idx]
+            self.printi ('Found. Reused found navigator')
 
-                except ValueError:
+        except ValueError:
 
-                    nav = Navigation.Navigator (
-                            qscr [self.keys.URL],
-                            qscr [self.keys.WMAP],
-                            qscr, #dangerous maybe
-                            session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
-                            )
-
-                    qscr ['nav'] = nav
-
-                    nav.refcount = qscr [self.keys.UID]
-
-                    self.navtab.append (nav)
-
-
-
-            to, fro = qscr ['nav'] ('qst_page')[:-1]
-            qscr ['qmgr'] = QstMgt.QstMgr (
-                    matno = qscr [self.keys.UID],
-                    crscode = qscr [self.keys.CRSCODE],
-                    tma = qscr [self.keys.TMA],
-                    fargs = copy.deepcopy (to),
-                    stop = 10,
-                    url = fro.url,
-                    qmap = qscr [self.keys.WMAP]['qmap'],
-                    session = qscr ['nav'].session
-
+            self.printi ('Not Found. Configuring a new navigator')
+            nav = Navigation.Navigator (
+                    qscr [self.keys.URL],
+                    qscr [self.keys.WMAP],
+                    qscr, #dangerous maybe
+                    session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
                     )
 
-            qscr ['qline'] = 0
-            qscr ['optmap'] = []
-            qscr ['pqidx'] = None
-            qscr ['lpqidx'] = None
-            qscr ['qst'] = None
-            qscr ['qmode'] = False
-            qscr ['qmgr'].interactive = True
+            qscr ['nav'] = nav
+
+            self.printi ('Done.')
+
+            nav.refcount = qscr [self.keys.UID]
+
+            self.navtab.append (nav)
+
+
+
+        self.printi ('Login in user %s' % (qscr [self.keys.UID],))
+
+        to, fro = qscr ['nav'] ('qst_page')[:-1]
+        qscr ['qmgr'] = QstMgt.QstMgr (
+                matno = qscr [self.keys.UID],
+                crscode = qscr [self.keys.CRSCODE],
+                tma = qscr [self.keys.TMA],
+                fargs = copy.deepcopy (to),
+                stop = 10,
+                url = fro.url,
+                qmap = qscr [self.keys.WMAP]['qmap'],
+                session = qscr ['nav'].session
+
+                )
+
+        qscr ['qline'] = 0
+        qscr ['optmap'] = []
+        qscr ['pqidx'] = None
+        qscr ['lpqidx'] = None
+        qscr ['qst'] = None
+        qscr ['qmode'] = False
+        qscr ['qmgr'].interactive = True
+
+        self.printi ('Done.')
+        self.printi ('')
 
         return qscr ['qmgr']
 
@@ -734,13 +752,15 @@ class Interface:
 
         if c == curses.KEY_UP or c == curses.KEY_LEFT:
             self.scr_mgr.scroll (-offset)
-            self.boot ()
-            self.update_qscr (flags = PRT_KEEPLINE)
 
         elif c == curses.KEY_DOWN or c == curses.KEY_RIGHT:
             self.scr_mgr.scroll (offset)
+
+
+        if self.bootable ():
             self.boot ()
-            self.update_qscr (flags = PRT_KEEPLINE)
+
+        self.update_qscr (flags = PRT_KEEPLINE)
 
 
     def paint (self, t = None, color = curses.A_BOLD | curses.A_REVERSE,
@@ -895,12 +915,8 @@ class Interface:
     def discoverAns_keyQuotemark33 (self, mod = bytearray ()):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
             
-            matno = self.getstr ('Enter mask: ')
 
-            matno = matno.decode()
-
-            if not matno:
-                matno = 'Nou123456789'
+            matno = 'Nou123456789'
             
             try:
                 mod = 0 if not mod else int (mod.decode ()) - 1
@@ -1008,6 +1024,7 @@ class Interface:
                         return self.message (self.scr_mgr ['qmgr'].sres) if hasattr (self.scr_mgr ['qmgr'], 'sres') else None
 
                     self.echo ('Done.')
+                    self.echo ('')
 
                 self.update_qscr (qst1, qpaint = curses.A_DIM)
 
