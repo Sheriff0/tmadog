@@ -110,12 +110,12 @@ class Interface:
         curses.endwin ()
         self.boot ()
         self.update_qscr ()
-    
+
     def echo (self, msg):
         if not hasattr (self, 'echopad'):
             self.echopad = curses.newpad (50, 1000)
             self.echopad.scrollok (True)
-        
+
         self.echopad.clear ()
         self.echopad.addstr (0, 0, msg)
         self.echopad.overwrite (self.stdscr, 0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
@@ -124,7 +124,7 @@ class Interface:
 
     def getstr (self, prompt = ''):
         pass #FIXME
-        
+
     def updateCookie_keyAmp38 (self, idx = bytearray ()):
         session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
 
@@ -580,8 +580,8 @@ class Interface:
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
 
-        self.doupdate ()
         self.scr_mgr ['qmode'] = False
+        self.doupdate ()
 
 
     def update_qscr (
@@ -603,7 +603,7 @@ class Interface:
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                     (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                         [1]) - 1)
-        
+
             self.doupdate ()
             return
 
@@ -914,16 +914,16 @@ class Interface:
 
     def discoverAns_keyQuotemark33 (self, mod = bytearray ()):
         if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
-            
+
 
             matno = 'Nou123456789'
-            
+
             try:
                 mod = 0 if not mod else int (mod.decode ()) - 1
 
             except ValueError:
                 return
-            
+
             def mask (dic, pat, sub):
                 dic1 = requests.structures.OrderedDict ()
                 for k, v in dic.items ():
@@ -937,8 +937,6 @@ class Interface:
 
 
             count = 0
-
-            submit_tray = []
 
             qst = self.scr_mgr ['qst']
             c = self ['instr'] (len (self.scr_mgr ['qmgr'].pseudos [0]))
@@ -968,9 +966,16 @@ class Interface:
                             if x == 1:
                                 qst [self.scr_mgr ['qmgr'].qmap ['ans']] = a
 
-                                submit_tray.append (qst)
+                                self.echo ('Done. Unmasking %s for submission' % (self.scr_mgr [self.keys.UID],))
+                                e = self.scr_mgr ['qmgr'].submit (qst)
+
+                                x = re.search (r'(?P<mark>[01])\s*' + self.scr_mgr ['nav'].webmap ['fb']['on_qst_submit'].strip (), self.scr_mgr ['qmgr'].sres.text, re.I)
+
+                                if not x or int (x.group ('mark')) == 0:
+                                    raise TypeError ()
+                                self.echo ('Done.')
                                 break
-                        
+
                         else:
                             self.echo ('Error.')
                             raise TypeError ()
@@ -1009,30 +1014,13 @@ class Interface:
                 self.update_qscr (qst1, flags = PRT_PRINT_QST | PRT_KEEPLINE | PRT_KEEPCUR, qpaint = curses.A_DIM)
 
             else:
-                for qst in submit_tray:
-
-                    self.echo ('Done. Unmasking for %s submission' % (self.scr_mgr [self.keys.UID],))
-                    try:
-                        e = self.scr_mgr ['qmgr'].submit (qst)
-
-                        x = re.search (r'(?P<mark>[01])\s*' + self.scr_mgr ['nav'].webmap ['fb']['on_qst_submit'].strip (), self.scr_mgr ['qmgr'].sres.text, re.I)
-
-                        if not x:
-                            self.echo ('Error.')
-                            raise TypeError ()
-                    except:
-                        return self.message (self.scr_mgr ['qmgr'].sres) if hasattr (self.scr_mgr ['qmgr'], 'sres') else None
-
-                    self.echo ('Done.')
-                    self.echo ('')
-
                 self.update_qscr (qst1, qpaint = curses.A_DIM)
 
             curses.flushinp() #For safety
 
     def doupdate (self):
         return curses.doupdate ()
-    
+
 
 def main (stdscr, args):
 
