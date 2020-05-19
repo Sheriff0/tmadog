@@ -110,27 +110,27 @@ class QscrMuxer:
 
 
         qscrs = QScrList ()
+        
+        self.dimref = scrdim
 
-        for i, extattrs in enumerate (params):
-            qscrs.append (
-                    QScr (
-                        curses.newpad (self.V_GRANULARITY, scrdim [1] - 2),
-                        id = i,
-                        **extattrs
-                        )
+        self.gparams = iter (params)
+        self.params = params
+
+        qscrs.append (
+                QScr (
+                    curses.newpad (self.V_GRANULARITY, self.dimref [1] - 2),
+                    id = 0,
+                    ** next (self.gparams)
                     )
+                )
 
 
         self.qscrs = qscrs
 
-        self.qscr_len = i + 1
+        self.qscr_len = 1
 
         self.qscr_pointer = 0
         
-        self.dimref = scrdim
-
-        self.params = params
-
         self.post_init ()
 
 
@@ -157,13 +157,28 @@ class QscrMuxer:
 
         p = self.qscr_pointer
 
+        if offset > 0 and (self.qscr_pointer + offset) >= self.qscr_len:
+            for roff in range (offset):
+                try:
+                    self.qscrs.append (
+                            QScr (
+                                curses.newpad (self.V_GRANULARITY, self.dimref [1] - 2),
+                                id = self.qscr_len + roff,
+                                ** next (self.gparams)
+                                )
+                            )
+                except StopIteration:
+                    roff -= 1
+                    break
+            
+            self.qscr_len += roff + 1
+
         self.qscr_pointer += offset
 
-        if self.qscr_pointer >= self.qscr_len:
-            self.qscr_pointer = 0
-
-        elif self.qscr_pointer < 0:
+        if self.qscr_pointer < 0:
             self.qscr_pointer = self.qscr_len - 1
+        elif self.qscr_pointer >= self.qscr_len:
+            self.qscr_pointer = 0
 
         if not self.qscrs [self.qscr_pointer].has_screen ():
             if self.qscrs [p].has_screen ():
@@ -176,6 +191,7 @@ class QscrMuxer:
                 return -1
 
         self.load ()
+        return self.qscr_pointer
 
 
     def load (self, scr = None):
