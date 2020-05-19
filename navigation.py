@@ -35,7 +35,7 @@ class Recipe (object):
         return '<Recipe for %s>' % (self.name_or_url,)
 
     def __iter__ (self):
-        return self.__next__()
+        yield from self.__next__()
 
     def __next__ (self):
         

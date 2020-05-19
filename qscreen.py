@@ -100,51 +100,21 @@ class QscrMuxer:
 
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
 
-
-        if scrdim [0] < 3:
-            self.has_screen = False
-            return -1
-        
-        else:
-            self.has_screen = True
-            d = 1
-            if scrdim [0] == 3:
-                self.qst_scr = self.pscreen
-            else:
-                d = min (2, len (params))
-
-                self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
-
-                self.status_bar = curses.newpad (1, self.V_GRANULARITY)
-
-                self.qst_scr = self.pscreen.derwin (scrdim [0] - 1, scrdim [1], 1, 0)
-                scord, scrdim = self.qst_scr.getbegyx (), self.qst_scr.getmaxyx ()
-
-
-        minlines = math.trunc ((scrdim [0]) / d)
+        self.qst_scr = self.pscreen
 
         self.subscreens = []
 
-        for i in range (d):
-            self.subscreens.append (
-                    Pscr (self.qst_scr.derwin (minlines, scrdim [1], i *
-                        minlines, 0))
-                    )
+        self.subscreens.append (
+                Pscr (self.qst_scr)
+                )
 
-        i += 1
-
-        self.subscreens [-1] ['resize'] (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
-
-        self.vscreen = curses.newpad (self.V_GRANULARITY * len (params), scrdim
-                [1] - 2)
 
         qscrs = QScrList ()
-        nav = None
 
         for i, extattrs in enumerate (params):
             qscrs.append (
                     QScr (
-                        self.vscreen.derwin (self.V_GRANULARITY, scrdim [1] - 2, self.V_GRANULARITY * i, 0),
+                        curses.newpad (self.V_GRANULARITY, scrdim [1] - 2),
                         id = i,
                         **extattrs
                         )
@@ -153,7 +123,7 @@ class QscrMuxer:
 
         self.qscrs = qscrs
 
-        self.qscr_len = len (qscrs)
+        self.qscr_len = i + 1
 
         self.qscr_pointer = 0
         
@@ -233,44 +203,14 @@ class QscrMuxer:
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
 
 
-        if scrdim [0] < 3:
-            self.has_screen = False
-            self.status_scr = None
-            self.status_bar = None
-            return -1
-        
-        else:
-            self.has_screen = True
-            d = 1
-            if scrdim [0] == 3:
-                self.qst_scr = self.pscreen
-            else:
-                d = min (2, self.qscr_len)
-
-                self.status_scr = self.pscreen.derwin (1, scrdim [1], 0, 0)
-
-                self.status_bar = curses.newpad (1, self.V_GRANULARITY)
-
-                self.qst_scr = self.pscreen.derwin (scrdim [0] - 1, scrdim [1], 1, 0)
-                scord, scrdim = self.qst_scr.getbegyx (), self.qst_scr.getmaxyx ()
-
-
-        minlines = math.trunc ((scrdim [0]) / d)
+        self.qst_scr = self.pscreen
 
         self.subscreens = []
 
-        for i in range (d):
-            self.subscreens.append (
-                    Pscr (self.qst_scr.derwin (minlines, scrdim [1], i *
-                        minlines, 0))
-                    )
+        self.subscreens.append (
+                Pscr (self.qst_scr)
+                )
 
-        i += 1
-
-        self.subscreens [-1] ['resize'] (minlines + (scrdim [0] - (i * minlines)), scrdim [1])
-
-        self.vscreen.resize (self.V_GRANULARITY * self.qscr_len,
-                scrdim [1] - 2)
 
         ptr = self.qscr_pointer
 
@@ -282,7 +222,6 @@ class QscrMuxer:
 
             if scr.has_screen ():
                 scr.release_screen ()
-                #pdb.set_trace ()
                 try:
                     s = self.subscreens [i]
                     scr.acquire_screen (s)

@@ -14,6 +14,8 @@ import configparser
 import sys
 import curses
 import math
+import requests
+import copy
 
 class QstMgt (object):
 
@@ -41,12 +43,11 @@ class QstMgt (object):
                 return self.__init__ (iter)
 
 
-        def __init__ (self, fargs, url, matno, tma , crscode, qmap,
-                stop = 10, session = requests):
+        def __init__ (self, nav, matno, tma , crscode, qmap, stop = 10):
 
-            self.session = session
-
-            self.referer = url
+            self.nav = nav
+            to, fro = self.nav ('qst_page')[:-1]
+            self.referer = fro.url
 
             self.referer1 = None
 
@@ -68,7 +69,7 @@ class QstMgt (object):
 
             self.interactive = False
 
-            self.fargs = self._transform_req (fargs, matno, tma, crscode)
+            self.fargs = self._transform_req (copy.deepcopy (to), matno, tma, crscode)
 
         def _transform_req (self, req, matno, tma , crscode):
 
@@ -95,8 +96,8 @@ class QstMgt (object):
             return req
 
 
-        def fetch (self, url1 = None, **kwargs):
-            if (self.dt1 or self.dt0) not in self.nextq:
+        def fetch (self, url1 = None, force = False, **kwargs):
+            if force or (self.dt1 or self.dt0) not in self.nextq:
                 self.fargs.update (url = url1 or self.fargs['url'])
 
                 kwargs.setdefault (
@@ -104,7 +105,7 @@ class QstMgt (object):
                         dogs.mkheader (self.fargs ['url'], self.referer)
                         )
 
-                self.qres = self.session.request(**self.fargs , **kwargs)
+                self.qres = self.nav.session.request(**self.fargs , **kwargs)
 
                 self.referer1 = self.qres.url
                 try:
@@ -158,7 +159,7 @@ class QstMgt (object):
                     dogs.mkheader (self.nextq ['url'], self.referer1)
                     )
 
-            self.sres = self.session.request (**self.nextq, **kwargs)
+            self.sres = self.nav.session.request (**self.nextq, **kwargs)
 
             self.sres.raise_for_status ()
             x = self.nextq.pop (self.dt1 or self.dt0)

@@ -8,7 +8,7 @@ import re
 import tmadog_server
 import requests
 import threading
-from navigation import Navigation
+import navigation
 import configparser
 import http.server
 from qstmgt import QstMgt
@@ -25,6 +25,8 @@ import json
 import cloudscraper
 import cookie_parse
 import dogs
+
+Navigation = navigation.Navigation
 
 BREAK = -1
 
@@ -48,14 +50,17 @@ class MPCT_Preprocessor:
     URL = 'url'
     WMAP = 'wmap'
     COOKIES = 'cookies'
+    SESSION = 'session'
+    
+    print = print
 
     def __init__ (self, **args):
-        self.matnos = args ['matno']
-        self.pwds = args ['pwd']
-        self.crscodes = args ['crscode']
-        self.tmas = args ['tma']
-        self.cookies = args ['cookies']
-        self.urls = args ['url']
+        self.matnos = self.List (args ['matno'])
+        self.pwds = self.List (args ['pwd'])
+        self.crscodes = self.List (args ['crscode'])
+        self.tmas = self.List (args ['tma'])
+        self.cookies = self.List (args ['cookies'])
+        self.urls = self.List (args ['url'])
         self.wmap = args ['wmap']
         self.UID = self.wmap ['kmap']['matno']
         self.UID1 = self.CRSCODE
@@ -64,6 +69,7 @@ class MPCT_Preprocessor:
         self.param = {}
         self.param [self.WMAP] = self.wmap
         self.len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
+        self.navtab = qscreen.QScrList ()
 
     def __len__ (self):
         return self.len
@@ -75,39 +81,154 @@ class MPCT_Preprocessor:
 
         for i in range (self.len):
 
-            try:
-                self.param [self.UID] = self.matnos [i]
-                self.param [self.PWD] = self.pwds [i]
-                self.param [self.CRSCODE] = self.crscodes [i]
-                self.param [self.TMA] = self.tmas [i]
-                self.param [self.URL] = self.urls [i]
-                self.param [self.COOKIES] = self.cookies [i]
+            self.param [self.UID] = self.matnos [i]
+            self.param [self.PWD] = self.pwds [i]
+            self.param [self.TMA] = self.tmas [i]
+            self.param [self.URL] = self.urls [i]
+            self.param [self.COOKIES] = self.cookies [i]
 
-            except IndexError:
-                try:
-                    self.param [self.CRSCODE] = self.crscodes [i]
-                    self.param [self.TMA] = self.tmas [i]
-                    self.param [self.URL] = self.urls [i]
-                    self.param [self.COOKIES] = self.cookies [i]
-
-                except IndexError:
-                    pass
-
-            finally:
+            if i < len (self.matnos):
+                self.param [self.SESSION] = self.mksess (self.param [self.URL],
+                        self.param [self.COOKIES])
+            
+            y = self.crscodes [i]
+            
+            if y == 'all':
+                self.print ('No crscode specified')
+                yield from self.discovercrs (self.param)
+            else:
+                self.param [self.CRSCODE]  = y
                 yield self.param.copy ()
+
+    def discovercrs (self, param = None):
+        param = self.param if not param else param
+        try:
+            idx = self.navtab.index (param [self.UID], attr = 'refcount')
+            nav = self.navtab [idx]
+
+        except ValueError:
+
+            nav = Navigation.Navigator (
+                    param [self.URL],
+                    param [self.WMAP],
+                    param, #dangerous maybe
+                    session = param [self.SESSION]
+                    )
+
+            nav.refcount = param [self.UID]
+
+            self.navtab.append (nav)
+
+        to, tpage = nav ('qst_page')[:-1]
+        idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
+        path = nav.webmap ['qst_page']['path'].split (',')[-1]
+
+        idx += 1
+
+        while True: #crscode discovery
+            dt = 'data' if to ['method'] in ('POST', 'post') else 'params'
+            
+            m = None
+
+            for k in to.get (dt, {}).values ():
+                m = re.search (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', k)
+                
+                if m:
+                    break
+            
+            if m:
+                param [self.CRSCODE] = m.group (0)
+                self.print ('Got %s.' % (param [self.CRSCODE],))
+                yield param.copy ()
+
+            try:
+                rec = iter (navigation.Recipe (path, str (idx), param, tpage,
+                    param [self.URL]))
+
+                to = next (rec)
+            except TypeError:
+                break
+
+            idx += 1
+
+    def mksess (self, url, cookie_file = ''):
+        session = None
+
+        if cookie_file:
+            with open (cookie_file) as f:
+                cookie_str = f.read ()
+
+                session = requests.Session ()
+                cookt = cookie_parse.bake_cookies (cookie_str, url)
+
+                session.headers = requests.structures.OrderedDict(
+                        (
+                            ("Host", None),
+                            ("Connection", "keep-alive"),
+                            ("Upgrade-Insecure-Requests", "1"),
+                            ("User-Agent", cookt [0]['User-Agent']),
+                            (
+                                "Accept",
+                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                                ),
+                            ("Accept-Language", "en-US,en;q=0.9"),
+                            ("Accept-Encoding", "gzip, deflate"),
+                            )
+                        )
+
+                session.cookies = cookt [1]
+
+        else:
+            session = cloudscraper.create_scraper ()
+
+
+        return session
+
+
+    class List:
+        def __init__ (self, eter):
+            self.eter = iter (eter)
+            self.list = []
+            self.idx = -1
+        
+        def __len__ (self):
+            self.__getitem__ ()
+            return self.idx + 1
+
+        def __getitem__ (self, idx = None):
+            idx = int (idx) if idx != None else idx
+            if idx == None or idx > self.idx:
+                while True:
+                    try:
+                        x = next (self.eter)
+                        self.list.append (x)
+                        self.idx += 1
+
+                        if idx != None and idx <= self.idx:
+                            break
+
+                    except StopIteration:
+                        idx = self.idx
+                        break
+           
+            idx = self.idx if idx == None else idx
+            return self.list [idx] if idx != None and idx >= 0 else None
 
 
 class Interface:
     def __init__ (self, stdscr, keys, amgr):
-        self.scr_mgr = qscreen.QscrMuxer (stdscr, keys)
+        curses.endwin ()
+        self.stdscr = stdscr
+        self.LINES, self.COLS = stdscr.getmaxyx ()
         self.keys = keys
+        self.keys.print = self.printi
+
+        self.scr_mgr = qscreen.QscrMuxer (stdscr, self.keys)
         self.amgr = amgr
         curses.curs_set (0)
         self.pq = []
+        self.navtab = self.keys.navtab
         self.pqlen = 0
-        self.stdscr = stdscr
-        self.LINES, self.COLS = stdscr.getmaxyx ()
-        curses.endwin ()
         self.boot ()
         self.update_qscr ()
 
@@ -118,8 +239,7 @@ class Interface:
 
         self.echopad.clear ()
         self.echopad.addstr (0, 0, msg)
-        self.echopad.overwrite (self.stdscr, 0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
-        self.stdscr.noutrefresh ()
+        self.echopad.noutrefresh (0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
         self.doupdate ()
 
     def getstr (self, prompt = ''):
@@ -145,9 +265,6 @@ class Interface:
 
 
     def boot (self, qscr = None):
-        if not hasattr (self, 'navtab'):
-            self.navtab = qscreen.QScrList ()
-
         if not qscr:
             qscr = self.scr_mgr
 
@@ -165,7 +282,7 @@ class Interface:
                     qscr [self.keys.URL],
                     qscr [self.keys.WMAP],
                     qscr, #dangerous maybe
-                    session = self.mksess (qscr [self.keys.URL], qscr [self.keys.COOKIES])
+                    session = qscr [self.keys.SESSION]
                     )
 
             qscr ['nav'] = nav
@@ -180,17 +297,13 @@ class Interface:
 
         self.printi ('Login in user %s' % (qscr [self.keys.UID],))
 
-        to, fro = qscr ['nav'] ('qst_page')[:-1]
         qscr ['qmgr'] = QstMgt.QstMgr (
+                nav = qscr ['nav'],
                 matno = qscr [self.keys.UID],
                 crscode = qscr [self.keys.CRSCODE],
                 tma = qscr [self.keys.TMA],
-                fargs = copy.deepcopy (to),
                 stop = 10,
-                url = fro.url,
                 qmap = qscr [self.keys.WMAP]['qmap'],
-                session = qscr ['nav'].session
-
                 )
 
         qscr ['qline'] = 0
@@ -239,40 +352,6 @@ class Interface:
 
         except StopIteration:
             return None
-
-
-    def mksess (self, url, cookie_file = ''):
-        session = None
-
-        if cookie_file:
-            with open (cookie_file) as f:
-                cookie_str = f.read ()
-
-                session = requests.Session ()
-                cookt = cookie_parse.bake_cookies (cookie_str, url)
-
-                session.headers = requests.structures.OrderedDict(
-                        (
-                            ("Host", None),
-                            ("Connection", "keep-alive"),
-                            ("Upgrade-Insecure-Requests", "1"),
-                            ("User-Agent", cookt [0]['User-Agent']),
-                            (
-                                "Accept",
-                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                                ),
-                            ("Accept-Language", "en-US,en;q=0.9"),
-                            ("Accept-Encoding", "gzip, deflate"),
-                            )
-                        )
-
-                session.cookies = cookt [1]
-
-        else:
-            session = cloudscraper.create_scraper ()
-
-
-        return session
 
 
     def key_left260 (self, subtrahend = b'1'):
