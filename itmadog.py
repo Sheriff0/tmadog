@@ -323,23 +323,41 @@ class Interface:
     def __call__ (self, key):
 
         args = bytearray ()
-        c = key
-        self ['keypad'] (True)
-        self ['nodelay'] (False)
-        self ['notimeout'] (True)
+        self.stdscr.scrollok (True)
+        self.stdscr.keypad (True)
+        self.stdscr.nodelay (False)
+        self.stdscr.notimeout (False)
+        self.stdscr.move (self.LINES - 1, 0)
+        if curses.ascii.isascii (key) and not curses.ascii.isspace (key):
+            self.stdscr.echochar (key)
+        curses.echo ()
+        curses.ungetch (key)
 
         while True:
+            c = self.stdscr.getch ()
             comm = self._get_cmd (c)
             if comm:
+                self.stdscr.move (self.LINES - 1, 0)
+                self.stdscr.clrtoeol ()
+                self.stdscr.noutrefresh ()
+                self.doupdate ()
+                curses.noecho ()
                 return comm (args) if args else comm ()
 
-            elif c >= 0 and c <= 255:
+            elif c == curses.ascii.ESC:
+                break
+
+            elif curses.ascii.isascii (c):
                 args.append (c)
-                c = self ['getch'] ()
 
             else:
-                return
+                break
 
+        self.stdscr.move (self.LINES - 1, 0)
+        self.stdscr.clrtoeol ()
+        self.stdscr.noutrefresh ()
+        self.doupdate ()
+        curses.noecho ()
 
 
     def _get_cmd (self, key):
@@ -469,7 +487,6 @@ class Interface:
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
-
         self.doupdate ()
 
     def key_down258 (self, addend = b'1'):
@@ -541,8 +558,8 @@ class Interface:
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
-
         self.doupdate ()
+
 
     def visibility (self, coord):
         flags = 0
@@ -658,9 +675,9 @@ class Interface:
         self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
+        self.doupdate ()
 
         self.scr_mgr ['qmode'] = False
-        self.doupdate ()
 
 
     def update_qscr (
@@ -682,8 +699,8 @@ class Interface:
             self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                     (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                         [1]) - 1)
-
             self.doupdate ()
+
             return
 
 
@@ -796,9 +813,11 @@ class Interface:
         return
 
     def ctrl_l12 (self, *args):
-        if self.scr_mgr ['qmode'] and self.scr_mgr ['qst']:
-            curses.flash ()
-            self.update_qscr ()
+        curses.flash ()
+        self.scr_mgr ['qscr'].noutrefresh (self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
+        (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
+            [1]) - 1)
+        self.doupdate ()
 
     def ctrl_c3 (self, *args):
         return BREAK
@@ -1096,6 +1115,21 @@ class Interface:
                 self.update_qscr (qst1, qpaint = curses.A_DIM)
 
             curses.flushinp() #For safety
+    
+    def overwrite (self, scr, dest, srow, scol, dminrow, dmincol, dmaxrow,
+            dmaxcol):
+        sp = scr.getyx ()
+        dp = dest.getyx ()
+        for off, row in enumerate (range (dminrow, dmaxrow + 1)):
+            for off1, col in enumerate (range (scol, scol + (dmaxcol - dmincol +
+                1))):
+                ch = scr.inch (srow + off, col)
+                dest.insch (row, dmincol + off1, ch & 0xff, ch >> 8)
+        
+        dest.clrtobot ()
+        scr.move (*sp)
+        dest.move (*dp)
+
 
     def doupdate (self):
         return curses.doupdate ()
@@ -1142,7 +1176,7 @@ def main (stdscr, args):
         curses.raw ()
         qa_interface ['keypad'] (True)
         qa_interface ['nodelay'] (False)
-        qa_interface ['notimeout'] (True)
+        qa_interface ['notimeout'] (False)
         c = qa_interface ['getch'] ()
 
         c = qa_interface (c)
