@@ -326,25 +326,25 @@ class Interface:
     def __call__ (self, key):
 
         args = bytearray ()
-        self.cmdscr.scrollok (True)
-        self.cmdscr.keypad (True)
-        self.cmdscr.nodelay (False)
-        self.cmdscr.notimeout (False)
-        self.stdscr.overwrite (self.cmdscr)
-        self.cmdscr.move (self.LINES - 1, 0)
-        self.cmdscr.echochar (key)
-        curses.echo ()
-        curses.ungetch (key)
+        comm = self._get_cmd (key)
 
-        while True:
+        if not comm:
+            self.cmdscr.scrollok (True)
+            self.cmdscr.keypad (True)
+            self.cmdscr.nodelay (False)
+            self.cmdscr.notimeout (False)
+            self.cmdscr.move (self.LINES - 1, 0)
+            self.stdscr.overwrite (self.cmdscr)
+            self.cmdscr.scroll (1)
+            curses.ungetch (key)
+            self.cmdscr.echochar (key)
+            curses.echo ()
+
+        while not comm:
             c = self.cmdscr.getch ()
             comm = self._get_cmd (c)
             if comm:
-                curses.noecho ()
-                self.stdscr.touchwin ()
-                self.doupdate ()
-                return comm (args) if args else comm ()
-
+                pass
             elif c == curses.ascii.ESC:
                 break
 
@@ -353,6 +353,11 @@ class Interface:
 
             else:
                 break
+        else:
+            curses.noecho ()
+            self.stdscr.touchwin ()
+            self.doupdate ()
+            return comm (args) if args else comm ()
 
 
         curses.noecho ()
@@ -443,10 +448,10 @@ class Interface:
 
 
                 t = self.scr_mgr ['optmap'] [n [0]]
-                vis, trange = self.visibility (t)
+                vis, trange, *misc = self.visibility (t)
 
                 if vis & UNCAPTURED:
-                    offset = t[0] - (self.scr_mgr ['qline'] + self.scr_mgr.scrdim[0] - 1)
+                    offset = t[0] - (self.scr_mgr ['qline'] + misc [1])
                     self.scr_mgr ['qline'] += offset
 
                 elif vis & TOP:
@@ -455,7 +460,7 @@ class Interface:
 
                     t = self.scr_mgr ['optmap'] [t]
 
-                    vis, trange = self.visibility (t)
+                    vis, trange, *misc = self.visibility (t)
                     if vis & ABOVE:
                         self.scr_mgr ['qline'] = trange [-1]
 
@@ -465,7 +470,7 @@ class Interface:
 
             except IndexError:
                 t = self.scr_mgr ['optmap'] [0]
-                vis, trange = self.visibility (t)
+                vis, trange, *misc = self.visibility (t)
                 if vis & ABOVE:
                     self.scr_mgr ['qline'] = trange [-1]
 
@@ -506,7 +511,7 @@ class Interface:
             try:
                 self.scr_mgr ['optmap'] [n [0] + addend]
                 t = self.scr_mgr ['optmap'] [n [0]]
-                vis, trange = self.visibility (t)
+                vis, trange, *misc = self.visibility (t)
 
                 if vis & ABOVE:
                     self.scr_mgr ['qline'] = trange [-1]
@@ -514,7 +519,7 @@ class Interface:
                 elif vis & BOTTOM:
                     t = self.scr_mgr ['optmap'] [n [0] + addend]
 
-                    vis, trange = self.visibility (t)
+                    vis, trange, *misc = self.visibility (t)
                     if vis & BELOW:
                         self.scr_mgr ['qline'] = trange [0]
 
@@ -522,12 +527,10 @@ class Interface:
                 else:
                     self.scr_mgr ['qline'] += addend
 
-                tl = self.scr_mgr ['optmap'] [-1]
-                visl, trangel = self.visibility (tl)
 
             except IndexError:
-                t = tl = self.scr_mgr ['optmap'] [-1]
-                vis, trange = visl, trangel = self.visibility (t)
+                t = self.scr_mgr ['optmap'] [-1]
+                vis, trange, *misc = self.visibility (t)
 
                 if vis & UNCAPTURED:
                     self.scr_mgr ['qline'] = trange [0]
@@ -535,9 +538,11 @@ class Interface:
                 else:
                     self.scr_mgr ['qline'] += addend
 
-            bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+            tl = self.scr_mgr ['optmap'] [-1]
+            visl, trangel, *misc = self.visibility (tl)
+            bot_scry = misc [1]
             if bot_scry > trangel [-1]:
-                self.scr_mgr ['qline'] -= bot_scry - trangel [-1]
+                self.scr_mgr ['qline'] -= (bot_scry - trangel [-1])
 
             self.paint (undo = True)
 
@@ -548,12 +553,12 @@ class Interface:
         elif not self.scr_mgr ['qmode']:
             if hasattr (self, 'msgyx') and self.msgyx:
                 self.scr_mgr ['qline'] += addend
-                vis, trange = self.visibility (self.msgyx)
+                vis, trange, *misc = self.visibility (self.msgyx)
 
-                bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+                bot_scry = misc [1]
 
                 if bot_scry > trange [-1]:
-                    self.scr_mgr ['qline'] -= bot_scry - trange [-1]
+                    self.scr_mgr ['qline'] -= (bot_scry - trange [-1])
 
 
         if self.scr_mgr ['qline'] < 0:
@@ -571,10 +576,11 @@ class Interface:
 
         topy = coord [0]
 
-        boty = math.floor (coord [1] / self.scr_mgr.scrdim [1]) + topy
+        boty = math.ceil (coord [1] / self.scr_mgr.scrdim [1]) + topy - 1
 
 
-        bot_scry = (self.scr_mgr ['qline'] + self.scr_mgr.scrdim [0]) - 1
+        bot_scry = (self.scr_mgr ['qline'] + (self.scr_mgr.scrdim [0] -
+                self.saloc)) - 1
 
         top_scry = self.scr_mgr ['qline']
 
@@ -595,7 +601,7 @@ class Interface:
         if topy > bot_scry:
             flags |= BELOW
 
-        return (flags, txt_range)
+        return (flags, txt_range, top_scry, bot_scry, topy, boty)
 
 
     def enter10 (self, c = False):
@@ -1154,7 +1160,7 @@ class Interface:
                 ch = scr.inch (srow + off, col)
                 dest.addch (row, dmincol + off1, ch)
 
-        dest.clearok (True)
+        #dest.clearok (True)
         scr.move (*sp)
         dest.move (*dp)
 
