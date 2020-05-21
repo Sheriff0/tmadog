@@ -118,7 +118,7 @@ class QscrMuxer:
 
         qscrs.append (
                 QScr (
-                    curses.newpad (self.V_GRANULARITY, self.dimref [1] - 2),
+                    curses.newpad (self.V_GRANULARITY, self.dimref [1] - 1),
                     id = 0,
                     ** next (self.gparams)
                     )
@@ -162,7 +162,7 @@ class QscrMuxer:
                 try:
                     self.qscrs.append (
                             QScr (
-                                curses.newpad (self.V_GRANULARITY, self.dimref [1] - 2),
+                                curses.newpad (self.V_GRANULARITY, self.dimref[1] - 1),
                                 id = self.qscr_len + roff,
                                 ** next (self.gparams)
                                 )
@@ -199,14 +199,8 @@ class QscrMuxer:
         if scr == None:
             scr = self.qscrs [self.qscr_pointer]
 
-        self.scrdim = (scr.scrdim [0] - 2, scr.scrdim [1])
+        self.scrdim = (scr.scrdim [0], scr.scrdim [1] - 1)
         self.scord = (scr.scord [0] , scr.scord [1])
-
-
-        scr.pscr ['addnstr'] (self.scrdim [0], 0, '%s %s TMA%s' % (scr [self.params.UID].upper (), scr [self.params.UID1].upper (), scr [self.params.UID2]), self.scrdim [1]) 
-        scr.pscr ['chgat'] (self.scrdim [0], 0 , curses.A_REVERSE)
-
-        scr.pscr ['noutrefresh'] ()
 
         return self
 
@@ -234,7 +228,7 @@ class QscrMuxer:
         idx = None
 
         for scr in self.qscrs:
-            scr.qscr.resize (self.V_GRANULARITY, scrdim [1] - 2)
+            scr.qscr.resize (self.V_GRANULARITY, scrdim [1] - 1)
 
             if scr.has_screen ():
                 scr.release_screen ()
