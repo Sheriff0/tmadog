@@ -148,7 +148,7 @@ class Navigation (object):
             if s in self and (not v or v not in self):
                 return self.cache [s]
 
-            elif '%s:%s' % (s, sl.stop) in self:
+            elif (not v or v not in self) and '%s:%s' % (s, sl.stop) in self:
                 return self.cache ['%s:%s' % (s, sl.stop)]
             
             elif s in self.webmap:
