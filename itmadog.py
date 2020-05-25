@@ -223,7 +223,6 @@ class Interface:
         self.stdscr = curses.newwin (self.LINES, self.COLS)
 
         self.keys = keys
-        self.keys.print = self.printi
 
         self.scr_mgr = qscreen.QscrMuxer (stdscr, self.keys)
         self.amgr = amgr
@@ -232,7 +231,9 @@ class Interface:
         self.navtab = self.keys.navtab
         self.pqlen = 0
         self.boot ()
+        self.keys.print = self.printi
         self.status (1)
+        self.need_status = False
         self.update_qscr ()
 
     def echo (self, msg):
@@ -249,48 +250,70 @@ class Interface:
         self.cmdscr.move (self.LINES - 1, 0)
         self.cmdscr.clrtoeol ()
         self.cmdscr.touchline (0, self.LINES - 1, False)
+        curses.curs_set (1)
         self.cmdscr.refresh ()
+        curses.def_prog_mode()
         curses.reset_shell_mode ()
-        res = input (prompt)
+        try:
+            res = input ("\033[4;37m" + prompt + "\033[0;0m")
+        except KeyboardInterrupt:
+            print ('')
+            res = None
+
         curses.reset_prog_mode ()
+        curses.curs_set (0)
         return res
     
-    def login_keyL76 (self, matno = '', pwd = '', crscode = '', tma = ''):
-        if not matno:
-            matno = self.getstr ('Matric No: ')
-            
+    def change_key99 (self):
+        crscode = self.getstr ('Course Code: ')
         
-        if not pwd:
-            pwd = self.getstr ('Password: ')
-        if not crscode:
-            crscode = self.getstr ('Course Code: ')
-        
-        if not tma:
-            tma = self.getstr ('Tma No: ')
+        tma = self.getstr ('Tma No(1-3): ')
             
+        if crscode and re.fullmatch (r'\w+', crscode):
+            self.scr_mgr [self.keys.CRSCODE] = crscode
 
-        self.shutdown (self.scr_mgr)
+        if tma and re.fullmatch (r'\w+', tma):
+            self.scr_mgr [self.keys.TMA] = tma
+            
+        self.boot (self.scr_mgr)
+        self.scr_mgr ['qst'] = None
 
-        if not matno and not crscode and not tma:
-            self.scr_mgr ['nav']['tma_page']
+        self.update_qscr ()
+
+    def login_keyL76 (self):
+        pass
+
+    def login_keyl108 (self, qscr = None):
+        if not qscr or isinstance (qscr, bytearray):
+            qscr = self.scr_mgr
+
+        matno = self.getstr ('Matric No: ')
+        pwd = self.getstr ('Password: ')
+        crscode = self.getstr ('Course Code: ')
+        tma = self.getstr ('Tma No(1-3): ')
+        self.shutdown (qscr)
+
+        if (not matno or re.fullmatch (matno, qscr [self.keys.UID], flags =
+            re.I)) and (not crscode or re.fullmatch (crscode, qscr
+                [self.keys.CRSCODE], flags = re.I)) and (not tma or re.fullmatch (tma, qscr
+                    [self.keys.TMA], flags = re.I)):
+            qscr ['nav']['tma_page']
         else:
             if matno and re.fullmatch (r'\w+', matno):
-                self.scr_mgr [self.keys.UID] = matno
+                qscr [self.keys.UID] = matno
 
             if pwd and re.fullmatch (r'\w+', pwd):
-                self.scr_mgr [self.keys.PWD] = pwd
+                qscr [self.keys.PWD] = pwd
 
             if crscode and re.fullmatch (r'\w+', crscode):
-                self.scr_mgr [self.keys.CRSCODE] = crscode
+                qscr [self.keys.CRSCODE] = crscode
 
             if tma and re.fullmatch (r'\w+', tma):
-                self.scr_mgr [self.keys.TMA] = tma
+                qscr [self.keys.TMA] = tma
             
-            self.boot (self.scr_mgr)
-            self.scr_mgr ['qst'] = None
+            self.boot (qscr)
+            qscr ['qst'] = None
         
-        self.update_qscr ()
-        self.ctrl_l12 ()
 
     def updateCookie_keyAmp38 (self, path = bytearray (), qscr = None):
         if not qscr:
@@ -325,9 +348,11 @@ class Interface:
             self.cmdscr.clrtoeol ()
             self.cmdscr.touchline (0, self.LINES - 1, False)
             self.cmdscr.refresh ()
+            curses.def_prog_mode()
             curses.reset_shell_mode ()
-            print (text)
+            print ("\033[0;31m" + text + "\033[0;0m")
             curses.reset_prog_mode ()
+            self.need_status = True
 
     def bootable (self, qscr = None):
         if not qscr:
@@ -395,8 +420,6 @@ class Interface:
         qscr ['qmgr'].interactive = True
 
         self.printi ('Done.')
-        self.printi ('')
-
         return qscr ['qmgr']
 
 
@@ -406,18 +429,19 @@ class Interface:
         comm = self._get_cmd (key)
 
         if not comm:
-            self.cmdscr.keypad (True)
-            self.cmdscr.nodelay (False)
-            self.cmdscr.notimeout (False)
-            self.cmdscr.move (self.LINES - 1, 0)
-            self.cmdscr.clrtoeol ()
-            self.cmdscr.touchline (0, self.LINES - 1, False)
+            self.stdscr.scrollok (True)
+            self.stdscr.keypad (True)
+            self.stdscr.nodelay (False)
+            self.stdscr.notimeout (False)
+            self.stdscr.move (self.LINES - 1, 0)
+            self.stdscr.clrtoeol ()
+            self.stdscr.touchline (0, self.LINES - 1, False)
             curses.ungetch (key)
-            self.cmdscr.echochar (key)
+            self.stdscr.echochar (key)
             curses.echo ()
 
         while not comm:
-            c = self.cmdscr.getch ()
+            c = self.stdscr.getch ()
             comm = self._get_cmd (c)
             if comm:
                 pass
@@ -431,14 +455,12 @@ class Interface:
                 break
         else:
             curses.noecho ()
-            self.stdscr.touchwin ()
-            self.doupdate ()
+            self.ctrl_l12 ()
             return comm (args) if args else comm ()
 
 
         curses.noecho ()
-        self.stdscr.touchwin ()
-        self.doupdate ()
+        self.ctrl_l12 ()
 
 
     def _get_cmd (self, key):
@@ -884,7 +906,8 @@ class Interface:
         return
 
     def ctrl_l12 (self, *args):
-        curses.flash ()
+        #curses.flash ()
+        self.stdscr.clear ()
         self.overwrite (self.scr_mgr ['qscr'], self.stdscr, self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
         (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1 - self.saloc, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
             [1]) - 1)
@@ -937,10 +960,11 @@ class Interface:
 
         if self.bootable ():
             self.boot ()
-
-        self.update_qscr (flags = PRT_KEEPLINE)
-        self.status (1)
-        self.doupdate ()
+        #____________________looks dumb
+        f = self.need_status#|___ 
+        self.need_status = False#|_______________
+        self.update_qscr (flags = PRT_KEEPLINE)#|_____________________
+        self.need_status = f#|
 
     def status (self, highlight = True):
         if not hasattr (self, 'saloc'):
@@ -1234,6 +1258,10 @@ class Interface:
         self.overwrite (self.scr_mgr ['qscr'], self.stdscr, self.scr_mgr ['qline'], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
                 (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1 - self.saloc, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                     [1]) - 1)
+
+        if self.need_status:
+            self.status (1)
+
         self.stdscr.noutrefresh ()
         return curses.doupdate ()
 
