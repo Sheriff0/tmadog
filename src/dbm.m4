@@ -1,7 +1,7 @@
 import sqlite3
 import json
 
-class DbMgt (object):
+class DbMgr (object):
 
     @classmethod
     def setupdb (cl, db):

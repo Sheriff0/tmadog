@@ -1,0 +1,27 @@
+function! M4_cond_wrap_fn (a, body = [], delim = '£ $', d = 0)
+
+	let l:delim = (type(a:delim) == v:t_string)? split (a:delim) : a:delim
+	
+	let l = len(l:delim)
+	let [st, end] = (l > 1)? l:delim[:1] : (l > 0)? [l:delim[0], '$'] : ['£', '$']
+
+	if type(a:body) == v:t_string
+		let l:body = split (a:body, "\n")
+
+	else
+		let l:body = a:body
+	endif
+
+	let l:lines = ["define(" . st . tolower(a:a) . end . ",", st . "dnl"]
+
+	call extend (l:lines, l:body, len(l:lines)) 
+
+	call extend (l:lines, [end . ")dnl", "dnl", "ifelse(" . toupper(a:a) . ", " . st . end . ", " . tolower(a:a) . ", " . toupper(a:a) . ", " . st . "1" . end . ", " . tolower(a:a) . ", " . toupper("NO_" . a:a) . ", " . st . end . ", " . st . end . ", " . toupper("NO_" . toupper(a:a)) . ", " . st . "1" . end . ", " . st . end . ")dnl", ""], len(l:lines))
+	
+	if a:d == 1
+		call append(line(".") - 1, l:lines)
+	endif
+
+	return l:lines
+
+endfunc

@@ -2,7 +2,6 @@ import sys
 import cfscrape
 import os
 from dogs import *
-#import tmadog_utils
 import argparse
 from submit import Submit
 import configparser
