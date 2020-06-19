@@ -1,4 +1,4 @@
-function! M4_cond_wrap_fn (a, body = [], delim = '£ $', d = 0)
+function! M4_cond_wrap_fn (a, body = [], delim = '£ %', d = 0)
 
 	let l:delim = (type(a:delim) == v:t_string)? split (a:delim) : a:delim
 	
@@ -12,11 +12,14 @@ function! M4_cond_wrap_fn (a, body = [], delim = '£ $', d = 0)
 		let l:body = a:body
 	endif
 
-	let l:lines = ["define(" . st . tolower(a:a) . end . ",", st . "dnl"]
+	let config = toupper("config_" . a:a)
+	let macro = toupper(a:a)
+
+	let l:lines = ["define(" . st . macro . end . ",", st . "dnl"]
 
 	call extend (l:lines, l:body, len(l:lines)) 
 
-	call extend (l:lines, [end . ")dnl", "dnl", "ifelse(" . toupper(a:a) . ", " . st . end . ", " . tolower(a:a) . ", " . toupper(a:a) . ", " . st . "1" . end . ", " . tolower(a:a) . ", " . toupper("NO_" . a:a) . ", " . st . end . ", " . st . end . ", " . toupper("NO_" . toupper(a:a)) . ", " . st . "1" . end . ", " . st . end . ")dnl", ""], len(l:lines))
+	call extend (l:lines, [end . ")dnl", "dnl", "ifelse(" . config . ", " . st . end . ", " . macro . ", " . config . ", " . st . "1" . end . ", " . macro . ", " . st . end . ")dnl"], len(l:lines))
 	
 	if a:d == 1
 		call append(line(".") - 1, l:lines)

@@ -1,4 +1,5 @@
-changequote(`£', `$')dnl
+divert(1)dnl`'include(`config.m4')dnl
+changequote(`£', `%')dnl
 import math
 import re
 import requests
@@ -34,17 +35,15 @@ PRT_KEEPLINE = 0b010
 PRT_KEEPCUR = 0b0100
 
 class Interface:
-    def __init__ (self, stdscr, keys, amgr):
-        curses.endwin ()
-        self.cmdscr = stdscr
-        self.LINES, self.COLS = stdscr.getmaxyx ()
-        self.stdscr = curses.newwin (self.LINES, self.COLS)
-
+    def __init__ (
+            self,
+            keys,
+            amgr,
+ifelse(CONFIG_IF_CURSES, £%, IF_CURSES, CONFIG_IF_CURSES, £1%, IF_CURSES,
+£dnl
+	    ):
+%)dnl
         self.keys = keys
-
-        self.scr_mgr = qscreen.QscrMuxer (stdscr, self.keys)
-        self.amgr = amgr
-        curses.curs_set (0)
         self.pq = []
         self.navtab = self.keys.navtab
         self.pqlen = 0
@@ -55,14 +54,7 @@ class Interface:
         self.update_qscr ()
 
     def echo (self, msg):
-        if not hasattr (self, 'echopad'):
-            self.echopad = curses.newpad (50, 1000)
-            self.echopad.scrollok (True)
-
-        self.echopad.clear ()
-        self.echopad.addstr (0, 0, msg)
-        self.echopad.noutrefresh (0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
-        self.doupdate ()
+ifelse(CONFIG_IF_CURSES, £%, IF_CURSES_ECHO, CONFIG_IF_CURSES, £1%, IF_CURSES_ECHO, £%)dnl
 
     def getstr (self, prompt = ''):
         self.cmdscr.move (self.LINES - 1, 0)
@@ -132,6 +124,9 @@ class Interface:
             self.boot (qscr)
             qscr ['qst'] = None
 
+
+define(£COOKIE_KEY$,
+£dnl
     def updateCookie_keyAmp38 (self, path = bytearray (), qscr = None):
         if not qscr:
             qscr = self.scr_mgr
@@ -152,6 +147,9 @@ class Interface:
         except BaseException as err:
             self.printi ('%s: %s' % (path, err.args [1]))
 
+%)dnl
+dnl
+ifelse(CONFIG_COOKIE_KEY, £%, COOKIE_KEY, CONFIG_COOKIE_KEY, £1%, COOKIE_KEY, £%)dnl
 
     def shutdown (self, qscr = None):
         if not qscr:
@@ -1056,3 +1054,4 @@ class Interface:
 
         self.stdscr.noutrefresh ()
         return curses.doupdate ()
+ifelse(TMADOG_IF, £%, £%, ££divert(1)%%)
