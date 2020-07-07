@@ -11,7 +11,7 @@ pwd = [Password]
 
 
 [home_page]
-path = /
+path = /:
 requires =
 volatile =
 indices = 0

@@ -1,15 +1,27 @@
 import sqlite3
 import json
 
+ifdef(
+`CONFIG_MODULE',
+`dnl
+strerr = [
+    
+]
+',
+`'dnl
+)dnl
 class DbMgr (object):
 
-    @classmethod
-    def setupdb (cl, db):
+    
+    def __init__ (self, *pos, **kwargs):
+	pass
+
+    def setupdb (self, db):
 
         conn = sqlite3.connect (db)
 
         try:
-            conn.executescript ('''
+            conn.executescript ("""
             CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
                     AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
 
@@ -30,21 +42,20 @@ class DbMgr (object):
             optb VARCHAR NOT NULL,
             optc VARCHAR NOT NULL,
             optd VARCHAR NOT NULL);
-                    ''')
+                    """)
 
             conn.commit ()
         except sqlite3.OperationalError as err:
-            print ('create: ',err.args[0])
+            print ("create: ",err.args[0])
             conn.close ()
             return None
 
         return conn
 
+    
+    def update_hacktab (self, db, data, qmap, cursor = None, fp = None):
 
-    @classmethod
-    def update_hacktab (cl, db, data, qmap, cursor = None, fp = None):
-
-        conn = cl.setupdb (db) if not cursor else cursor.connection
+        conn = self.setupdb (db) if not cursor else cursor.connection
 
         conn.row_factory = sqlite3.Row
 
@@ -68,24 +79,23 @@ class DbMgr (object):
                 arr.append (datum)
 
             try:
-                cid = cl.updatedb (db, [datum], qmap, cur)['cid']
+                cid = self.update_qca_tab (db, [datum], qmap, cur)["cid"]
 
-                cur.execute ('''
+                cur.execute ("""
                         REPLACE INTO hacktab (cid, opta, optb, optc, optd) VALUES (?, ?,
                         ?, ?, ?);
-                        ''', (
+                        """, (
                             cid,
-                            datum[qmap ['opta']],
-                            datum[qmap ['optb']],
-                            datum[qmap ['optc']],
-                            datum[qmap ['optd']]
+                            datum[qmap ["opta"]],
+                            datum[qmap ["optb"]],
+                            datum[qmap ["optc"]],
+                            datum[qmap ["optd"]]
                             ))
                         
 
             except sqlite3.OperationalError as err:
-                print ('update_hacktab: replace: ', err.args[0])
                 conn.close ()
-                return -1
+                print ("update_hacktab: replace: ", err.args[0])
 
         if arr and fp:
             json.dump (arr, fp)
@@ -125,29 +135,29 @@ class DbMgr (object):
 
             try:
 
-                cur.execute ('''INSERT INTO questions (qdescr)
-                        VALUES (?);''', (datum[qmap ['qdescr']],))
+                cur.execute ("""INSERT INTO questions (qdescr)
+                        VALUES (?);""", (datum[qmap ["qdescr"]],))
 
                 dogid = cur.lastrowid
-                ids['dogid'] = dogid
+                ids["dogid"] = dogid
 
-                cur.execute ('''INSERT INTO courses (crscode, dogid, ready,
+                cur.execute ("""INSERT INTO courses (crscode, dogid, ready,
                 qid) VALUES
-                        (?, ?, ?, ?)''', (
-                            datum[qmap ['crscode']],
+                        (?, ?, ?, ?)""", (
+                            datum[qmap ["crscode"]],
                             dogid,
-                            True if datum[qmap ['ans']] and datum[qmap ['crscode']] and datum[qmap ['qid']] else False,
-                            datum[qmap ['qid']]
+                            True if datum[qmap ["ans"]] and datum[qmap ["crscode"]] and datum[qmap ["qid"]] else False,
+                            datum[qmap ["qid"]]
                             ))
 
                 cid = cur.lastrowid
-                ids['cid'] = cid
+                ids["cid"] = cid
 
-                cur.execute ('''
+                cur.execute ("""
                         INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
                         ?);
-                        ''', (
-                            datum[qmap ['ans']],
+                        """, (
+                            datum[qmap ["ans"]],
                             dogid,
                             cid
                             ))
@@ -157,49 +167,49 @@ class DbMgr (object):
 
                 repeats += 1
 
-                dupq = cur.execute ('SELECT * FROM questions WHERE qdescr = ?', (datum[qmap ['qdescr']],)).fetchone ()
+                dupq = cur.execute ("SELECT * FROM questions WHERE qdescr = ?", (datum[qmap ["qdescr"]],)).fetchone ()
 
-                crsref = cur.execute ('''
+                crsref = cur.execute ("""
                         SELECT * FROM courses WHERE (crscode == ? AND qid == ? AND
                         dogid == ?) OR (dogid == ? AND crscode = ?) LIMIT 1
-                        ''', (
-                            datum[qmap ['crscode']],
-                            datum[qmap ['qid']],
-                            dupq['dogid'],
-                            dupq['dogid'],
+                        """, (
+                            datum[qmap ["crscode"]],
+                            datum[qmap ["qid"]],
+                            dupq["dogid"],
+                            dupq["dogid"],
                             None,
                             )).fetchone() 
 
                 cur1 = cur.connection.cursor ()
 
-                cur1.execute ('''
+                cur1.execute ("""
                         REPLACE INTO courses (cid, crscode, dogid, ready, qid)
                         VALUES (?, ?, ?, ?, ?)
-                        ''', (
-                            crsref['cid'] if crsref else None,
-                            datum[qmap ['crscode']],
-                            dupq ['dogid'],
-                            True if datum[qmap ['ans']] and datum[qmap ['qid']] and datum[qmap ['crscode']] else False,
-                                datum[qmap ['qid']]
+                        """, (
+                            crsref["cid"] if crsref else None,
+                            datum[qmap ["crscode"]],
+                            dupq ["dogid"],
+                            True if datum[qmap ["ans"]] and datum[qmap ["qid"]] and datum[qmap ["crscode"]] else False,
+                                datum[qmap ["qid"]]
                                 ))
 
                 cid = cur1.lastrowid
 
-                ids['cid'] = cid
+                ids["cid"] = cid
 
-                ids['dogid'] = dupq['dogid']
+                ids["dogid"] = dupq["dogid"]
 
-                cur.execute ('''
+                cur.execute ("""
                         REPLACE INTO answers (ans, dogid, cid) VALUES (?,
                         ?, ?)
-                        ''', (
-                            datum[qmap ['ans']],
-                            dupq['dogid'],
+                        """, (
+                            datum[qmap ["ans"]],
+                            dupq["dogid"],
                             cid
                             ))
 
             except sqlite3.OperationalError as err:
-                print ('insert/replace: ', err.args[0])
+                print ("insert/replace: ", err.args[0])
                 conn.close ()
                 return -1
         

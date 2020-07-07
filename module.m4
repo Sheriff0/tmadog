@@ -5,7 +5,11 @@ define(
 )dnl
 define(
 {MODULE_START},
-{changequote`'ifdef(__file__`_divnum', `ifdef(indir(__file__`_MODNAME'), `divert(-1)', `divert(indir(__file__`_divnum'))')', `errprint(`Warn: ' __file__`: MODULE_START not called')MODULE_INIT($1, divnum)')}dnl
+{changequote`'ifdef(__file__`_divnum', `ifdef(indir(__file__`_MODNAME'), `divert(-1)', `divert(indir(__file__`_divnum'))')', `errprint(`Warn: ' __file__`: MODULE_INIT not called')MODULE_INIT($1, divnum)')}dnl
 )dnl
 define({MODULE_END}, {changequote`'ifdef(__file__`_MODNAME', `define(indir(__file__`_MODNAME'))divert(indir(__file__`_divnum'))', `errprint(`err: '__file__`: Module not initialized')m4exit(1)')})dnl
-changequote`'MODULE_START()MODULE_END()dnl
+define(
+{MODULE_RM},
+{changequote`'ifelse(len($1), 0, `undefine(__file__)', `ifdef($1, `undefine($1)', `undefine($1`_MODNAME')')')}dnl
+)dnl
+changequote`'MODULE_INIT()MODULE_START()MODULE_END()dnl
