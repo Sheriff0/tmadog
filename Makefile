@@ -12,7 +12,7 @@ MAIN_DEP = ansm.m4 \
 	   dogrc.m4 \
 	   dogs.m4 \
 	   hack.m4 \
-	   if.m4 \
+	   iff.m4 \
 	   main.m4 \
 	   mkconfig.m4 \
 	   navigation.m4 \

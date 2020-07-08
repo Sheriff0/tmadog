@@ -1,125 +1,29 @@
-def main (stdscr, args):
-
-
-    mp = configparser.ConfigParser (interpolation =
-        configparser.ExtendedInterpolation ())
-
-    mp.read (args.wmap)
-
-    args.wmap = mp
-
-    qmap = mp ['qmap']
-
-    curses.start_color ()
-
-    curses.noecho ()
-
-    if not args.cookies:
-        args.cookies = ['']
-
-    keys = MPCT_Preprocessor (**args.__dict__)
-
-    self.scr_mgr = qscreen.QscrMuxer (stdscr, self.keys)
-
-    self.keys.print = self.printi
-
-    ansmgr = AnsMgt.AnsMgr (
-            qmap = qmap,
-            database = args.database,
-            mode = AnsMgt.AnsMgr.ANS_MODE_NORM,
-            pseudo_ans = qmap ['pseudo_ans'].split (','),
-            interactive = False,
-            )
-
-    qa_interface = Interface (
-            stdscr,
-            keys,
-            ansmgr
-            )
-
-    qa_interface.doupdate ()
-
-    while True:
-        curses.raw ()
-        qa_interface ['keypad'] (True)
-        qa_interface ['nodelay'] (False)
-        qa_interface ['notimeout'] (False)
-        c = qa_interface ['getch'] ()
-
-        c = qa_interface (c)
-
-        if c == BREAK:
-            break
-
-
-    curses.noraw ()
-    curses.echo ()
-    curses.endwin ()
-
-    if ansmgr._cur:
-        ansmgr.close ()
-
-    f = open (args.qstdump, 'w') if args.debug else None
-
-    if args.updatedb:
-        dbmgt.DbMgt.update_hacktab (args.database, ansmgr.iter_cache (),
-                ansmgr.qmap, fp = f)
-    elif args.debug:
-        arr = []
-        for qst in ansmgr.iter_cache ():
-           arr.append (qst)
-
-        json.dump (arr, f)
-
-    if f:
-        f.close ()
-
-    return
-
-
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser ()
-
-    parser.add_argument ('--config', default = 'dogrc', help = 'configuration file to use', dest = 'wmap')
-
-    parser.add_argument ('--debug', action = 'store_true', help = 'To enable debug mode')
-
-    parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
-
-    parser.add_argument ('--database', '-db', default = 'pg/olddb', help = 'The database to use')
-
-    parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest =
-            'updatedb', default = True, help = 'Update the database in use')
-
-
-    parser.add_argument ('--url', help = 'The remote url if no local server',
-            action = 'append', required = True)
-
-    parser.add_argument ('--matno', help = 'Your Matric Number', action = 'append')
-
-    parser.add_argument ('--pwd', help = 'Your password',
-            action = 'append')
-
-    parser.add_argument ('--crscode', help = 'Your target course', action = 'append')
-
-    parser.add_argument ('--tma', help = 'Your target TMA for the chosen course', action = 'append')
-
-
-    parser.add_argument ('--cookies', help = 'Website cookies', action = 'append')
-
-    args = parser.parse_args()
-
-
-    try:
-
-        stdscr = curses.initscr ()
-
-        main (stdscr, args)
-
-    except BaseException as err:
-        curses.endwin ()
-        raise err
+import time
+import math
+import unittest
+import argparse
+import sys
+import urllib.parse
+import re
+import requests
+import navigation
+import configparser
+import http.server
+import qstm
+import ansm
+import dbm
+import iff
+import curses
+import curses.ascii
+import concurrent.futures
+import lxml
+import scrm
+import copy
+import pdb
+import json
+import cloudscraper
+import cookie_parse
+import dogs
 
 
 class MPCT_Preprocessor:
@@ -147,7 +51,7 @@ class MPCT_Preprocessor:
         self.param = {}
         self.param [self.WMAP] = self.wmap
         self.len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
-        self.navtab = qscreen.QScrList ()
+        self.navtab = scrm.QScrList ()
 
     def __len__ (self):
         return self.len
@@ -292,3 +196,126 @@ class MPCT_Preprocessor:
             idx = self.idx if idx == None else idx
             return self.list [idx] if idx != None and idx >= 0 else None
 
+
+def main (stdscr, args):
+
+
+    mp = configparser.ConfigParser (interpolation =
+        configparser.ExtendedInterpolation ())
+
+    mp.read (args.wmap)
+
+    args.wmap = mp
+
+    qmap = mp ['qmap']
+
+    curses.start_color ()
+
+    curses.noecho ()
+
+    if not args.cookies:
+        args.cookies = ['']
+
+    keys = MPCT_Preprocessor (**args.__dict__)
+
+    self.scr_mgr = scrm.QscrMuxer (stdscr, self.keys)
+
+    self.keys.print = self.printi
+
+    ansmgr = ansm.AnsMgr (
+            qmap = qmap,
+            database = args.database,
+            mode = ansm.ANS_MODE_NORM,
+            pseudo_ans = qmap ['pseudo_ans'].split (','),
+            interactive = False,
+            )
+
+    qa_interface = iff.Interface (
+            stdscr,
+            keys,
+            ansmgr
+            )
+
+    qa_interface.doupdate ()
+
+    while True:
+        curses.raw ()
+        qa_interface ['keypad'] (True)
+        qa_interface ['nodelay'] (False)
+        qa_interface ['notimeout'] (False)
+        c = qa_interface ['getch'] ()
+
+        c = qa_interface (c)
+
+        if c == BREAK:
+            break
+
+
+    curses.noraw ()
+    curses.echo ()
+    curses.endwin ()
+
+    if ansmgr._cur:
+        ansmgr.close ()
+
+    f = open (args.qstdump, 'w') if args.debug else None
+
+    if args.updatedb:
+        dbm.DbMgr.update_hacktab (args.database, ansmgr.iter_cache (),
+                ansmgr.qmap, fp = f)
+    elif args.debug:
+        arr = []
+        for qst in ansmgr.iter_cache ():
+           arr.append (qst)
+
+        json.dump (arr, f)
+
+    if f:
+        f.close ()
+
+    return
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser ()
+
+    parser.add_argument ('--config', default = 'dogrc', help = 'configuration file to use', dest = 'wmap')
+
+    parser.add_argument ('--debug', action = 'store_true', help = 'To enable debug mode')
+
+    parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
+
+    parser.add_argument ('--database', '-db', default = 'pg/olddb', help = 'The database to use')
+
+    parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest =
+            'updatedb', default = True, help = 'Update the database in use')
+
+
+    parser.add_argument ('--url', help = 'The remote url if no local server',
+            action = 'append', required = True)
+
+    parser.add_argument ('--matno', help = 'Your Matric Number', action = 'append')
+
+    parser.add_argument ('--pwd', help = 'Your password',
+            action = 'append')
+
+    parser.add_argument ('--crscode', help = 'Your target course', action = 'append')
+
+    parser.add_argument ('--tma', help = 'Your target TMA for the chosen course', action = 'append')
+
+
+    parser.add_argument ('--cookies', help = 'Website cookies', action = 'append')
+
+    args = parser.parse_args()
+
+
+    try:
+
+        stdscr = curses.initscr ()
+
+        main (stdscr, args)
+
+    except BaseException as err:
+        curses.endwin ()
+        raise err

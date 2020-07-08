@@ -1,20 +1,11 @@
 import sqlite3
 import json
 
-ifdef(
-`CONFIG_MODULE',
-`dnl
-strerr = [
-    
-]
-',
-`'dnl
-)dnl
 class DbMgr (object):
 
     
     def __init__ (self, *pos, **kwargs):
-	pass
+        pass
 
     def setupdb (self, db):
 

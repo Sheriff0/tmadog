@@ -19,6 +19,7 @@ import cookie_parse
 import dogs
 import os
 import sys
+import curses
 
 #terminal escapes
 
@@ -29,8 +30,6 @@ PRINT_ERR = "\033[0;31m{}\033[0;0m" if os.isatty (sys.stdout.fileno ()) else PRI
 PRINT_OK = "\033[0;32m{}\033[0;0m" if os.isatty (sys.stdout.fileno ()) else PRINT_NONE
 
 PRINT_INPUT = "\033[0;42m{}\033[0;0m" if os.isatty (sys.stdout.fileno ()) else PRINT_NONE
-
-Navigation = navigation.Navigation
 
 BREAK = -1
 
@@ -50,12 +49,12 @@ PRT_KEEPCUR = 0b0100
 
 class Interface:
     def __init__ (self, stdscr, keys, amgr):
-	curses.curs_set (0)
-	curses.endwin ()
-	self.cmdscr = stdscr
-	self.LINES, self.COLS = stdscr.getmaxyx ()
-	self.stdscr = curses.newwin (self.LINES, self.COLS)
-	self.scr_mgr = scrm.QscrMuxer (stdscr, keys)
+        curses.curs_set (0)
+        curses.endwin ()
+        self.cmdscr = stdscr
+        self.LINES, self.COLS = stdscr.getmaxyx ()
+        self.stdscr = curses.newwin (self.LINES, self.COLS)
+        self.scr_mgr = scrm.QscrMuxer (stdscr, keys)
         self.keys = keys
         self.amgr = amgr
         self.pq = []
@@ -154,19 +153,19 @@ class Interface:
         else:
             path = path.decode ()
 
-	if path:
-	    self.echo ("Reading cookie file")
-	    try:
-		self.echo ("Installing cookie")
-		session = self.keys.mksess (qscr [self.keys.URL], path)
+        if path:
+            self.echo ("Reading cookie file")
+            try:
+                self.echo ("Installing cookie")
+                session = self.keys.mksess (qscr [self.keys.URL], path)
 
-	    except BaseException as err:
-		self.printi ("%s: %s" % (path, err.args [1]), PRINT_ERR)
-	    
-	    else:
-		qscr ["nav"].session = session
-		qscr [self.keys.COOKIES] = path
-		self.echo ("Done.")
+            except BaseException as err:
+                self.printi ("%s: %s" % (path, err.args [1]), PRINT_ERR)
+            
+            else:
+                qscr ["nav"].session = session
+                qscr [self.keys.COOKIES] = path
+                self.echo ("Done.")
 
 
     def __getitem__ (self, attr):
@@ -180,10 +179,10 @@ class Interface:
             self.cmdscr.refresh ()
             curses.def_prog_mode()
             curses.reset_shell_mode ()
-	print (typ.format (text))
+        print (typ.format (text))
 
-	curses.reset_prog_mode () #Expected to be harmless even after a call to curses.endwin
-	self.need_status = True
+        curses.reset_prog_mode () #Expected to be harmless even after a call to curses.endwin
+        self.need_status = True
 
     def bootable (self, qscr = None):
         if not qscr:
@@ -214,7 +213,7 @@ class Interface:
         except ValueError:
 
             self.printi ("Not Found. Configuring a new navigator")
-            nav = Navigation.Navigator (
+            nav = navigation.navigator (
                     qscr [self.keys.URL],
                     qscr [self.keys.WMAP],
                     qscr, #dangerous maybe
@@ -231,7 +230,7 @@ class Interface:
 
         self.printi ("Login in user %s" % (qscr [self.keys.UID],))
 
-        qscr ["qmgr"] = QstMgt.QstMgr (
+        qscr ["qmgr"] = qstm.QstMgr (
                 nav = qscr ["nav"],
                 matno = qscr [self.keys.UID],
                 crscode = qscr [self.keys.CRSCODE],
@@ -789,7 +788,7 @@ class Interface:
         self.need_status = f#|
 
     def status (self, highlight = True):
-	self.saloc = 2 if self.scr_mgr.scrdim [0] > 2 else 0
+        self.saloc = 2 if self.scr_mgr.scrdim [0] > 2 else 0
 
         if self.saloc:
             self.stdscr.move (self.scr_mgr.scord [0] + self.scr_mgr.scrdim [0] -

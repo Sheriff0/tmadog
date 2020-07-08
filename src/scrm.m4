@@ -1,12 +1,7 @@
-from navigation import Navigation
-from qstmgt import QstMgt
-import cloudscraper
 import curses
 import math
 import copy
 import pdb
-import cookie_parse
-import requests
 
 class QScrList (list):
     def index (self, value, attr = None, start = 0, stop = 2147483647):
