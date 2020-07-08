@@ -1,6 +1,6 @@
 .PHONY: all default enterprise user;
 
-OUTPUT = .
+OUTPUT ?= mybuild
 
 SRC = src
 
@@ -25,13 +25,20 @@ M4FLAGS = -I $(SRC) -I .
 
 $(shell mkdir -p $(OUTPUT)) 
 
-all: default user enterprise ;
+all: smeo default user enterprise ;
+
+smeo: $(addprefix $(OUTPUT)/,$(MAIN_DEP:.m4=.py)) ;
 
 default: $(addprefix $(OUTPUT)/def_,$(MAIN_DEP:.m4=.py)) ;
 
-enterprise: $(addprefix $(OUTPUT)/ent_,$(MAIN_DEP:.m4=.py));
+enterprise: $(addprefix $(OUTPUT)/ent_,$(MAIN_DEP:.m4=.py)) ;
 
 user: $(addprefix $(OUTPUT)/usr_,$(MAIN_DEP:.m4=.py));
+
+$(OUTPUT)/%.py: $(SRC)/%.m4
+	m4 $(M4FLAGS)\
+	    -LCONFIG_CURSES_IF\
+	    -LMODULE $< > $@
 
 $(OUTPUT)/def_%.py: $(SRC)/%.m4
 	m4 $(M4FLAGS) -DLIBPREFIX=def_ $< > $@

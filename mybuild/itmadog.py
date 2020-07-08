@@ -231,7 +231,6 @@ class Interface:
         self.navtab = self.keys.navtab
         self.pqlen = 0
         self.boot ()
-        self.keys.print = self.printi
         self.status (1)
         self.need_status = False
         self.update_qscr ()

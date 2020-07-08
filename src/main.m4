@@ -19,6 +19,10 @@ def main (stdscr, args):
 
     keys = MPCT_Preprocessor (**args.__dict__)
 
+    self.scr_mgr = qscreen.QscrMuxer (stdscr, self.keys)
+
+    self.keys.print = self.printi
+
     ansmgr = AnsMgt.AnsMgr (
             qmap = qmap,
             database = args.database,

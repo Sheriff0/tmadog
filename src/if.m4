@@ -2,11 +2,6 @@ changequote`'include(`module.m4')dnl
 MODULE_INIT()
 MODULE_START()dnl
 changequote`'dnl
-ifdef(`CONFIG_CURSES_IF',
-`dnl
-import curses
-import curses.ascii
-', `')dnl
 import math
 import re
 import requests
@@ -54,22 +49,13 @@ PRT_KEEPLINE = 0b010
 PRT_KEEPCUR = 0b0100
 
 class Interface:
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
     def __init__ (self, stdscr, keys, amgr):
 	curses.curs_set (0)
 	curses.endwin ()
 	self.cmdscr = stdscr
 	self.LINES, self.COLS = stdscr.getmaxyx ()
 	self.stdscr = curses.newwin (self.LINES, self.COLS)
-
 	self.scr_mgr = scrm.QscrMuxer (stdscr, keys)
-',
-`dnl
-    def __init__ (self, keys, amgr):
-'dnl
-)dnl
         self.keys = keys
         self.amgr = amgr
         self.pq = []
@@ -82,9 +68,6 @@ ifdef(
         self.update_qscr ()
 
     def echo (self, msg):
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
         if not hasattr (self, "echopad"):
             self.echopad = curses.newpad (50, 1000)
             self.echopad.scrollok (True)
@@ -93,16 +76,8 @@ ifdef(
         self.echopad.addstr (0, 0, msg)
         self.echopad.noutrefresh (0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
         self.doupdate ()
-',
-`dnl
-	selt.printi (msg)
-'dnl
-)dnl
 
     def getstr (self, prompt = ""):
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
         self.cmdscr.move (self.LINES - 1, 0)
         self.cmdscr.clrtoeol ()
         self.cmdscr.touchline (0, self.LINES - 1, False)
@@ -110,23 +85,13 @@ ifdef(
         self.cmdscr.refresh ()
         curses.def_prog_mode()
         curses.reset_shell_mode ()
-><>,
-<><><>dnl
-)dnl
         try:
             res = input ("\033[4;37m" + prompt + "\033[0;0m")
         except KeyboardInterrupt:
             print ("") #To make text of short burst of calls to this function aligned
             res = None
-
-ifdef(
-<><CONFIG_CURSES_IF><>,
-<><dnl
         curses.reset_prog_mode ()
         curses.curs_set (0)
-><>,
-<><><>dnl
-)dnl
         return res
 
     def change_keyc99 (self):
@@ -208,9 +173,6 @@ ifdef(
         return getattr (self.scr_mgr ["qscr"], attr)
 
     def printi (self, text = "", typ = PRINT_NONE):
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
         if not curses.isendwin ():
             self.cmdscr.move (self.LINES - 1, 0)
             self.cmdscr.clrtoeol ()
@@ -218,20 +180,9 @@ ifdef(
             self.cmdscr.refresh ()
             curses.def_prog_mode()
             curses.reset_shell_mode ()
-',
-`'dnl
-)dnl
-
 	print (typ.format (text))
 
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
 	curses.reset_prog_mode () #Expected to be harmless even after a call to curses.endwin
-',
-`'dnl
-)dnl
-
 	self.need_status = True
 
     def bootable (self, qscr = None):
@@ -278,8 +229,6 @@ ifdef(
 
             self.navtab.append (nav)
 
-
-
         self.printi ("Login in user %s" % (qscr [self.keys.UID],))
 
         qscr ["qmgr"] = QstMgt.QstMgr (
@@ -304,12 +253,8 @@ ifdef(
 
 
     def __call__ (self, key):
-ifdef(
-`CONFIG_CURSES_IF',
-`dnl
         args = bytearray ()
         comm = self._get_cmd (key)
-
         if not comm:
             self.stdscr.scrollok (True)
             self.stdscr.keypad (True)
@@ -343,11 +288,6 @@ ifdef(
 
         curses.noecho ()
         self.ctrl_l12 ()
-',
-`dnl
-	pass
-'dnl
-)dnl
 
     def _get_cmd (self, key):
         cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
@@ -546,7 +486,6 @@ ifdef(
 
         self.doupdate ()
 
-
     def visibility (self, coord):
         flags = 0
 
@@ -578,7 +517,6 @@ ifdef(
             flags |= BELOW
 
         return (flags, txt_range, top_scry, bot_scry, topy, boty)
-
 
     def enter10 (self, c = False):
 
@@ -643,7 +581,6 @@ ifdef(
                 self.scr_mgr ["qst"] = None
             return post_fetch_h (*post_fetch_arg)
 
-
     def message (self, res):
 
         y = lxml.html.fromstring (res.text).text_content ()
@@ -662,7 +599,6 @@ ifdef(
         self.doupdate ()
 
         self.scr_mgr ["qmode"] = False
-
 
     def update_qscr (
             self,
@@ -853,8 +789,7 @@ ifdef(
         self.need_status = f#|
 
     def status (self, highlight = True):
-        if not hasattr (self, "saloc"):
-            self.saloc = 2 if self.scr_mgr.scrdim [0] > 2 else 0
+	self.saloc = 2 if self.scr_mgr.scrdim [0] > 2 else 0
 
         if self.saloc:
             self.stdscr.move (self.scr_mgr.scord [0] + self.scr_mgr.scrdim [0] -
@@ -867,7 +802,6 @@ ifdef(
             self.stdscr.chgat (self.scr_mgr.scord [0] + self.scr_mgr.scrdim [0]
                     - self.saloc, 0 ,
                     curses.A_REVERSE | (curses.A_BOLD if highlight else 0))
-
 
     def paint (self, t = None, color = curses.A_BOLD | curses.A_REVERSE,
             undo = False, optmap = None):
@@ -918,47 +852,6 @@ ifdef(
 
             return self.update_qscr (qst)
 
-    def ctrl_x24 (self, keep_prev = True):
-        return
-        if not hasattr (self, "form"):
-            self.form = {
-                    self.scr_mgr ["qmgr"].qmap ["qdescr"]: "Please fill in below:",
-                    self.scr_mgr ["qmgr"].qmap ["qn"]: "FORM",
-                    }
-
-            self.form_fields = []
-
-            for i, k in enumerate (self.keys.param):
-                self.form_fields.append (k)
-                self.form [self.scr_mgr ["qmgr"].qmap ["opt" + chr (i)]] = ""
-                self.form [k] = self.keys.param [k]
-
-        self.scr_mgr ["qmgr"].pseudos, self.form_fields = self.form_fields,  self.scr_mgr ["qmgr"].pseudos
-
-
-    def ctrl_s19 (self):
-        self ["timeout"] (5000)
-        c = self ["getch"] ()
-        c = "" if c == -1 else chr (c & 0xff)
-        self.scr_mgr ["qst"] = self.scr_mgr ["qst"].copy ()
-        self ["timeout"] (-1)
-        return self.enter10 (c)
-
-
-    def decreaseQn_keyMinus45 (self, subtrahend = None):
-        if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
-            if not subtrahend or not subtrahend.isdigit ():
-                subtrahend = 1
-            else:
-                subtrahend = int (subtrahend.decode())
-
-            qst = self.scr_mgr ["qst"].copy ()
-            n = math.trunc (int (qst [self.scr_mgr ["qmgr"].qmap ["qn"]] + "0") / 10) - subtrahend
-
-            qst [self.scr_mgr ["qmgr"].qmap ["qn"]] = str (n)
-
-            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
-
     def increaseQn_keyPlus43 (self, addend = None):
         if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
             if not addend or not addend.isdigit ():
@@ -973,7 +866,6 @@ ifdef(
 
             self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 
-
     def increaseTotscrore_keyAsterik42 (self, addend = None):
         if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
             if not addend or not addend.isdigit ():
@@ -983,21 +875,6 @@ ifdef(
 
             qst = self.scr_mgr ["qst"].copy ()
             n = math.trunc (int (qst [self.scr_mgr ["qmgr"].qmap ["score"]] + "0") / 10) + addend
-
-            qst [self.scr_mgr ["qmgr"].qmap ["score"]] = str (n)
-
-            self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
-
-
-    def decreaseTotscore_keyFslash47 (self, subtrahend = None):
-        if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
-            if not subtrahend or not subtrahend.isdigit ():
-                subtrahend = 1
-            else:
-                subtrahend = int (subtrahend.decode())
-
-            qst = self.scr_mgr ["qst"].copy ()
-            n = math.trunc (int (qst [self.scr_mgr ["qmgr"].qmap ["score"]] + "0") / 10) - subtrahend
 
             qst [self.scr_mgr ["qmgr"].qmap ["score"]] = str (n)
 
