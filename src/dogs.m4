@@ -8,6 +8,12 @@ requests = requests_html.requests
 
 re.Match = type (re.match (r'foo', 'foo'))
 
+LCLICK = None
+
+class DogTypeError (TypeError):
+    def __init__ (self, *pargs, **kwargs):
+        super ().__init__ (*pargs, **kwargs)
+
 class FDict (lxml.html.FieldsDict):
     def __init__ (self, form, *a0, **a1):
         self.form_ref = requests_html.HTML (html = form)
@@ -273,22 +279,29 @@ def fill_form (
 
 
 def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
+    
+    global LCLICK
 
     html = lxml.html.fromstring (html = html, base_url = url)
 
     x = html.cssselect (selector)
     
     c = -1
+    
+    if idx < 0:
+        idx = abs (idx) - 1
+        x = reversed (x)
 
     for m in x:
-        if re.match (button.strip (), m.text_content ().strip (), flags = re.I):
+        if re.match (button.strip (), m.text_content ().strip (), flags = re.I):# or re.search (button.strip (), m.text_content ().strip (), flags = re.I):
             c += 1
 
         if c == idx:
+            LCLICK = m
             break
 
     if c != idx:
-        raise TypeError ('No such button %s found' % (button))
+        raise DogTypeError ('No such button %s found' % (button))
         
     t = m.tag
 

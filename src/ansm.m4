@@ -257,9 +257,12 @@ ifdef(
 
 
     def answer (self, qst):
-
-        if not isinstance (qst, lxml.html.FieldsDict):
-            raise TypeError ("Question must be a form", type (qst))
+        
+        try:
+            qst [self.qmap ["ans"]] = chr (0)
+            raise TypeError ("Question has no checking mechanism", type (qst))
+        except:
+            pass
 
 
         if self.mode & ANS_MODE_NORM:

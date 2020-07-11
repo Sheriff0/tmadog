@@ -1,219 +1,210 @@
 import sqlite3
 import json
 
-class DbMgr (object):
+def setupdb (db):
 
-    
-    def __init__ (self, *pos, **kwargs):
-        pass
+    conn = sqlite3.connect (db)
 
-    def setupdb (self, db):
+    try:
+        conn.executescript ("""
+        CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
+                AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
 
-        conn = sqlite3.connect (db)
+        CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
+                AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, dogid INTEGER NOT
+                NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
+                UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, qid CHAR);
 
-        try:
-            conn.executescript ("""
-            CREATE TABLE IF NOT EXISTS questions (dogid INTEGER PRIMARY KEY
-                    AUTOINCREMENT, qdescr VARCHAR NOT NULL UNIQUE);
+        CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
+                NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
+                CASCADE ON UPDATE CASCADE, cid INTEGER PRIMARY KEY NOT NULL
+                REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
+                UPDATE CASCADE);
 
-            CREATE TABLE IF NOT EXISTS courses (cid INTEGER PRIMARY KEY
-                    AUTOINCREMENT, crscode CHAR(6) DEFAULT NULL, dogid INTEGER NOT
-                    NULL REFERENCES questions (dogid) MATCH FULL ON DELETE CASCADE ON
-                    UPDATE CASCADE, ready BOOLEAN DEFAULT FALSE, qid CHAR);
+        CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL PRIMARY KEY
+        REFERENCES courses (cid),
+        opta VARCHAR NOT NULL,
+        optb VARCHAR NOT NULL,
+        optc VARCHAR NOT NULL,
+        optd VARCHAR NOT NULL);
+                """)
 
-            CREATE TABLE IF NOT EXISTS answers (ans VARCHAR DEFAULT NULL, dogid INTEGER
-                    NOT NULL REFERENCES questions (dogid) MATCH FULL ON DELETE
-                    CASCADE ON UPDATE CASCADE, cid INTEGER PRIMARY KEY NOT NULL
-                    REFERENCES courses (cid) MATCH FULL ON DELETE CASCADE ON
-                    UPDATE CASCADE);
+        conn.commit ()
+    except sqlite3.OperationalError as err:
+        print ("create: ",err.args[0])
+        conn.close ()
+        return None
 
-            CREATE TABLE IF NOT EXISTS hacktab (cid INTEGER NOT NULL PRIMARY KEY
-            REFERENCES courses (cid),
-            opta VARCHAR NOT NULL,
-            optb VARCHAR NOT NULL,
-            optc VARCHAR NOT NULL,
-            optd VARCHAR NOT NULL);
-                    """)
+    return conn
 
-            conn.commit ()
-        except sqlite3.OperationalError as err:
-            print ("create: ",err.args[0])
-            conn.close ()
-            return None
 
-        return conn
+def update_qca_tab (db, data, qmap, cursor = None):
 
-    
-    def update_hacktab (self, db, data, qmap, cursor = None, fp = None):
+    repeats = 0
 
-        conn = self.setupdb (db) if not cursor else cursor.connection
+    conn = setupdb (db) if not cursor else cursor.connection
 
-        conn.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row
 
-        if not conn:
-            return -1
+    if not conn:
+        return -1
 
-        cur = conn.cursor ()
+    cur = conn.cursor ()
 
-        if fp:
-            fp.write ('[')
+    dogid, cid, = None, None
 
-        ierr = None
-        
-        arr = []
+    ids = {}
 
-        dogid, cid, = None, None
-
-        for datum in data:
-            
-            if fp:
-                arr.append (datum)
-
-            try:
-                cid = self.update_qca_tab (db, [datum], qmap, cur)["cid"]
-
-                cur.execute ("""
-                        REPLACE INTO hacktab (cid, opta, optb, optc, optd) VALUES (?, ?,
-                        ?, ?, ?);
-                        """, (
-                            cid,
-                            datum[qmap ["opta"]],
-                            datum[qmap ["optb"]],
-                            datum[qmap ["optc"]],
-                            datum[qmap ["optd"]]
-                            ))
-                        
-
-            except sqlite3.OperationalError as err:
-                conn.close ()
-                print ("update_hacktab: replace: ", err.args[0])
-
-        if arr and fp:
-            json.dump (arr, fp)
+    for datum in data:
 
         try:
-            conn.commit ()
 
-        except sqlite3.OperationalError as err:
-            print (err.args[0])
-            return conn
+            cur.execute ("""INSERT INTO questions (qdescr)
+                    VALUES (?);""", (datum[qmap ["qdescr"]],))
 
-        if cursor:
-            return cursor
-        else:
-            return None
+            dogid = cur.lastrowid
+            ids["dogid"] = dogid
+
+            cur.execute ("""INSERT INTO courses (crscode, dogid, ready,
+            qid) VALUES
+                    (?, ?, ?, ?)""", (
+                        datum[qmap ["crscode"]],
+                        dogid,
+                        True if datum[qmap ["ans"]] and datum[qmap ["crscode"]] and datum[qmap ["qid"]] else False,
+                        datum[qmap ["qid"]]
+                        ))
+
+            cid = cur.lastrowid
+            ids["cid"] = cid
+
+            cur.execute ("""
+                    INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
+                    ?);
+                    """, (
+                        datum[qmap ["ans"]],
+                        dogid,
+                        cid
+                        ))
 
 
-    @classmethod
-    def updatedb (cl, db, data, qmap, cursor = None):
+        except sqlite3.IntegrityError as ierr:
 
-        repeats = 0
+            repeats += 1
 
-        conn = cl.setupdb (db) if not cursor else cursor.connection
+            dupq = cur.execute ("SELECT * FROM questions WHERE qdescr = ?", (datum[qmap ["qdescr"]],)).fetchone ()
 
-        conn.row_factory = sqlite3.Row
+            crsref = cur.execute ("""
+                    SELECT * FROM courses WHERE (crscode == ? AND qid == ? AND
+                    dogid == ?) OR (dogid == ? AND crscode = ?) LIMIT 1
+                    """, (
+                        datum[qmap ["crscode"]],
+                        datum[qmap ["qid"]],
+                        dupq["dogid"],
+                        dupq["dogid"],
+                        None,
+                        )).fetchone() 
 
-        if not conn:
-            return -1
+            cur1 = cur.connection.cursor ()
 
-        cur = conn.cursor ()
-
-        dogid, cid, = None, None
-
-        ids = {}
-
-        for datum in data:
-
-            try:
-
-                cur.execute ("""INSERT INTO questions (qdescr)
-                        VALUES (?);""", (datum[qmap ["qdescr"]],))
-
-                dogid = cur.lastrowid
-                ids["dogid"] = dogid
-
-                cur.execute ("""INSERT INTO courses (crscode, dogid, ready,
-                qid) VALUES
-                        (?, ?, ?, ?)""", (
-                            datum[qmap ["crscode"]],
-                            dogid,
-                            True if datum[qmap ["ans"]] and datum[qmap ["crscode"]] and datum[qmap ["qid"]] else False,
+            cur1.execute ("""
+                    REPLACE INTO courses (cid, crscode, dogid, ready, qid)
+                    VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        crsref["cid"] if crsref else None,
+                        datum[qmap ["crscode"]],
+                        dupq ["dogid"],
+                        True if datum[qmap ["ans"]] and datum[qmap ["qid"]] and datum[qmap ["crscode"]] else False,
                             datum[qmap ["qid"]]
                             ))
 
-                cid = cur.lastrowid
-                ids["cid"] = cid
+            cid = cur1.lastrowid
 
-                cur.execute ("""
-                        INSERT INTO answers (ans, dogid, cid) VALUES (?, ?,
-                        ?);
-                        """, (
-                            datum[qmap ["ans"]],
-                            dogid,
-                            cid
-                            ))
+            ids["cid"] = cid
+
+            ids["dogid"] = dupq["dogid"]
+
+            cur.execute ("""
+                    REPLACE INTO answers (ans, dogid, cid) VALUES (?,
+                    ?, ?)
+                    """, (
+                        datum[qmap ["ans"]],
+                        dupq["dogid"],
+                        cid
+                        ))
+
+        except sqlite3.OperationalError as err:
+            print ("insert/replace: ", err.args[0])
+            conn.close ()
+            return -1
+    
+    conn.commit ()
+
+    if cursor:
+        return ids
+    
+    else:
+        if repeats > 0:
+            print ('%d questions repeated' % (repeats,))
 
 
-            except sqlite3.IntegrityError as ierr:
+        return None
 
-                repeats += 1
 
-                dupq = cur.execute ("SELECT * FROM questions WHERE qdescr = ?", (datum[qmap ["qdescr"]],)).fetchone ()
+def update_hacktab (db, data, qmap, cursor = None, fp = None):
 
-                crsref = cur.execute ("""
-                        SELECT * FROM courses WHERE (crscode == ? AND qid == ? AND
-                        dogid == ?) OR (dogid == ? AND crscode = ?) LIMIT 1
-                        """, (
-                            datum[qmap ["crscode"]],
-                            datum[qmap ["qid"]],
-                            dupq["dogid"],
-                            dupq["dogid"],
-                            None,
-                            )).fetchone() 
+    conn = setupdb (db) if not cursor else cursor.connection
 
-                cur1 = cur.connection.cursor ()
+    conn.row_factory = sqlite3.Row
 
-                cur1.execute ("""
-                        REPLACE INTO courses (cid, crscode, dogid, ready, qid)
-                        VALUES (?, ?, ?, ?, ?)
-                        """, (
-                            crsref["cid"] if crsref else None,
-                            datum[qmap ["crscode"]],
-                            dupq ["dogid"],
-                            True if datum[qmap ["ans"]] and datum[qmap ["qid"]] and datum[qmap ["crscode"]] else False,
-                                datum[qmap ["qid"]]
-                                ))
+    if not conn:
+        return -1
 
-                cid = cur1.lastrowid
+    cur = conn.cursor ()
 
-                ids["cid"] = cid
+    if fp:
+        fp.write ('[')
 
-                ids["dogid"] = dupq["dogid"]
+    ierr = None
+    
+    arr = []
 
-                cur.execute ("""
-                        REPLACE INTO answers (ans, dogid, cid) VALUES (?,
-                        ?, ?)
-                        """, (
-                            datum[qmap ["ans"]],
-                            dupq["dogid"],
-                            cid
-                            ))
+    dogid, cid, = None, None
 
-            except sqlite3.OperationalError as err:
-                print ("insert/replace: ", err.args[0])
-                conn.close ()
-                return -1
+    for datum in data:
         
+        if fp:
+            arr.append (datum)
+
+        try:
+            cid = update_qca_tab (db, [datum], qmap, cur)["cid"]
+
+            cur.execute ("""
+                    REPLACE INTO hacktab (cid, opta, optb, optc, optd) VALUES (?, ?,
+                    ?, ?, ?);
+                    """, (
+                        cid,
+                        datum[qmap ["opta"]],
+                        datum[qmap ["optb"]],
+                        datum[qmap ["optc"]],
+                        datum[qmap ["optd"]]
+                        ))
+                    
+
+        except sqlite3.OperationalError as err:
+            conn.close ()
+            print ("update_hacktab: replace: ", err.args[0])
+
+    if arr and fp:
+        json.dump (arr, fp)
+
+    try:
         conn.commit ()
 
-        if cursor:
-            return ids
-        
-        else:
-            if repeats > 0:
-                print ('%d questions repeated' % (repeats,))
+    except sqlite3.OperationalError as err:
+        print (err.args[0])
+        return conn
 
-
-            return None
-
-
+    if cursor:
+        return cursor
+    else:
+        return None

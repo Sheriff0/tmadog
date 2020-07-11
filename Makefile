@@ -37,7 +37,6 @@ user: $(addprefix $(OUTPUT)/usr_,$(MAIN_DEP:.m4=.py));
 
 $(OUTPUT)/%.py: $(SRC)/%.m4
 	m4 $(M4FLAGS)\
-	    -LCONFIG_CURSES_IF\
 	    -LMODULE $< > $@
 
 $(OUTPUT)/def_%.py: $(SRC)/%.m4

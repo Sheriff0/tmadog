@@ -48,7 +48,7 @@ class Recipe (object):
 
 				req ['url'] = urllib.parse.urljoin (self.name_or_url, a [0])
 
-				if len (a) > 1:
+				if len (a) > 1 and a [-1].strip ():
 				
 					req ['data'] = {
 							k: self.keys[k] for k in a [-1].split ('/') if k in self.keys

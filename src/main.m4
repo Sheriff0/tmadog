@@ -26,7 +26,7 @@ import cookie_parse
 import dogs
 
 
-class MPCT_Preprocessor:
+class CMDLINE_Preprocessor:
     CRSCODE = 'crscode'
     TMA = 'tma'
     URL = 'url'
@@ -216,18 +216,14 @@ def main (stdscr, args):
     if not args.cookies:
         args.cookies = ['']
 
-    keys = MPCT_Preprocessor (**args.__dict__)
+    keys = CMDLINE_Preprocessor (**args.__dict__)
 
-    self.scr_mgr = scrm.QscrMuxer (stdscr, self.keys)
-
-    self.keys.print = self.printi
 
     ansmgr = ansm.AnsMgr (
             qmap = qmap,
             database = args.database,
             mode = ansm.ANS_MODE_NORM,
             pseudo_ans = qmap ['pseudo_ans'].split (','),
-            interactive = False,
             )
 
     qa_interface = iff.Interface (
@@ -235,6 +231,9 @@ def main (stdscr, args):
             keys,
             ansmgr
             )
+
+    keys.print = qa_interface.printi
+    qa_interface.navtab = keys.navtab
 
     qa_interface.doupdate ()
 
@@ -247,7 +246,7 @@ def main (stdscr, args):
 
         c = qa_interface (c)
 
-        if c == BREAK:
+        if c == iff.BREAK:
             break
 
 
@@ -261,7 +260,7 @@ def main (stdscr, args):
     f = open (args.qstdump, 'w') if args.debug else None
 
     if args.updatedb:
-        dbm.DbMgr.update_hacktab (args.database, ansmgr.iter_cache (),
+        dbm.update_hacktab (args.database, ansmgr.iter_cache (),
                 ansmgr.qmap, fp = f)
     elif args.debug:
         arr = []
@@ -286,7 +285,7 @@ if __name__ == '__main__':
 
     parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
 
-    parser.add_argument ('--database', '-db', default = 'pg/olddb', help = 'The database to use')
+    parser.add_argument ('--database', '-db', default = 'olddb', help = 'The database to use')
 
     parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest =
             'updatedb', default = True, help = 'Update the database in use')
