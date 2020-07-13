@@ -25,7 +25,7 @@ class FDict (lxml.html.FieldsDict):
 
     def copy (self):
         return requests.structures.OrderedDict (self)
-    
+
     def resolve_key (self, s):
 
         if s.startswith ('['):
@@ -35,7 +35,7 @@ class FDict (lxml.html.FieldsDict):
                 )
             if not ele:
                 raise KeyError ('%s does not exist in form' % (s,))
-            
+
             s = ele.attrs['name']
 
         elif s.startswith ('<'):
@@ -100,12 +100,12 @@ class AnyheadList:
 
         self.pidx = self.sidx + 1
         self.exhausted = False
-    
+
     def __repr__ (self):
         strv = '['
 
         vgen = iter (self)
-        
+
         try:
             strv += str (next (vgen))
         except StopIteration:
@@ -113,7 +113,7 @@ class AnyheadList:
 
         for v in vgen:
             strv += ', ' + str (v)
-        
+
         return strv + ']'
 
     def __iter__ (self):
@@ -130,7 +130,7 @@ class AnyheadList:
 
     def __next__ (self):
         yield from self.__iter__ ()
-    
+
     def origin (self):
         return self.Orderly (self._arr)
 
@@ -147,7 +147,7 @@ class AnyheadList:
                     y = next (self.garr)
                     self._arr [str (self.iidx)] = y
                     self._arr ['-' + str (self.pidx)] = y
-                    
+
                     self.pidx += 1
 
                     if int (idx) == self.iidx:
@@ -232,10 +232,10 @@ def fill_form (
         data = {}
         ):
 
-    
+
     s = html
 
-    html = lxml.html.fromstring (html = s, base_url = url) 
+    html = lxml.html.fromstring (html = s, base_url = url)
 
     tform = html.cssselect (selector)
 
@@ -245,7 +245,7 @@ def fill_form (
         tform = tform[idx]
 
     targs = {}
-    
+
     targs['method'] = tform.method
 
     targs['url'] = parse.urljoin (tform.base_url, tform.action)
@@ -255,18 +255,18 @@ def fill_form (
 
     if flags & FILL_FLG_EXTRAS:
         for e in tform.__copy__().cssselect ('form button[name]'):
-            tform.append (requests_html.HTML (html = '''<input name = "%s" value = "%s">''' % 
+            tform.append (requests_html.HTML (html = '''<input name = "%s" value = "%s">''' %
                 (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
 
     ifields = FDict (lxml.html.tostring (tform, with_tail = False, encoding = 'unicode'), tform.inputs)
 
     ifields.update (data)
-    
+
     for k in ifields:
 
         if ifields[k] is None and not k in data:
             ifields[k] = ''
-    
+
     targs['data'] = ifields
 
     if flags & FILL_RET_DATAONLY:
@@ -279,15 +279,15 @@ def fill_form (
 
 
 def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
-    
+
     global LCLICK
 
     html = lxml.html.fromstring (html = html, base_url = url)
 
     x = html.cssselect (selector)
-    
+
     c = -1
-    
+
     if idx < 0:
         idx = abs (idx) - 1
         x = reversed (x)
@@ -302,7 +302,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
 
     if c != idx:
         raise DogTypeError ('No such button %s found' % (button))
-        
+
     t = m.tag
 
     if t in ('form', 'FORM'):
@@ -318,14 +318,14 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
         elif flags & FILL_RET_DATAONLY:
             return dict (
                     map (
-                        lambda a: (parse.unquote_plus (a.split ('=')[0]), parse.unquote_plus (a.split ('=')[-1])), 
+                        lambda a: (parse.unquote_plus (a.split ('=')[0]), parse.unquote_plus (a.split ('=')[-1])),
                         parse.urlparse (parse.urljoin (url, m.get('href'))).query.split ('&')
                         )
                     )
 
         else:
             return {
-                    'method': 'GET', 
+                    'method': 'GET',
                     'url': parse.urljoin (url, m.get('href')),
                     }
 

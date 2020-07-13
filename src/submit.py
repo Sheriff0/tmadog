@@ -150,7 +150,7 @@ class Submit (object):
                     AnsMgt.AnsMgr.ANS_MODE_HACK,
                     AnsMgt.AnsMgr.ANS_MODE_NORM,
                     ],
-                'type': int 
+                'type': int
                 }
                 ],
 
@@ -166,7 +166,7 @@ class Submit (object):
 
                 'default': 10,
 
-                'type': int, 
+                'type': int,
                 }
                 ],
             ]
@@ -182,11 +182,11 @@ class Submit (object):
         else:
             cl.submit (args)
 
-    
+
     @classmethod
     def submit (cl, args):
         std = {}
-        ansmgr = AnsMgt.AnsMgr ( 
+        ansmgr = AnsMgt.AnsMgr (
                 qmap = args.map ['qmap'],
                 database = args.database,
                 mode = args.mode,
@@ -196,7 +196,7 @@ class Submit (object):
 
         nav = Navigation.Navigator (
                 args.url,
-                args.map, 
+                args.map,
                 {
                     },
                 timeout = (30.5, 60),
@@ -272,7 +272,7 @@ class Submit (object):
 
 
             qst = qstmgr.fetch ()
-        
+
         res = re.search (r'(?P<score>\d+)\W+?out\W+?of\W+?(?P<total>\d+)',
                 qstmgr.sres.text, flags = re.I | re.M)
         if not res:

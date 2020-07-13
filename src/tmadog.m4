@@ -35,7 +35,7 @@ main_psr = argparse.ArgumentParser (
         )
 
 main_psr.add_argument (
-        '--database', '-db', 
+        '--database', '-db',
         default = 'tmadogdb',
         type = str,
         dest = 'database',
@@ -45,7 +45,7 @@ main_psr.add_argument (
 
 
 main_psr.add_argument (
-        '--url', '-U', 
+        '--url', '-U',
         default = 'https://www.nouonline.net/',
         type = str,
         dest = 'url',

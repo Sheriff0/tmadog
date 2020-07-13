@@ -16,7 +16,7 @@ UNKNOWN_COURSE = False
 UNKNOWN_QST = None
 
 class TmadogUtils (object):
-    
+
     QstDbT = collections.namedtuple ('QstDbT', 'qdescr, ans, qid, crscode')
 
     #CrsDbT = collections.namedtuple ('CrsDbT', 'crscode, qid, answered', defaults = [False])
@@ -50,7 +50,7 @@ class TmadogUtils (object):
             qst = qst_mgr.fetch ()
 
             while qst:
-                
+
                 qst = ans_mgr.answer (qst)
                 if qst:
                     ans_mgr.check (

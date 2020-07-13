@@ -102,7 +102,7 @@ def update_qca_tab (db, data, qmap, cursor = None):
                         dupq["dogid"],
                         dupq["dogid"],
                         None,
-                        )).fetchone() 
+                        )).fetchone()
 
             cur1 = cur.connection.cursor ()
 
@@ -136,12 +136,12 @@ def update_qca_tab (db, data, qmap, cursor = None):
             print ("insert/replace: ", err.args[0])
             conn.close ()
             return -1
-    
+
     conn.commit ()
 
     if cursor:
         return ids
-    
+
     else:
         if repeats > 0:
             print ('%d questions repeated' % (repeats,))
@@ -165,13 +165,13 @@ def update_hacktab (db, data, qmap, cursor = None, fp = None):
         fp.write ('[')
 
     ierr = None
-    
+
     arr = []
 
     dogid, cid, = None, None
 
     for datum in data:
-        
+
         if fp:
             arr.append (datum)
 
@@ -188,7 +188,7 @@ def update_hacktab (db, data, qmap, cursor = None, fp = None):
                         datum[qmap ["optc"]],
                         datum[qmap ["optd"]]
                         ))
-                    
+
 
         except sqlite3.OperationalError as err:
             conn.close ()

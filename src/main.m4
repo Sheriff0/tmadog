@@ -233,7 +233,7 @@ def main (stdscr, args):
             )
 
     keys.print = qa_interface.printi
-    qa_interface.navtab = keys.navtab
+    qa_interface.navtab.extend (keys.navtab)
 
     qa_interface.doupdate ()
 
@@ -244,10 +244,15 @@ def main (stdscr, args):
         qa_interface ['notimeout'] (False)
         c = qa_interface ['getch'] ()
 
-        c = qa_interface (c)
+        x = qa_interface (c)
 
-        if c == iff.BREAK:
+        if x == iff.BREAK:
             break
+        elif callable (x):
+            if c == curses.KEY_RESIZE:
+                curses.update_lines_cols ()
+                stdscr.resize (curses.LINES, curses.COLS)
+                x (stdscr)
 
 
     curses.noraw ()

@@ -162,7 +162,7 @@ try:
 
                 except BaseException as err:
                     self.printi ("%s: %s" % (path, err.args [1]), PRINT_ERR)
-                
+
                 else:
                     qscr ["nav"].session = session
                     qscr [self.keys.COOKIES] = path
@@ -180,9 +180,12 @@ try:
                 self.cmdscr.refresh ()
                 curses.def_prog_mode()
                 curses.reset_shell_mode ()
-            print (typ.format (text))
+                print (typ.format (text))
+                curses.reset_prog_mode ()
 
-            curses.reset_prog_mode () #Expected to be harmless even after a call to curses.endwin
+            else:
+                print (typ.format (text))
+
             self.need_status = True
 
         def bootable (self, qscr = None):
@@ -282,7 +285,6 @@ try:
                     break
             else:
                 curses.noecho ()
-                self.ctrl_l12 ()
                 return comm (args) if args else comm ()
 
 
@@ -556,7 +558,7 @@ try:
 
                         x = self.amgr.answer (x)
 
-                        if x and x != self.ANS_NOANSWER and qst [self.scr_mgr ["qmgr"].qmap ["qid"]] == x [self.scr_mgr ["qmgr"].qmap ["qid"]]:
+                        if x and x != ansm.ANS_NOANSWER and qst [self.scr_mgr ["qmgr"].qmap ["qid"]] == x [self.scr_mgr ["qmgr"].qmap ["qid"]]:
                             qst = x
 
                         self.pq.append ((qst [self.scr_mgr ["qmgr"].qmap ["crscode"]], qst
@@ -733,7 +735,7 @@ try:
             self.overwrite (self.scr_mgr ["qscr"], self.stdscr, self.scr_mgr ["qline"], 0, self.scr_mgr.scord[0], self.scr_mgr.scord [1],
             (self.scr_mgr.scrdim [0] + self.scr_mgr.scord [0]) - 1 - self.saloc, (self.scr_mgr.scrdim [1] + self.scr_mgr.scord
                 [1]) - 1)
-            
+
             self.status (1)
             self.stdscr.clearok (True)
             self.stdscr.noutrefresh ()
@@ -742,10 +744,11 @@ try:
         def ctrl_c3 (self, *args):
             return BREAK
 
-        def key_resize410 (self):
-            curses.update_lines_cols ()
+        def key_resize410 (self, *pargs):
+            return self.resize
 
-            self.stdscr.resize (curses.LINES, curses.COLS)
+        def resize (self, stdscr):
+            self.stdscr = stdscr
             self.LINES, self.COLS = self.stdscr.getmaxyx ()
             self.cmdscr = curses.newwin (self.LINES, self.COLS)
 
@@ -978,7 +981,7 @@ try:
 
                     x = self.amgr.answer (x)
 
-                    if x and x != self.ANS_NOANSWER and qst [self.scr_mgr ["qmgr"].qmap ["qid"]] == x [self.scr_mgr ["qmgr"].qmap ["qid"]]:
+                    if x and x != ansm.ANS_NOANSWER and qst [self.scr_mgr ["qmgr"].qmap ["qid"]] == x [self.scr_mgr ["qmgr"].qmap ["qid"]]:
                         qst = x
 
                     self.pq.append ((qst [self.scr_mgr ["qmgr"].qmap ["crscode"]], qst

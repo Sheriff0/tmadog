@@ -97,7 +97,7 @@ ifdef(
         if x:
             if x.get (self.qmap ["crscode"], None) == crscode:
                 return x
-            
+
             else:
                 x = self._cache.get (crscode, None)
                 y = x.get (qid, None) if x else x
@@ -106,7 +106,7 @@ ifdef(
 
                 elif not strict:
                     if x:
-                        for v in x.values (): 
+                        for v in x.values ():
                             return v
 
                 else:
@@ -118,7 +118,7 @@ ifdef(
         if x:
             if x.get (self.qmap ["crscode"], None) == crscode:
                 return x
-            
+
             else:
                 self._cache.setdefault (qid, x)
                 x = self._cache.get (crscode, None)
@@ -137,7 +137,7 @@ ifdef(
         if x:
             if x.get (self.qmap ["crscode"], None) == crscode:
                 return x
-            
+
             else:
                 self._cache.setdefault (qid, x)
                 x = self._cache.get (crscode, None)
@@ -257,7 +257,7 @@ ifdef(
 
 
     def answer (self, qst):
-        
+
         try:
             qst [self.qmap ["ans"]] = chr (0)
             raise TypeError ("Question has no checking mechanism", type (qst))
@@ -436,7 +436,7 @@ ifdef(
 
 
     def _mad (self, qst):
-        
+
         if not hasattr (self, "mcur"):
             conn = dbm.setupdb (self.database)
             conn.row_factory = sqlite3.Row

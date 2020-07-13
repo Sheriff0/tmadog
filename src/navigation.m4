@@ -24,7 +24,7 @@ class Recipe (object):
 			if not isinstance (start, requests.Response):
 				raise TypeError ('Recipe: start must of type requests.models.Response', start)
 
-			else: 
+			else:
 				self.start = start
 		else:
 			self.start = requests.Response ()
@@ -38,7 +38,7 @@ class Recipe (object):
 		yield from self.__next__()
 
 	def __next__ (self):
-		
+
 		for s,i in zip (self.steps, self.indices):
 			s = s.strip ()
 			req = {}
@@ -49,7 +49,7 @@ class Recipe (object):
 				req ['url'] = urllib.parse.urljoin (self.name_or_url, a [0])
 
 				if len (a) > 1 and a [-1].strip ():
-				
+
 					req ['data'] = {
 							k: self.keys[k] for k in a [-1].split ('/') if k in self.keys
 							}
@@ -58,7 +58,7 @@ class Recipe (object):
 				else:
 					req ['method'] = 'GET'
 
-			elif self.start.url and self.start.text: 
+			elif self.start.url and self.start.text:
 				if s.startswith (('[', '<')):
 					data = {
 							k: self.keys[k] for k in s.split ('/')
@@ -97,7 +97,7 @@ class Navigator (object):
 		self.keys = keys
 		self.home_url = home_url
 		self.cache = {}
-		self.session = session 
+		self.session = session
 		self.traverse_deps = True
 		self.kwargs = kwargs
 		self.refcount = 1
@@ -131,12 +131,12 @@ class Navigator (object):
 	def __getitem__ (self, sla):
 		if isinstance (sla, int):
 			sl = slice (None, sla)
-			s = self.lp 
-		
+			s = self.lp
+
 		elif isinstance (sla, slice):
-			s = self.lp 
+			s = self.lp
 			sl = sla
-		
+
 		elif isinstance (sla, str):
 			s = sla
 			sl = slice (None, None)
@@ -148,11 +148,11 @@ class Navigator (object):
 
 		elif (not v or v not in self) and '%s:%s' % (s, sl.stop) in self:
 			return self.cache ['%s:%s' % (s, sl.stop)]
-		
+
 		elif s in self.webmap:
 			if self.traverse_deps:
 				deps = [s]
-				
+
 				if not self.webmap [s]['path'].startswith (('/', 'http')):
 					while True:
 						s1 = self.webmap [deps [-1]]['requires']
@@ -170,7 +170,7 @@ class Navigator (object):
 								break
 							else:
 								deps.append (s1)
-						
+
 						elif v and v not in self and s1 in self:
 							break
 

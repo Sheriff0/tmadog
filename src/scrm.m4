@@ -24,7 +24,7 @@ class QScrList (list):
 class Pscr:
     def __init__ (self, screen):
         self.screen = screen
-    
+
     def acquire (self, vscr):
         self.vscr = vscr
 
@@ -67,7 +67,7 @@ class QScr:
 
     def acquire_screen (self, pscreen, scrparams = None):
         self.pscr = pscreen
-        
+
         self.pscr.acquire (self)
 
         self.scord, self.scrdim = scrparams if scrparams else (self.pscr ['getbegyx'] (), self.pscr ['getmaxyx'] ())
@@ -89,8 +89,8 @@ class QScr:
 class QscrMuxer:
     V_GRANULARITY = 1000
 
-    def __init__ (self, pscreen, params): 
-        
+    def __init__ (self, pscreen, params):
+
         self.pscreen = pscreen
 
         scord, scrdim = self.pscreen.getbegyx (), self.pscreen.getmaxyx ()
@@ -105,7 +105,7 @@ class QscrMuxer:
 
 
         qscrs = QScrList ()
-        
+
         self.dimref = scrdim
 
         self.gparams = iter (params)
@@ -125,7 +125,7 @@ class QscrMuxer:
         self.qscr_len = 1
 
         self.qscr_pointer = 0
-        
+
         self.post_init ()
 
 
@@ -165,7 +165,7 @@ class QscrMuxer:
                 except StopIteration:
                     roff -= 1
                     break
-            
+
             self.qscr_len += roff + 1
 
         self.qscr_pointer += offset
@@ -199,7 +199,7 @@ class QscrMuxer:
 
         return self
 
-    
+
     def resize (self, pscreen):
         self.pscreen = pscreen
 
@@ -238,7 +238,7 @@ class QscrMuxer:
                 except IndexError:
                     pass
 
-        
+
         self.qscr_pointer = ptr
         if not self.qscrs [self.qscr_pointer].has_screen ():
             if self.qscrs [idx].has_screen ():
