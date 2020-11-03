@@ -1,4 +1,4 @@
-.PHONY: all default enterprise user;
+.PHONY: all default enterprise user raw_py;
 
 OUTPUT ?= mybuild
 
@@ -27,13 +27,16 @@ $(shell mkdir -p $(OUTPUT))
 
 all: smeo default user enterprise ;
 
-smeo: $(addprefix $(OUTPUT)/,$(MAIN_DEP:.m4=.py)) ;
+smeo: $(addprefix $(OUTPUT)/,$(MAIN_DEP:.m4=.py)) raw_py;
 
 default: $(addprefix $(OUTPUT)/def_,$(MAIN_DEP:.m4=.py)) ;
 
 enterprise: $(addprefix $(OUTPUT)/ent_,$(MAIN_DEP:.m4=.py)) ;
 
 user: $(addprefix $(OUTPUT)/usr_,$(MAIN_DEP:.m4=.py));
+
+raw_py:
+	cp -v $(SRC)/*.py $(OUTPUT)/
 
 $(OUTPUT)/%.py: $(SRC)/%.m4
 	m4 $(M4FLAGS)\

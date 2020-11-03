@@ -24,6 +24,7 @@ import json
 import cloudscraper
 import cookie_parse
 import dogs
+import qstwriter
 
 
 class CMDLINE_Preprocessor:
@@ -267,12 +268,16 @@ def main (stdscr, args):
     if args.updatedb:
         dbm.update_hacktab (args.database, ansmgr.iter_cache (),
                 ansmgr.qmap, fp = f)
-    elif args.debug:
+    elif args.debug or args.output:
         arr = []
         for qst in ansmgr.iter_cache ():
            arr.append (qst)
+        
+        if args.debug:
+            json.dump (arr, f)
 
-        json.dump (arr, f)
+        if args.output:
+            qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output));
 
     if f:
         f.close ()
@@ -310,6 +315,8 @@ if __name__ == '__main__':
 
 
     parser.add_argument ('--cookies', help = 'Website cookies', action = 'append')
+
+    parser.add_argument ('--output', help = "output file format");
 
     args = parser.parse_args()
 
