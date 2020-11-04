@@ -169,6 +169,7 @@ class QstWriter:
                         (
                             q[self.qmap["qdescr"]],
                             q[self.qmap["ans"]],
+                            [q[self.qmap[k]] for k in self.qmap if k.startswith("opt") and q[self.qmap[k]] != q[self.qmap["ans"]]],
                             )
                         );
                 slist.append(lqlist.pop(pi - pcount));
@@ -210,9 +211,12 @@ def writetxt(outpat = "{c}.txt"):
             line = "%s" % ("=" * len(crs),);
             st += "%s\n%s\n%s\n\n" % (line,crs,line);
             qn = 1;
-            for q,a in qpage:
+            for q,a,opts in qpage:
                 if a:
-                    st += "%s. %s\n\t-->%s\n\n" % (qn,q,a);
+                    st += "%s. %s\n\n\t-->%s\n\n" % (qn,q,a);
+                    for opt in opts:
+                        st += "\t   %s\n\n" % (opt,);
+                    st += "\n"
                     qn+=1;
 
             with open(outpat.format(c = crs), "a") as fp:
@@ -227,9 +231,13 @@ def writehtml(outpat = "{c}.html"):
             line = "%s" % ("=" * len(crs),);
             st += "%s\n%s\n%s\n\n" % (line,crs,line);
             qn = 1;
-            for q,a in qpage:
-                st += "%s. %s\n\t-->%s\n\n" % (qn,q,a);
-                qn+=1;
+            for q,a,opts in qpage:
+                if a:
+                    st += "%s. %s\n\t-->%s\n\n" % (qn,q,a);
+                    for opt in opts:
+                        st += "\t   %s\n\n" % (opt,);
+                    st += "\n"
+                    qn+=1;
 
             with open(outpat.format(c = crs), "a") as fp:
                 fp.write(st);

@@ -238,23 +238,26 @@ def main (stdscr, args):
 
     qa_interface.doupdate ()
 
-    while True:
-        curses.raw ()
-        qa_interface ['keypad'] (True)
-        qa_interface ['nodelay'] (False)
-        qa_interface ['notimeout'] (False)
-        c = qa_interface ['getch'] ()
+    try:
+        while True:
+            curses.raw ()
+            qa_interface ['keypad'] (True)
+            qa_interface ['nodelay'] (False)
+            qa_interface ['notimeout'] (False)
+            c = qa_interface ['getch'] ()
 
-        x = qa_interface (c)
+            x = qa_interface (c)
 
-        if x == iff.BREAK:
-            break
-        elif callable (x):
-            if c == curses.KEY_RESIZE:
-                curses.update_lines_cols ()
-                stdscr.resize (curses.LINES, curses.COLS)
-                x (stdscr)
+            if x == iff.BREAK:
+                break
+            elif callable (x):
+                if c == curses.KEY_RESIZE:
+                    curses.update_lines_cols ()
+                    stdscr.resize (curses.LINES, curses.COLS)
+                    x (stdscr)
 
+    except BaseException as err:
+        break;
 
     curses.noraw ()
     curses.echo ()
@@ -268,7 +271,7 @@ def main (stdscr, args):
     if args.updatedb:
         dbm.update_hacktab (args.database, ansmgr.iter_cache (),
                 ansmgr.qmap, fp = f)
-    elif args.debug or args.output:
+    if args.debug or args.output:
         arr = []
         for qst in ansmgr.iter_cache ():
            arr.append (qst)

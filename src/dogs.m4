@@ -240,7 +240,7 @@ def fill_form (
     tform = html.cssselect (selector)
 
     if not len (tform):
-        raise TypeError ('No form found')
+        raise DogTypeError ('No form found')
     else:
         tform = tform[idx]
 
