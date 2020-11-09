@@ -95,22 +95,15 @@ class QstMgr (object):
 
             self.referer1 = self.qres.url
 
-            try:
-                self.qres.raise_for_status ()
-                self.nextq = dogs.fill_form (
-                        self.qres.text,
-                        self.qres.url,
-                        flags = dogs.FILL_FLG_EXTRAS,
-                        data = {
-                            self.qmap ['ans']: None
-                            }
-                        )
-
-            except dogs.DogTypeError:
-                return None
-
-            except requests.HTTPError:
-                return None
+            self.qres.raise_for_status ()
+            self.nextq = dogs.fill_form (
+                    self.qres.text,
+                    self.qres.url,
+                    flags = dogs.FILL_FLG_EXTRAS,
+                    data = {
+                        self.qmap ['ans']: None
+                        }
+                    )
 
         if not self.dt1:
             self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
