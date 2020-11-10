@@ -36,6 +36,9 @@ CMD_MASK = 0x3f;
 CMD_SIZE = 6; #bits
 CMD_MAX = 63; #max number of commands(from 0-62)
 
+## type of the process counter (pc)
+pc_type = int;
+
 def MKCMD(cmd, ctype):
     return (ctype << CMD_SIZE) | cmd;
 
@@ -98,11 +101,12 @@ class CmdlineErr(argparse.ArgumentError):
     def __init__(self, *pargs, *kwargs):
         super ().__init__ (*pargs, **kwargs);
 
+parser = argparse.ArgumentParser ();
 
 class Dog:
 
     def start(self):
-        """start the dog - blocks until .end() is called in another thread"""
+        """start the dog - blocks until .end() is called somehow"""
         self.started = True;
 
         while self.started:
@@ -120,7 +124,7 @@ class Dog:
         ## no need to check if a command is supported.
         ## DTask already did a good job when the task was initialized.
         if isinstance(task, DTask):
-            getattr(self, task.gettvalue(task));
+            return getattr(self, task.gettvalue(task));
         
         elif isinstance(task, self._InternalTask):
             return task.cmd;
@@ -133,20 +137,35 @@ class Dog:
     def get_tasks():
         pass;
     
-    def frontload_task(self, task):
-        ## emulate a processor jump rather than prepend the tasklist
+    def jmp(self, task):
+        ## emulate a processor jump using simple indirection rather than prepend the tasklist
+        ## NOTE make thread-safe.
 
-        ## NOTE do some checks to make sure this is atomic
-        if hasattr(task, "lr"):
+    
+        # jmp format
+        # ==========
+        # task.status.message = "jmp"
+        # 0 <= task.args < self.tasktab_size (return addr)
+        # task.status.cause = task
+
+        if not isinstance(task.status, status.Status) or isinstance(task.args,
+                pc_type):
+            return None;
+
+        if self.getcmd(task) != self.jmp:
+            # take action
+            pass;
+
+        if task.status.message == "lr":
             ## do a return
-            if task.cmd != self.frontload_task:
-                # take action
-                pass;
-            # to point pc rightly when .start() increments it
-            self.pc = task.lr - 1
-        else:
-            lr = self._InternalTask(cmd = self.frontload_task, pc = self.pc);
+            task.state = task.TS_EXITED;
 
+            # to point pc rightly when .start() increments it
+            self.pc = task.args - 1;
+        else:
+            lr = self._InternalTask(cmd = self.jmp, args = self.pc);
+
+            st = status.Status(msg = "jmp", cause task);
             self.tasktab.extend([task, lr]);
             self.tasktab_size += 1;
 
@@ -205,15 +224,18 @@ class Dog:
     def kill_task():
         pass;
 
-    def __init__ (self, cmdline, amgr, initial_t = None):
+    def __init__ (self, cmdline, amgr, initial_t = ""):
         self.arg_gens = scrm.QScrList();
         self.prep_argv = scrm.QScrList();
         self.prep_argc = 0;
-        self.status = None;
-        self.pc = 0;
+        self.status = status.Status();
+        self.pc = pc_type(0);
+        self.tasktab = scrm.QScrList();
+        self.tasktab_size = self.pc;
         self.amgr = amgr;
-        self.pq = [];
-        self.pqlen = 0;
+
+        #self.pq = [];
+        #self.pqlen = 0;
         self.cmdline = scrm.QScrList();
         ## no more need for this as one navigator is shared
         ##self.navtab = scrm.QScrList ();
@@ -221,13 +243,10 @@ class Dog:
         ##instead do
         self.nav = None;
 
-        self.tasktab = scrm.QScrList();
-        self.tasktab_size = len(self.tasktab);
-
         self.setup_cmdline(cmdline);
         
         ## create navigator first if possible
-        self.setup_nav();
+        #self.setup_nav();
 
         ## can start run a task already (once start is called) before a frontend comes-up
         ## initial_t should be a cmdline string for the command
@@ -235,35 +254,72 @@ class Dog:
 
         self.started = False;
     
+    def release_nav(self, cli):
+        pass;
+
+    def get_nav(self, cli):
+        if not self.prep_argv[0].one_nav and "nav" in cli:
+            return cli["nav"];
+
+        elif self.prep_argv[0].one_nav:
+            if self.nav:
+                self.nav = libdogs.reset_nav(self.nav, cli);
+        ## create navigator
+            else:
+                self.nav = libdogs.create_nav(cli);
+                
+
+        else:
+            self.nav = libdogs.create_nav(cli);
+            cli["nav"] = self.nav;
+            
+            if not nav:
+                status = status.Status(status.S_ERROR, "can't create navigator",
+                        nav);
+                self.status = status;
+                return status
+
+        if not self.nav:
+            status = status.Status(status.S_ERROR, "can't create navigator",
+                    self.nav);
+
+            self.status = status;
+            return status;
+
+        status = status.Status(msg = "normal navigation target given");
+        self.status = status;
+
+        return self.nav;
+
+
     def setup_nav(self, tcaller = None):
         arg = None;
-        if self.nav:
-            return;
 
-        elif tcaller:
-            while arg == None:
-                arg = self.getarg_by_attr("url");
-                self.status = status.Status(msg = "normal navigation target given");
-
-        elif tcaller == None:
-            if self.prep_argc == 0:
-                return self.send_task(
-                        DTask(
-                            tid = CMD_SET_NAV,
-                            args = None,
-                            status = None,
-                            disp = task.TDISP_HIDDEN
-                            ),
-                        );
-
+        while arg == None:
+            arg = self.getarg_by_attr("url");
         ## create navigator
         
-        self.nav = navigation.Navigator (
-                arg["url"],
-                arg["wmap"],
-                arg,
-                session = None, #NOTE create a new session
-                );
+        try:
+            self.nav = navigation.Navigator (
+                    self.prep_argv[arg]["url"],
+                    self.prep_argv[arg]["wmap"],
+                    self.prep_argv[arg],
+                    session = None, #NOTE create a new session
+                    );
+
+            status = status.Status(msg = "normal navigation target given");
+        except BaseException as err:
+            status = status.Status(status.S_ERROR, "can't create navigator",
+                    err);
+
+
+        if isinstance(tcaller, DTask):
+            tcaller.status = status;
+
+        self.status = status;
+
+        return status;
+
 
 
     def setup_cmdline(self, cmdline, psr = None, preproc = None):
@@ -386,10 +442,6 @@ class Dog:
                 if isinstance(args, status.Status):
                     return None;
 
-                if not self.nav:
-                    ## The NULL task is to block until there is a nav
-
-                    self.setup_nav(DTask());
                 ## create the task leader, and
                 ## use it to create members as needed,
                 ## execute them and play them into the loop with a pre-executor.
@@ -398,8 +450,8 @@ class Dog:
                 grp_leader = self._InternalTask(cmd = self.submit_pre_exec, args = args,
                        magic = GRP);
                 
-                ## to keep a ref
-                self.frontload_task(grp_leader);
+                ## to keep kick-start schedule pre-execution
+                self.jmp(grp_leader);
 
             elif isinstance(ta, self._InternalTask):
                 ##handle those created elsewhere
@@ -420,48 +472,133 @@ class Dog:
         else:
             ## answer a direct external/internal call
             pass;
-   
+
+    def submit_arg_check(self, arg, gldr = None):
+        ##NOTE correct the checks
+        g = ( hasattr(arg, "__contains__")
+                            and hasattr(arg, "keys")) or "url" in
+                    arg;
+                    
+        if isinstance(gldr, DTask):
+            g = g and ("matno" in arg and arg["matno"] in ldr.args.matno);
+
+        return g;
+
     def submit_pre_exec(self, task):
+        """pre-executor for the submit command. 
+        pre-execution
+        =============
+            pre-execution is executing a task before puting it into the
+            tasklist. This is to enable a more faster execution of commands that
+            create and execute multiple sub-tasks - instead of creating multiple
+            tasks and wait for each to call you from the tasklist, you create and
+            execute, then send to the list as a last step. this is also useful for
+            command whose argument pre-processing invloves remote i/o operations.
+        """
         ## group leader
         LDR = 1;
         ## group member
         MBR = 0;
 
-        if not isinstance(task, self._InternalTask) or not hasattr(task, "magic"):
+        if not isinstance(task, DTask):
             return None;
         
         ldr = None;
         mbr = None;
+        arg = None;
 
         if task.magic == LDR:
             ldr = task;
         elif task.magic == MBR:
             ldr = task.group;
             mbr = task;
+            arg = arg if mbr.arg == None and self.submit_arg_check(mbr.arg, ldr) else mbr.arg;
         
         idx = 0;
         mbr_list = [];
-        i = None;
-        while i == None:
-            i = self.getarg_by_index(idx);
-            if i == None or not ( hasattr(self.prep_argv[i], "__contains__")
-                    and hasattr(self.prep_argv[i], "keys")) or "url" not in
-            self.prep_argv[i] or "url" in self.prep_argv[i] or
-            self.prep_argv[i]["matno"] not in ldr.args.matno:
-                if i != None:
-                    i = None
+        while True:
+            if arg == None:
+                i = self.getarg_by_index(idx);
+                if not i or not self.submit_arg_check(self.prep_argv[i]):
                     idx += 1;
-                continue;
+                    continue;
 
             arg = self.prep_argv[i];
-
+            
+            mbr = mbr if "_task_" not in arg else mbr["_task_"];
+            
+            st = self.submit_main(arg);
             if not mbr:    
                 mbr = self._InternalTask(magic = MBR, group = ldr, cmd =
-                        self.submit_main, arg = arg);
+                        self.nop, arg = arg);
+            mbr.status = st;
+            self.status = st;
+            nav = self.get_nav(arg);
             
-            arg["_task_"] = mbr;
+            if isinstance(nav, status.Status):
+                st = nav;
+            else:
+                # start submiting
+                st = self.submit_main(arg);
+            mbr.status = st;
+            mbr_list.append(mbr);
+
+    
+    def submit_main(self, arg, c = None):
+        if isinstance(c, (bytes, bytearray)):
+            c = c.decode ();
+
+        if "qmgr" not in arg:
+            matno =;
+            crs =;
+            tma =;
+            arg["qmgr"] = qstm.QstMgr (
+                    nav = self.nav,
+                    matno = arg[],
+                    crscode = qscr [self.keys.CRSCODE],
+                    tma = qscr [self.keys.TMA],
+                    stop = 10,
+                    qmap = qscr [self.keys.WMAP]["qmap"],
+                    )
+
+        
+        while True: #Answer Discovery loop
+            qst1 = mask (self.qst, self.qmgr, self.mask, self.mvalue);
+
+            for a in dogs.AnyheadList (self.qmgr.pseudos, qst1 [self.qmgr.qmap ["ans"]]):
+
+                qst1 [self.qmgr.qmap ["ans"]] = a;
+                e = submit(qst1, self.nav, self.qmgr);
+
+                if e == 1:
+                    self.qst [qmgr.qmap ["ans"]] = a;
+
+                    e = submit (self.qst, self.nav, self.qmgr);
 
 
+                    if e == 0:
+                        ERRNO = AnswerInconsistent(qst1, self.qst);
+                        yield False;
+                    elif e == 1:
+                        yield self.qst.copy();
+                    elif e == False:
+                        yield False;
+
+                    break;
+
+                elif e == False: #for submit()
+                    yield False;
+
+            self.qst = fetch (self.qmgr);
+            
+            if self.qst == False:
+                yield False;
+
+            x = answer(self.qst, self.amgr);
+            if x != False:
+                self.qst = x;
+
+            count -= 1;
 
     def nop(self):
         """like nop in x86 assembly"""
@@ -474,7 +611,7 @@ class Dog:
         """
         pass;
     
-    class _InternalTask:
+    class _InternalTask(DTask):
         """ instances of this can find themselves in tha tasktab.
             It is meant for use internally by method that want a task object that is ligther, laxer, and more
             customizable than task.DTask

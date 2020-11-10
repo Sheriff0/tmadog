@@ -114,6 +114,14 @@ def tlogin (nav, key):
                 self.echo ("Done.")
 
 
+def create_nav(key):
+
+    self.nav = navigation.Navigator (
+            self.prep_argv[cli]["url"],
+            self.prep_argv[cli]["wmap"],
+            self.prep_argv[cli],
+            session = None, #NOTE create a new session
+            );
 
     def bootable (self, qscr = None):
         if not qscr:
