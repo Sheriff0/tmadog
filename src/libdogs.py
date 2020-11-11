@@ -21,6 +21,14 @@ import pathlib
 ## NOTE: assigning to this ain't thread-safe, thus all functions should return their
 ## caugth errors where possible.
 
+CRSCODE = 'crscode'
+TMA = 'tma'
+URL = 'url'
+WMAP = 'wmap'
+COOKIES = 'cookies'
+SESSION = 'session'
+
+
 class errno(BaseException):
     def __init__(self, *pargs, **kwargs):
         super ().__init__ (*pargs, **kwargs);
@@ -64,58 +72,37 @@ class errno(BaseException):
     def login_keyL76 (self):
         pass
 
-def logout(nav):
-    try:
-        nav["logout_page"];
-        return True;
-    except BaseException as err:
-        return errno("logout err", err);
+class List:
+    def __init__ (self, eter):
+        self.eter = iter (eter)
+        self.list = []
+        self.idx = -1
 
-def tlogin (nav, key):
-   """ login function that that sees a different profile_page""" 
-    s = logout (nav);
+    def __len__ (self):
+        self.__getitem__ ()
+        return self.idx + 1
 
-    if not s:
-        return s;
-    
-    try:
-        nav["tma_page"];
-        return True;
-    except BaseException as err:
-        s = logout(nav);
-        if not s:
-            return errno(s, err);
-        else:
-            return errno(err);
+    def __getitem__ (self, idx = None):
+        idx = int (idx) if idx != None else idx
+        if idx == None or idx > self.idx:
+            while True:
+                try:
+                    x = next (self.eter)
+                    self.list.append (x)
+                    self.idx += 1
 
+                    if idx != None and idx <= self.idx:
+                        break
 
+                except StopIteration:
+                    idx = self.idx
+                    break
 
-    def updateCookie_keyAmp38 (self, path = bytearray (), qscr = None):
-        if not qscr:
-            qscr = self.scr_mgr
-
-        if not path:
-            path = self.getstr ("Enter cookie filename: ")
-        else:
-            path = path.decode ()
-
-        if path:
-            self.echo ("Reading cookie file")
-            try:
-                self.echo ("Installing cookie")
-                session = self.keys.mksess (qscr [self.keys.URL], path)
-
-            except BaseException as err:
-                self.printi ("%s: %s" % (path, err.args [1]), PRINT_ERR)
-
-            else:
-                qscr ["nav"].session = session
-                qscr [self.keys.COOKIES] = path
-                self.echo ("Done.")
+        idx = self.idx if idx == None else idx
+        return self.list [idx] if idx != None and idx >= 0 else None
 
 
 def create_nav(key):
-
     self.nav = navigation.Navigator (
             self.prep_argv[cli]["url"],
             self.prep_argv[cli]["wmap"],
@@ -123,337 +110,201 @@ def create_nav(key):
             session = None, #NOTE create a new session
             );
 
-    def bootable (self, qscr = None):
-        if not qscr:
-            qscr = self.scr_mgr
+def discovercrs (self, param = None):
+    param = self.param if not param else param
+    try:
+        idx = self.navtab.index (param [self.UID], attr = 'refcount')
+        nav = self.navtab [idx]
 
-        return "nav" not in qscr or "qmgr" not in qscr or not qscr ["nav"] or not qscr ["qmgr"]
+    except ValueError:
 
-    def shutdown (self, qscr = None):
-        if not qscr:
-            qscr = self.scr_mgr
-
-        if self.bootable (qscr):
-            return -1
-
-        return qscr ["nav"]["logout_page"]
-
-    def boot (self, qscr = None):
-        if not qscr:
-            qscr = self.scr_mgr
-
-        try:
-            self.printi ("Looking for existing navigator for %s" % (qscr [self.keys.UID],))
-
-            idx = self.navtab.index (qscr [self.keys.UID], attr = "refcount")
-            qscr ["nav"] = self.navtab [idx]
-            self.printi ("Found. Reused found navigator")
-
-        except ValueError:
-
-            self.printi ("Not Found. Configuring a new navigator")
-            nav = navigation.Navigator (
-                    qscr [self.keys.URL],
-                    qscr [self.keys.WMAP],
-                    qscr, #dangerous maybe
-                    session = qscr [self.keys.SESSION]
-                    )
-
-            qscr ["nav"] = nav
-
-            self.printi ("Done.")
-
-            nav.refcount = qscr [self.keys.UID]
-
-            self.navtab.append (nav)
-
-        self.printi ("Login in user %s" % (qscr [self.keys.UID],))
-
-        qscr ["qmgr"] = qstm.QstMgr (
-                nav = qscr ["nav"],
-                matno = qscr [self.keys.UID],
-                crscode = qscr [self.keys.CRSCODE],
-                tma = qscr [self.keys.TMA],
-                stop = 10,
-                qmap = qscr [self.keys.WMAP]["qmap"],
+        nav = navigation.Navigator (
+                param [self.URL],
+                param [self.WMAP],
+                param, #dangerous maybe
+                session = param [self.SESSION]
                 )
 
-        qscr ["qline"] = 0
-        qscr ["optmap"] = []
-        qscr ["pqidx"] = None
-        qscr ["lpqidx"] = None
-        qscr ["qst"] = None
-        qscr ["qmode"] = False
-        qscr ["qmgr"].interactive = True
+        nav.refcount = param [self.UID]
 
-        self.printi ("Done.")
-        return qscr ["qmgr"]
+        self.navtab.append (nav)
 
+    to, tpage = nav ('qst_page')[:-1]
+    idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
+    path = nav.webmap ['qst_page']['path'].split (',')[-1]
 
-    def __call__ (self, key):
-        args = bytearray ()
-        comm = self._get_cmd (key)
-        if not comm:
-            self.stdscr.scrollok (True)
-            self.stdscr.keypad (True)
-            self.stdscr.nodelay (False)
-            self.stdscr.notimeout (False)
-            self.stdscr.move (self.LINES - 1, 0)
-            self.stdscr.clrtoeol ()
-            self.stdscr.touchline (0, self.LINES - 1, False)
-            curses.ungetch (key)
-            self.stdscr.echochar (key)
-            curses.echo ()
+    idx += 1
 
-        while not comm:
-            c = self.stdscr.getch ()
-            comm = self._get_cmd (c)
-            if comm:
-                pass
-            elif c == curses.ascii.ESC:
+    while True: #crscode discovery
+        dt = 'data' if to ['method'] in ('POST', 'post') else 'params'
+
+        m = None
+
+        for k in to.get (dt, {}).values ():
+            m = re.search (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', k)
+
+            if m:
                 break
 
-            elif curses.ascii.isascii (c):
-                args.append (c)
-
-            else:
-                break
-        else:
-            curses.noecho ()
-            return comm (args) if args else comm ()
-
-
-        curses.noecho ()
-        self.ctrl_l12 ()
-
-    def _get_cmd (self, key):
-        cmd = (getattr (self, k) for k in type (self).__dict__ if re.search
-                (r"(?<!\d)" + str (key) + r"(?!\d)", k))
+        if m:
+            param [self.CRSCODE] = m.group (0)
+            self.print ('Got %s.' % (param [self.CRSCODE],))
+            yield param.copy ()
 
         try:
-            comm = next (cmd)
-            return comm
+            rec = iter (navigation.Recipe (path, str (idx), param, tpage,
+                param [self.URL]))
 
-        except StopIteration:
-            return None
+            to = next (rec)
+        except TypeError:
+            break
 
+        idx += 1
 
-    def key_left260 (self, subtrahend = b"1"):
-        if self.scr_mgr ["lpqidx"] != None and self.scr_mgr ["pqidx"] != None and self.scr_mgr ["qmode"] and self.pq:
 
-            if not subtrahend.isdigit ():
-                return
+def mksess (self, url, cookie_file = ''):
+    session = None
 
-            subtrahend = int (subtrahend.decode())
+    if cookie_file:
+        with open (cookie_file) as f:
+            cookie_str = f.read ()
 
-            l = self.amgr (*self.pq [self.scr_mgr ["lpqidx"]])
+            session = requests.Session ()
+            cookt = cookie_parse.bake_cookies (cookie_str, url)
 
-            self.scr_mgr ["pqidx"] -= subtrahend
+            session.headers = requests.structures.OrderedDict(
+                    (
+                        ("Host", None),
+                        ("Connection", "keep-alive"),
+                        ("Upgrade-Insecure-Requests", "1"),
+                        ("User-Agent", cookt [0]['User-Agent']),
+                        (
+                            "Accept",
+                            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                            ),
+                        ("Accept-Language", "en-US,en;q=0.9"),
+                        ("Accept-Encoding", "gzip, deflate"),
+                        )
+                    )
 
-            if 0 <= self.scr_mgr ["pqidx"] < self.pqlen:
-                    p = self.amgr (*self.pq [self.scr_mgr ["pqidx"]])
+            session.cookies = cookt [1]
 
-                    if p and l:
-                        self.update_qscr (self.amgr.download (p, l))
+    else:
+        session = cloudscraper.create_scraper ()
 
-                    else:
-                        pass #pdb.set_trace ()
 
-            elif self.scr_mgr ["pqidx"] < 0:
-                self.scr_mgr ["pqidx"] = 0
+    return session
 
 
-    def key_right261 (self, addend = b"1"):
-        if self.scr_mgr ["lpqidx"] != None and self.scr_mgr ["pqidx"] != None and self.scr_mgr ["qmode"] and self.pq:
-            l = self.amgr (*self.pq [self.scr_mgr ["lpqidx"]])
 
-            if not addend.isdigit ():
-                return
+def preprocess(args):
+    print = print
 
-            addend = int (addend.decode())
+        args = args.__dict__;
 
-            self.scr_mgr ["pqidx"] += addend
+        matnos = self.List (args ['matno'])
+        pwds = self.List (args ['pwd'])
+        crscodes = self.List (args ['crscode'])
+        tmas = self.List (args ['tma'])
+        cookies = self.List (args ['cookies'])
+        urls = self.List (args ['url'])
+        wmap = args ['wmap']
+        UID = self.wmap ['kmap']['matno']
+        UID1 = self.CRSCODE
+        UID2 = self.TMA
+        PWD = self.wmap ['kmap']['pwd']
+        param = {}
+        param [self.WMAP] = self.wmap
+        len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
+        navtab = scrm.QScrList ()
 
-            if 0 <= self.scr_mgr ["pqidx"] < self.pqlen:
-                p = self.amgr (*self.pq [self.scr_mgr ["pqidx"]])
+    for i in range (self.len):
 
-                if p and l:
-                    self.update_qscr (self.amgr.download (p, l))
+        self.param [self.UID] = self.matnos [i]
+        self.param [self.PWD] = self.pwds [i]
+        self.param [self.TMA] = self.tmas [i]
+        self.param [self.URL] = self.urls [i]
+        self.param [self.COOKIES] = self.cookies [i]
 
-                else:
-                    pass #pdb.set_trace ()
+        if i < len (self.matnos):
+            self.param [self.SESSION] = self.mksess (self.param [self.URL],
+                    self.param [self.COOKIES])
 
-            elif self.scr_mgr ["pqidx"] >= self.pqlen:
-                self.scr_mgr ["pqidx"] = self.pqlen
+        y = self.crscodes [i]
 
-                if l != self.scr_mgr ["qst"]:
-                    self.update_qscr (self.amgr.download (l, self.scr_mgr ["qst"]))
+        if y == 'all':
+            self.print ('No crscode specified')
+            yield from self.discovercrs (self.param)
+        else:
+            self.param [self.CRSCODE]  = y
+            yield self.param.copy ()
 
 
-    def key_up259 (self, subtrahend = b"1"):
-        if not subtrahend.isdigit ():
-            return
+def logout(nav):
+    try:
+        nav["logout_page"];
+        return True;
+    except BaseException as err:
+        return errno("logout err", err);
 
-        subtrahend = int (subtrahend.decode())
 
-        if self.scr_mgr ["qmode"] and self.scr_mgr ["optmap"]:
-            cur = self.scr_mgr ["qscr"].getyx ()
-            n = [i for i,t in enumerate (self.scr_mgr ["optmap"]) if t[0] == cur [0]]
+def login(nav):
+    # to make sure we are safe to login. it shouldn't be problematic at all
+    # times.
+    st = logout(nav);
 
-            if not n:
-                return
+    if not st:
+        return st;
 
-            try:
-                if (n [0] - subtrahend) < 0:
-                        raise IndexError (n [0] - subtrahend)
+    try:
+        nav["profile_page"];
+        to, fro = nav('qst_page')[:-1];
+        return True;
 
+    except BaseException as err:
+        return errno("login err", err);
 
-                t = self.scr_mgr ["optmap"] [n [0]]
-                vis, trange, *misc = self.visibility (t)
+def unassign(nav):
+    return logout(nav);
 
-                if vis & UNCAPTURED:
-                    offset = t[0] - (self.scr_mgr ["qline"] + misc [1])
-                    self.scr_mgr ["qline"] += offset
+## this for now, is case-insensitive
+def get_key_usr(key):
+    return key[USERNAME].lower();
 
-                elif vis & TOP:
+## others are returned "as is"
+def get_key_pwd(key):
+    return key[PWD];
 
-                    t = n [0] - subtrahend
+def get_key_url(key):
+    return key[URL];
 
-                    t = self.scr_mgr ["optmap"] [t]
+def get_key_course(key):
+    return key[CRSCODE].lower();
 
-                    vis, trange, *misc = self.visibility (t)
-                    if vis & ABOVE:
-                        self.scr_mgr ["qline"] = trange [-1]
+def get_key_tma(key):
+    return key[TMA];
 
-                else:
-                    self.scr_mgr ["qline"] -= subtrahend
+def get_key_webmap(key):
+    return key[WEBMAP];
 
 
-            except IndexError:
-                t = self.scr_mgr ["optmap"] [0]
-                vis, trange, *misc = self.visibility (t)
-                if vis & ABOVE:
-                    self.scr_mgr ["qline"] = trange [-1]
+def reconfigure(nav, usr):
+    nav.reconfigure(usr[USERNAME],get_key_webmap(usr), usr);
+    return True;
 
-                else:
-                    self.scr_mgr ["qline"] -= subtrahend
 
-            self.paint (undo = True)
-
-            self.scr_mgr ["qscr"].move (t[0], 0)
-            self.paint ()
-
-        elif not self.scr_mgr ["qmode"]:
-            self.scr_mgr ["qline"] -= subtrahend
-
-
-        if self.scr_mgr ["qline"] < 0:
-            self.scr_mgr ["qline"] = 0
-
-        self.doupdate ()
-
-    def key_down258 (self, addend = b"1"):
-        if not addend.isdigit ():
-            return
-
-        addend = int (addend.decode())
-
-        if self.scr_mgr ["qmode"] and self.scr_mgr ["optmap"]:
-            cur = self.scr_mgr ["qscr"].getyx ()
-            n = [i for i,t in enumerate (self.scr_mgr ["optmap"]) if t[0] == cur [0]]
-
-            if not n:
-                return
-
-            try:
-                self.scr_mgr ["optmap"] [n [0] + addend]
-                t = self.scr_mgr ["optmap"] [n [0]]
-                vis, trange, *misc = self.visibility (t)
-
-                if vis & ABOVE:
-                    self.scr_mgr ["qline"] = trange [-1]
-
-                elif vis & BOTTOM:
-                    t = self.scr_mgr ["optmap"] [n [0] + addend]
-
-                    vis, trange, *misc = self.visibility (t)
-                    if vis & BELOW:
-                        self.scr_mgr ["qline"] = trange [0]
-
-
-                else:
-                    self.scr_mgr ["qline"] += addend
-
-
-            except IndexError:
-                t = self.scr_mgr ["optmap"] [-1]
-                vis, trange, *misc = self.visibility (t)
-
-                if vis & UNCAPTURED:
-                    self.scr_mgr ["qline"] = trange [0]
-
-                else:
-                    self.scr_mgr ["qline"] += addend
-
-            tl = self.scr_mgr ["optmap"] [-1]
-            visl, trangel, *misc = self.visibility (tl)
-            bot_scry = misc [1]
-            if bot_scry > trangel [-1]:
-                self.scr_mgr ["qline"] -= (bot_scry - trangel [-1])
-
-            self.paint (undo = True)
-
-            self.scr_mgr ["qscr"].move (t[0], 0)
-            self.paint ()
-
-
-        elif not self.scr_mgr ["qmode"]:
-            if hasattr (self, "msgyx") and self.msgyx:
-                self.scr_mgr ["qline"] += addend
-                vis, trange, *misc = self.visibility (self.msgyx)
-
-                bot_scry = misc [1]
-
-                if bot_scry > trange [-1]:
-                    self.scr_mgr ["qline"] -= (bot_scry - trange [-1])
-
-
-        if self.scr_mgr ["qline"] < 0:
-            self.scr_mgr ["qline"] = 0
-
-        self.doupdate ()
-
-    def visibility (self, coord):
-        flags = 0
-
-        topy = coord [0]
-
-        boty = math.ceil (coord [1] / self.scr_mgr.scrdim [1]) + topy - 1
-
-
-        bot_scry = (self.scr_mgr ["qline"] + (self.scr_mgr.scrdim [0] -
-                self.saloc)) - 1
-
-        top_scry = self.scr_mgr ["qline"]
-
-        txt_range = (topy, boty)
-
-        if bot_scry >= boty >= top_scry:
-            flags |= BOTTOM
-
-        if top_scry <= topy <= bot_scry:
-            flags |= TOP
-
-        if top_scry >= topy and bot_scry <= boty:
-            flags |= CAPTURED
-
-        if boty < top_scry:
-            flags |= ABOVE
-
-        if topy > bot_scry:
-            flags |= BELOW
-
-        return (flags, txt_range, top_scry, bot_scry, topy, boty)
+def assign(usr, nav = None):
+    if nav == None:
+        nav = create_nav(usr);
+    
+    else:
+        if self.get_key_usr(self.nav.keys) != get_key_usr(cli):
+            reconfigure(nav, usr);
+    # at all times this should'nt be problematic (whether a user is logged in or
+    # not)
+    unassign(nav);
+    login(nav);
+    
 
 class Checker:
     def __init__(self):
@@ -463,26 +314,6 @@ class CookieError(BaseException):
     def __init__(self, *pargs, *kwargs):
         super ().__init__ (*pargs, **kwargs);
 
-def SET_ERRNO_ON_EXCEPT_TO(func, errclass, *pargs, **kwargs):
-    global ERRNO;
-
-    try:
-        return func(*pargs, **kwargs);
-    except BaseException as err:
-        ERRNO = errclass(err);
-    
-    return False;
-
-
-def SET_ERRNO_ON_EXCEPT(func, *pargs, **kwargs):
-    global ERRNO;
-
-    try:
-        return func(*pargs, **kwargs);
-    except BaseException as err:
-        ERRNO = err;
-
-    return False;
 
 def session_from_cookies (self, url, cookie):
     global ERRNO;
@@ -527,14 +358,35 @@ def session_from_cookies (self, url, cookie):
 
 
 def submit (qst, nav, qmgr, c = False):
-    
-    if c != False:
-        qst[qmgr.qmap["ans"]] = c;
 
+    self.nextq [self.dt1 or self.dt0] = qst
+
+    self.totscore = math.trunc (int (qst [self.qmap ['score']] + '0') / 10)
+
+    kwargs.setdefault (
+            'headers',
+            dogs.mkheader (self.nextq ['url'], self.referer1)
+            )
+
+    self.sres = self.nav.session.request (**self.nextq, **kwargs)
+
+    self.sres.raise_for_status ()
+    x = self.nextq.pop (self.dt1 or self.dt0)
+
+    self.referer = self.sres.url
     try:
-        e = qmgr.submit(qst);
-    except BaseException as err:
-        return errno(err, qst, qmgr);
+        res = self.fetch ()
+
+        self.nextq [self.dt1 or self.dt0] = res
+
+        s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
+
+        self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
+
+        return int (s)
+
+    except:
+        return None
 
     x = re.search (r"(?P<mark>[01])\s*" +
             nav.webmap["fb"]["on_qst_submit"].strip (), qmgr.sres.text,
@@ -544,6 +396,55 @@ def submit (qst, nav, qmgr, c = False):
         return int (x.group ("mark"));
     else:
         return errno("No mark", qst, qmgr);
+
+fetch_t = dict;
+
+F_QUESTION = "qst";
+F_REQUEST = "request";
+F_QKEY = "data";
+F_REFERER = "ref";
+
+def brute_submit(nav, f_type, retry = 3, **kwargs):
+
+    qst = f_type[F_QKEY].copy();
+
+    kwargs.setdefault (
+            'headers',
+            dogs.mkheader (
+                f_type[F_REQUEST]['url'], 
+                f_type.get(F_REFERER, "")
+                ),
+            )
+
+    sres = nav.session.request (**self.nextq, **kwargs)
+
+    self.sres.raise_for_status ()
+    x = self.nextq.pop (self.dt1 or self.dt0)
+
+    self.referer = self.sres.url
+    try:
+        res = self.fetch ()
+
+        self.nextq [self.dt1 or self.dt0] = res
+
+        s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
+
+        self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
+
+        return int (s)
+
+    except:
+        return None
+
+    x = re.search (r"(?P<mark>[01])\s*" +
+            nav.webmap["fb"]["on_qst_submit"].strip (), qmgr.sres.text,
+            re.I);
+
+    if x:
+        return int (x.group ("mark"));
+    else:
+        return errno("No mark", qst, qmgr);
+
 
 def answer(qst, amgr):
     try:
@@ -559,18 +460,58 @@ def answer(qst, amgr):
     except BaseException as err:
         return errno(qst, amgr);;
 
+def _transform_req (self, req, matno, tma , crscode):
+
+    tma = str (tma)
+    tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma
+    self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
+    req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
+
+    req['url'] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
+            self._copycase (crscode), req['url'], flags = re.IGNORECASE)
+
+    req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(tma), req['url'], flags = re.IGNORECASE)
+
+
+    for k in req.get(self.dt0, {}):
+        req[self.dt0][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.dt0][k], flags = re.IGNORECASE)
+
+        req[self.dt0][k] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
+                    self._copycase (crscode), req[self.dt0][k], flags = re.IGNORECASE)
+
+        req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]',
+                    self._copycase(tma), req[self.dt0][k], flags = re.IGNORECASE)
+
+    return req
 
 def fetch(qmgr):
-    global ERRNO;
+    if force or (self.dt1 or self.dt0) not in self.nextq:
+        self.fargs.update (url = url1 or self.fargs['url'])
 
-    try:
-        qst = qmgr.fetch (timeout = (30.5, 60));
-        if not qst or not isinstance (qst, lxml.html.FieldsDict):
-            return errno("no question", qmgr);
+        kwargs.setdefault (
+                'headers',
+                dogs.mkheader (self.fargs ['url'], self.referer)
+                )
 
-        return qst; 
-    except BaseException as err:
-        return errno(err);
+        self.qres = self.nav.session.request(**self.fargs , **kwargs)
+
+        self.referer1 = self.qres.url
+
+        self.qres.raise_for_status ()
+        self.nextq = dogs.fill_form (
+                self.qres.text,
+                self.qres.url,
+                flags = dogs.FILL_FLG_EXTRAS,
+                data = {
+                    self.qmap ['ans']: None
+                    }
+                )
+
+    if not self.dt1:
+        self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
+
+    return self.nextq.pop (self.dt1)
+
 
 
 def addqn(qst, qmgr, addend = 1):

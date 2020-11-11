@@ -18,6 +18,9 @@ TS_RUNNABLE = 0b1000;
 ## is changed
 TS_ZOMBIE = 0b10000;
 
+## stopped and can't run again
+TS_TERM = 0b100000;
+
 ## task diposition (whether it can be listed on not) e.g - when a navigator
 ## can't  be set the setter function can create a hidden task that will
 ## eventually set the navigator when the neccasary argument are given (usually

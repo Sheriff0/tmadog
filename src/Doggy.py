@@ -123,11 +123,11 @@ class Dog:
     def getcmd(self, task):
         ## no need to check if a command is supported.
         ## DTask already did a good job when the task was initialized.
-        if isinstance(task, DTask):
+        if isinstance(task, self._InternalTask):
+            return task.cmd;
+        elif isinstance(task, DTask):
             return getattr(self, task.gettvalue(task));
         
-        elif isinstance(task, self._InternalTask):
-            return task.cmd;
 
     
     def end(self):
@@ -228,6 +228,7 @@ class Dog:
         self.arg_gens = scrm.QScrList();
         self.prep_argv = scrm.QScrList();
         self.prep_argc = 0;
+        self.sbuffer = status.StatusBuffer();
         self.status = status.Status();
         self.pc = pc_type(0);
         self.tasktab = scrm.QScrList();
@@ -254,8 +255,10 @@ class Dog:
 
         self.started = False;
     
-    def release_nav(self, cli):
-        pass;
+    def release_nav(self, nav = None):
+        if not nav:
+            nav = self.nav;
+        return libdogs.unassign(nav); 
 
     def get_nav(self, cli):
         if not self.prep_argv[0].one_nav and "nav" in cli:
@@ -263,22 +266,16 @@ class Dog:
 
         elif self.prep_argv[0].one_nav:
             if self.nav:
-                self.nav = libdogs.reset_nav(self.nav, cli);
+                self.nav = libdogs.assign(cli, self.nav);
         ## create navigator
             else:
-                self.nav = libdogs.create_nav(cli);
-                
+                ## when no navigator is passed, libdogs.assign creates one and assign to the given cli.
+                self.nav = libdogs.assign(cli);
 
         else:
-            self.nav = libdogs.create_nav(cli);
+            self.nav = libdogs.assign(cli);
             cli["nav"] = self.nav;
             
-            if not nav:
-                status = status.Status(status.S_ERROR, "can't create navigator",
-                        nav);
-                self.status = status;
-                return status
-
         if not self.nav:
             status = status.Status(status.S_ERROR, "can't create navigator",
                     self.nav);
@@ -286,7 +283,7 @@ class Dog:
             self.status = status;
             return status;
 
-        status = status.Status(msg = "normal navigation target given");
+        status = status.Status(status.S_OK, msg = "normal navigation target given");
         self.status = status;
 
         return self.nav;
@@ -321,7 +318,6 @@ class Dog:
         return status;
 
 
-
     def setup_cmdline(self, cmdline, psr = None, preproc = None):
         
         try:
@@ -329,7 +325,7 @@ class Dog:
                 psr = parser;
                 args = psr.parse_args(cmdline);
             elif psr and preproc:
-                arg_gen = iter( preproc(**args.__dict__),);
+                arg_gen = iter( preproc(args));
 
                 self.arg_gens.append(arg_gen);
             else:
@@ -340,37 +336,43 @@ class Dog:
                         args,
                         )
                     );
-
+            
+            self.status = status.Status(status.S_OK, "cmdline parsed successfully")
             return args;
 
         except argparse.ArgumentError as err:
             status = status.Status("cmdline error", status.S_ERROR,
                     CmdlineErr(err,cmdline psr, preproc));
-            self.send_task(
-                    DTask(
-                        tid = CMD_SET_CMDL,
-                        args = None,
-                        status = status,
-                        state = task.TS_ZOMBIE,
-                        ),
-                    );
-            self.status = status;
             return self.status;
         
         except BaseException as err:
             status = status.Status("Unknown Err", status.S_ERROR,
                     CmdlineErr(err,cmdline,psr,preproc)); 
-            self.send_task(
-                    DTask(
-                        tid = CMD_SET_CMDL,
-                        args = None,
-                        status = status,
-                        state = task.TS_ZOMBIE,
-                        ),
-                    );
             self.status = status;
 
             return self.status;
+
+
+    def argv(self):
+        """iterate over all arguments - raw and preprocessed.
+        unlike the getarg_by_* functions that skip statuses, if a preprocessor returns a status
+        instead of a valid argument that status is yielded too(but not appended
+        to .prep_argv).
+        """
+        for arg in self.prep_argv:
+            yield arg;
+
+        for arg_gen in self.arg_gens:
+            for arg in arg_gen:
+                if not isinstance(arg, status.Status):
+                    self.prep_argv.append(
+                                arg,
+                            );
+                    self.prep_argc += 1;
+
+                yield arg;
+
+        
 
     def getarg_by_index(self, idx = 0):
         if not idx >= self.prep_argc:
@@ -380,14 +382,15 @@ class Dog:
 
         for arg_gen in self.arg_gens:
             for arg in arg_gen:
-                self.prep_argv.append(
-                            arg,
-                        );
-                self.prep_argc += 1;
+                if not isinstance(arg, status.Status):
+                    self.prep_argv.append(
+                                arg,
+                            );
+                    self.prep_argc += 1;
 
-                if i == idx:
-                    return idx;
-                i+=1;
+                    if i == idx:
+                        return idx;
+                    i+=1;
         
         return None;
 
@@ -397,16 +400,17 @@ class Dog:
         except ValueError:
             for arg_gen in self.arg_gens:
                 for arg in arg_gen:
-                    self.prep_argv.append(
-                            user,
-                            );
-                    self.prep_argc += 1;
+                    if not isinstance(arg, status.Status):
+                        self.prep_argv.append(
+                                arg,
+                                );
+                        self.prep_argc += 1;
 
-                    try:
-                        i = scrm.QScrList(user).index(value, attr);
-                        return self.prep_argc - 1;
-                    except ValueError:
-                        pass
+                        try:
+                            i = scrm.QScrList(arg).index(value, attr);
+                            return self.prep_argc - 1;
+                        except ValueError:
+                            pass
             
             return None;
 
@@ -439,8 +443,8 @@ class Dog:
                 ## ...
                 args = self.setup_cmdline(task.args, psr = getattr(self,
                     "submit_parser"), preproc = preprocessor.Preprocessor);
-                if isinstance(args, status.Status):
-                    return None;
+                if not args:
+                    st = status.Status(status.S_ERROR);
 
                 ## create the task leader, and
                 ## use it to create members as needed,
@@ -501,7 +505,8 @@ class Dog:
         MBR = 0;
 
         if not isinstance(task, DTask):
-            return None;
+            self.status = status.Status(status.S_ERROR);
+            return self.status;
         
         ldr = None;
         mbr = None;
@@ -514,20 +519,15 @@ class Dog:
             mbr = task;
             arg = arg if mbr.arg == None and self.submit_arg_check(mbr.arg, ldr) else mbr.arg;
         
-        idx = 0;
-        mbr_list = [];
-        while True:
-            if arg == None:
-                i = self.getarg_by_index(idx);
-                if not i or not self.submit_arg_check(self.prep_argv[i]):
-                    idx += 1;
-                    continue;
+        for arg in self.argv():
+            if not self.submit_arg_check(arg):
+                continue;
 
             arg = self.prep_argv[i];
             
-            mbr = mbr if "_task_" not in arg else mbr["_task_"];
+            if not mbr:
+                mbr = mbr if "_task_" not in arg else arg["_task_"];
             
-            st = self.submit_main(arg);
             if not mbr:    
                 mbr = self._InternalTask(magic = MBR, group = ldr, cmd =
                         self.nop, arg = arg);
@@ -535,13 +535,19 @@ class Dog:
             self.status = st;
             nav = self.get_nav(arg);
             
-            if isinstance(nav, status.Status):
+            if not nav:
                 st = nav;
+                mbr.state = task.TS_TERM;
             else:
                 # start submiting
                 st = self.submit_main(arg);
+                if not st:
+                    mbr.cmd = self.submit_pre_exec;
+                    mbr.state = task.TS_STOPED;
+
             mbr.status = st;
-            mbr_list.append(mbr);
+            mbr["_task_"] = mbr;
+            self._alloc(mbr);
 
     
     def submit_main(self, arg, c = None):
