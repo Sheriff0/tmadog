@@ -18,90 +18,360 @@ import sys
 import builtins 
 import pathlib
 
-## NOTE: assigning to this ain't thread-safe, thus all functions should return their
-## caugth errors where possible.
-
-CRSCODE = 'crscode'
-TMA = 'tma'
-URL = 'url'
-WMAP = 'wmap'
-COOKIES = 'cookies'
-SESSION = 'session'
-
-## custom-copied from cfscrape
-
-
-def is_Captcha_Challenge(resp):
-    try:
-        return (
-            resp.headers.get('Server', '').startswith('cloudflare')
-            and resp.status_code == 403
-            and re.search(
-                r'action="/\S+__cf_chl_captcha_tk__=\S+',
-                resp.text,
-                re.M | re.DOTALL
-            )
-        )
-    except AttributeError:
-        pass
-
-    return False
-
-
-def is_New_IUAM_Challenge(resp):
-    try:
-        return (
-            resp.headers.get('Server', '').startswith('cloudflare')
-            and resp.status_code in [429, 503]
-            and re.search(
-                r'cpo.src\s*=\s*"/cdn-cgi/challenge-platform/\S+orchestrate/jsch/v1"',
-                resp.text,
-                re.M | re.S
-            )
-            and re.search(r'window._cf_chl_enter\(', resp.text, re.M | re.S)
-        )
-    except AttributeError:
-        pass
-
-    return False
-
-
-def is_Firewall_Blocked(resp):
-    try:
-        return (
-            resp.headers.get('Server', '').startswith('cloudflare')
-            and resp.status_code == 403
-            and re.search(
-                r'<span class="cf-error-code">1020</span>',
-                resp.text,
-                re.M | re.DOTALL
-            )
-        )
-    except AttributeError:
-        pass
-
-    return False
-
-def is_New_Captcha_Challenge(resp):
-    try:
-        return (
-            CloudScraper.is_Captcha_Challenge(resp)
-            and re.search(
-                r'cpo.src\s*=\s*"/cdn-cgi/challenge-platform/\S+orchestrate/captcha/v1"',
-                resp.text,
-                re.M | re.S
-            )
-            and re.search(r'window._cf_chl_enter\(', resp.text, re.M | re.S)
-        )
-    except AttributeError:
-        pass
-
-    return False
-
+P_PWD = "pwd",
+P_USR = "matno";
+P_CRSCODE = 'crscode'
+P_TMA = 'tma'
+P_URL = 'url'
+P_WMAP = 'wmap'
+P_COOKIES = 'cookies'
+P_SESSION = 'session'
 
 def is_Challenge_Request(resp):
-    return is_Firewall_Blocked(resp) or is_New_Captcha_Challenge(resp) or is_New_IUAM_Challenge(resp) or is_Captcha_Challenge(resp) or is_IUAM_Challenge(resp);
+    return cloudscraper.is_Firewall_Blocked(resp) or
+cloudscraper.is_New_Captcha_Challenge(resp) or
+cloudscraper.is_New_IUAM_Challenge(resp) or
+cloudscraper.is_Captcha_Challenge(resp) or cloudscraper.is_IUAM_Challenge(resp);
 
+
+import requests_html
+import re
+from urllib import parse
+import lxml
+import pdb
+
+requests = requests_html.requests
+
+re.Match = type (re.match (r'foo', 'foo'))
+
+LCLICK = None
+
+class DogTypeError (TypeError):
+    def __init__ (self, *pargs, **kwargs):
+        super ().__init__ (*pargs, **kwargs)
+
+class FDict (lxml.html.FieldsDict):
+    def __init__ (self, form, *a0, **a1):
+        self.form_ref = requests_html.HTML (html = form)
+
+        return super ().__init__ (*a0, **a1)
+
+    def __len__ (self):
+        return len (dict (self))
+
+    def copy (self):
+        return requests.structures.OrderedDict (self)
+
+    def resolve_key (self, s):
+
+        if s.startswith ('['):
+            ele = self.form_ref.find (
+                    'input[placeholder="%s"]' % (s.strip ('[]'),),
+                first = True
+                )
+            if not ele:
+                raise KeyError ('%s does not exist in form' % (s,))
+
+            s = ele.attrs['name']
+
+        elif s.startswith ('<'):
+            p_ele = self.form_ref.find (
+                    'form *',
+                    containing = s.strip ('<>'),
+                    first = True
+                    )
+            if not p_ele:
+                raise KeyError ('%s does not exist in form' % (s,))
+
+            ele = p_ele.find ('input', first = True)
+
+            s = ele.attrs['name']
+
+        return s
+
+    def update (self, E, **F):
+        if getattr (E, 'keys', None):
+            for k in E:
+                v = E[k]
+                k = self.resolve_key (k)
+                self[k] = v
+        else:
+            for k, v in E:
+                k = self.resolve_key (k)
+                self[k] = v
+
+        for k in F:
+            v = F[k]
+            k = self.resolve_key (k)
+            self[k] = v
+
+        return self
+
+
+
+class AnyheadList:
+    def __init__ (self, arr, svalue = None, sidx = None):
+        self.garr = (x for x in arr)
+
+        self._arr = {}
+
+        self.sidx = sidx
+
+        if not sidx or svalue == None:
+            for i, v in enumerate (self.garr):
+
+                if svalue != None and svalue == v:
+                    self.sidx = i
+                    break
+                elif svalue == None:
+                    self.sidx = i
+                    svalue = v
+                    break
+
+                self._arr ['-' + str (i)] = v
+
+        self.iidx = 0
+        self._arr ['-' + str (self.sidx)] = svalue
+        self._arr [str (self.iidx)] = svalue
+
+        self.pidx = self.sidx + 1
+        self.exhausted = False
+
+    def __repr__ (self):
+        strv = '['
+
+        vgen = iter (self)
+
+        try:
+            strv += str (next (vgen))
+        except StopIteration:
+            return '[]'
+
+        for v in vgen:
+            strv += ', ' + str (v)
+
+        return strv + ']'
+
+    def __iter__ (self):
+        idx = 0
+
+        while True:
+            try:
+                yield self [idx]
+
+            except IndexError:
+                return
+
+            idx += 1
+
+    def __next__ (self):
+        yield from self.__iter__ ()
+
+    def origin (self):
+        return self.Orderly (self._arr)
+
+    def __setitem__ (self, idx, value):
+        self [idx]
+        self._arr [str (idx)] = value
+
+    def __getitem__ (self, idx):
+        idx = str (idx)
+        if not self.exhausted and idx not in self._arr:
+            while self.pidx != self.sidx:
+                try:
+                    self.iidx += 1
+                    y = next (self.garr)
+                    self._arr [str (self.iidx)] = y
+                    self._arr ['-' + str (self.pidx)] = y
+
+                    self.pidx += 1
+
+                    if int (idx) == self.iidx:
+                        break
+
+                except StopIteration:
+                    self.iidx -= 1
+                    self.pidx = 0
+                    self.garr = iter (self.Orderly (self._arr))
+
+            if self.pidx == self.sidx:
+                self.exhausted = True
+
+        elif self.exhausted and idx not in self._arr:
+            raise IndexError (idx)
+
+        return self._arr [idx]
+
+    class Orderly:
+        def __init__ (self, dict_arr):
+            self.dict_arr = dict_arr
+
+        def __iter__ (self):
+
+            for k in sorted (self.dict_arr.keys ()):
+                if re.fullmatch (r'-\d+', k):
+                    yield self.dict_arr [k]
+                else:
+                    return
+
+        def __next__ (self):
+            yield from self.__iter__ ()
+
+        def __setitem__ (self, idx, value):
+            self.dict_arr ['-' + str (idx)] = value
+
+        def __getitem__ (self, idx):
+
+            return self.dict_arr ['-' + str (idx)]
+
+
+#__all__ = ['click', 'fill_form', 'getdef_value']
+
+NO_TXTNODE_KEY = 0b0001
+NO_TXTNODE_VALUE = 0b0010
+FILL_RET_DATAONLY = 0b0100
+URLONLY = 0b1000
+FILL_FLG_EXTRAS = 0b10000
+
+LastForm = {}
+
+#def fill_radio ():
+
+#def fill_checkbox ():
+
+def fill_form (
+        html,
+        url = 'https://machine.com/dir/file.ext',
+        flags = NO_TXTNODE_VALUE | NO_TXTNODE_KEY,
+        selector = 'form',
+        idx = 0,
+        data = {}
+        ):
+
+
+    s = html
+
+    html = lxml.html.fromstring (html = s, base_url = url)
+
+    tform = html.cssselect (selector)
+
+    if not len (tform):
+        raise DogTypeError ('No form found')
+    else:
+        tform = tform[idx]
+
+    targs = {}
+
+    targs['method'] = tform.method
+
+    targs['url'] = parse.urljoin (tform.base_url, tform.action)
+
+    if flags & URLONLY:
+        return targs['url']
+
+    if flags & FILL_FLG_EXTRAS:
+        for e in tform.__copy__().cssselect ('form button[name]'):
+            tform.append (requests_html.HTML (html = '''<input name = "%s" value = "%s">''' %
+                (e.get ('name'), e.get ('value', ''))).find ('input', first = True).element)
+
+    ifields = FDict (lxml.html.tostring (tform, with_tail = False, encoding = 'unicode'), tform.inputs)
+
+    ifields.update (data)
+
+    for k in ifields:
+
+        if ifields[k] is None and not k in data:
+            ifields[k] = ''
+
+    targs['data'] = ifields
+
+    if flags & FILL_RET_DATAONLY:
+        return targs['data']
+
+    if targs['method'] in ('GET', 'get'):
+        targs['params'] = targs.pop ('data')
+
+    return targs
+
+
+def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
+
+    global LCLICK
+
+    html = lxml.html.fromstring (html = html, base_url = url)
+
+    x = html.cssselect (selector)
+
+    c = -1
+
+    if idx < 0:
+        idx = abs (idx) - 1
+        x = reversed (x)
+
+    for m in x:
+        if re.match (button.strip (), m.text_content ().strip (), flags = re.I):# or re.search (button.strip (), m.text_content ().strip (), flags = re.I):
+            c += 1
+
+        if c == idx:
+            LCLICK = m
+            break
+
+    if c != idx:
+        raise DogTypeError ('No such button %s found' % (button))
+
+    t = m.tag
+
+    if t in ('form', 'FORM'):
+        flags = kwargs.pop ('flags', NO_TXTNODE_KEY | NO_TXTNODE_VALUE)
+        return fill_form (lxml.html.tostring (m, with_tail = False, encoding = 'unicode'), url, flags = flags, **kwargs)
+
+    elif t in ('a', 'A'):
+        flags = kwargs.pop ('flags', ~(URLONLY | FILL_RET_DATAONLY))
+
+        if flags & URLONLY:
+            return parse.urljoin (url, m.get('href'))
+
+        elif flags & FILL_RET_DATAONLY:
+            return dict (
+                    map (
+                        lambda a: (parse.unquote_plus (a.split ('=')[0]), parse.unquote_plus (a.split ('=')[-1])),
+                        parse.urlparse (parse.urljoin (url, m.get('href'))).query.split ('&')
+                        )
+                    )
+
+        else:
+            return {
+                    'method': 'GET',
+                    'url': parse.urljoin (url, m.get('href')),
+                    }
+
+    else:
+        return None
+
+def mkheader (url, ref = None):
+
+    url = parse.urlparse (url)
+    ref = parse.urlparse (ref) if ref else None
+    headers = {
+                'host': url.hostname,
+                'origin': '%s://%s' % (url.scheme, url.hostname),
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-user': '?1',
+                }
+
+    if ref:
+        headers ['referer'] = ref.geturl ()
+
+    if ref and url.geturl ().split ('/')[0] == ref.geturl ().split ('/')[0]:
+        headers ['sec-fetch-site'] = 'same-origin'
+    elif ref and url.hostname.endswith (ref.hostname.split ('.', 1)[-1]):
+        headers ['sec-fetch-site'] = 'same-site'
+    elif not ref:
+        headers ['sec-fetch-site'] = 'none'
+    else:
+        headers ['sec-fetch-site'] = 'cross-site'
+
+    return headers
 
 
 class errno(BaseException):
@@ -117,7 +387,7 @@ class errno(BaseException):
         else:
             return False;
 
-class List:
+class LastList:
     def __init__ (self, eter):
         self.eter = iter (eter)
         self.list = []
@@ -146,34 +416,25 @@ class List:
         idx = self.idx if idx == None else idx
         return self.list [idx] if idx != None and idx >= 0 else None
 
+def getcookies(nav):
+    pass;
+
+def init_hooks(cookies):
+    global getcookies;
+    getcookies = cookies;
 
 def create_nav(key):
-    self.nav = navigation.Navigator (
-            self.prep_argv[cli]["url"],
-            self.prep_argv[cli]["wmap"],
-            self.prep_argv[cli],
-            session = None, #NOTE create a new session
+    return navigation.Navigator (
+            key[P_URL],
+            key[P_WMAP],
+            key,
+            session = requests.Session ()
             );
 
-def discovercrs (self, param = None):
-    param = self.param if not param else param
-    try:
-        idx = self.navtab.index (param [self.UID], attr = 'refcount')
-        nav = self.navtab [idx]
-
-    except ValueError:
-
-        nav = navigation.Navigator (
-                param [self.URL],
-                param [self.WMAP],
-                param, #dangerous maybe
-                session = param [self.SESSION]
-                )
-
-        nav.refcount = param [self.UID]
-
-        self.navtab.append (nav)
-
+def discovercrs (usr, nav):
+    ## incase that isn't done already
+    reconfigure(nav, usr);
+    login(nav);
     to, tpage = nav ('qst_page')[:-1]
     idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
     path = nav.webmap ['qst_page']['path'].split (',')[-1]
@@ -192,13 +453,11 @@ def discovercrs (self, param = None):
                 break
 
         if m:
-            param [self.CRSCODE] = m.group (0)
-            self.print ('Got %s.' % (param [self.CRSCODE],))
-            yield param.copy ()
+            yield m.group (0)
 
         try:
-            rec = iter (navigation.Recipe (path, str (idx), param, tpage,
-                param [self.URL]))
+            rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
+                usr [P_URL]))
 
             to = next (rec)
         except TypeError:
@@ -207,44 +466,8 @@ def discovercrs (self, param = None):
         idx += 1
 
 
-def mksess (self, url, cookie_file = ''):
-    session = None
-
-    if cookie_file:
-        with open (cookie_file) as f:
-            cookie_str = f.read ()
-
-            session = requests.Session ()
-            cookt = cookie_parse.bake_cookies (cookie_str, url)
-
-            session.headers = requests.structures.OrderedDict(
-                    (
-                        ("Host", None),
-                        ("Connection", "keep-alive"),
-                        ("Upgrade-Insecure-Requests", "1"),
-                        ("User-Agent", cookt [0]['User-Agent']),
-                        (
-                            "Accept",
-                            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                            ),
-                        ("Accept-Language", "en-US,en;q=0.9"),
-                        ("Accept-Encoding", "gzip, deflate"),
-                        )
-                    )
-
-            session.cookies = cookt [1]
-
-    else:
-        session = cloudscraper.create_scraper ()
-
-
-    return session
-
-
-
 def preprocess(args):
-    print = print
-
+    global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD
         args = args.__dict__;
 
         matnos = self.List (args ['matno'])
@@ -253,36 +476,29 @@ def preprocess(args):
         tmas = self.List (args ['tma'])
         cookies = self.List (args ['cookies'])
         urls = self.List (args ['url'])
-        wmap = args ['wmap']
-        UID = self.wmap ['kmap']['matno']
-        UID1 = self.CRSCODE
-        UID2 = self.TMA
-        PWD = self.wmap ['kmap']['pwd']
-        param = {}
-        param [self.WMAP] = self.wmap
+        wmap = args ['wmap'];
+        P_USR = self.wmap ['kmap']['matno']
+        P_PWD = self.wmap ['kmap']['pwd']
+        usr = {}
+        usr [P_WMAP] = wmap
         len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
-        navtab = scrm.QScrList ()
 
     for i in range (self.len):
 
-        self.param [self.UID] = self.matnos [i]
-        self.param [self.PWD] = self.pwds [i]
-        self.param [self.TMA] = self.tmas [i]
-        self.param [self.URL] = self.urls [i]
-        self.param [self.COOKIES] = self.cookies [i]
+        usr[P_USR] = matnos [i]
+        usr[P_PWD] = pwds [i]
+        usr[P_TMA] = tmas [i]
+        usr[P_URL] = urls [i]
 
-        if i < len (self.matnos):
-            self.param [self.SESSION] = self.mksess (self.param [self.URL],
-                    self.param [self.COOKIES])
+        y = crscodes [i]
 
-        y = self.crscodes [i]
-
-        if y == 'all':
-            self.print ('No crscode specified')
-            yield from self.discovercrs (self.param)
+        if re.match('all',y, re.I):
+            for crs in discovercrs (nav, usr):
+                usr[P_CRSCODE] = crs;
+                yield usr.copy ();
         else:
-            self.param [self.CRSCODE]  = y
-            yield self.param.copy ()
+            usr[P_CRSCODE] = y;
+            yield usr.copy ();
 
 
 def logout(nav):
@@ -296,14 +512,14 @@ def logout(nav):
 def login(nav):
     # to make sure we are safe to login. it shouldn't be problematic at all
     # times.
-    st = logout(nav);
+    if "profile_page" in nav:
+        st = logout(nav);
 
-    if not st:
-        return st;
+        if not st:
+            return st;
 
     try:
         nav["profile_page"];
-        to, fro = nav('qst_page')[:-1];
         return True;
 
     except BaseException as err:
@@ -314,27 +530,27 @@ def unassign(nav):
 
 ## this for now, is case-insensitive
 def get_key_usr(key):
-    return key[USR].lower();
+    return key[P_USR].lower();
 
 ## others are returned "as is"
 def get_key_pwd(key):
-    return key[PWD];
+    return key[P_PWD];
 
 def get_key_url(key):
-    return key[URL];
+    return key[P_URL];
 
 def get_key_course(key):
-    return key[CRSCODE].lower();
+    return key[P_CRSCODE].lower();
 
 def get_key_tma(key):
-    return key[TMA];
+    return key[P_TMA];
 
 def get_key_webmap(key):
     return key[WEBMAP];
 
 
 def reconfigure(nav, usr):
-    nav.reconfigure(usr[USR],get_key_webmap(usr), usr);
+    nav.reconfigure(usr[P_USR],get_key_webmap(usr), usr);
     return True;
 
 
@@ -360,7 +576,7 @@ class CookieError(BaseException):
         super ().__init__ (*pargs, **kwargs);
 
 
-def session_from_cookies (self, url, cookie):
+def session_from_cookies (url, cookie):
     global ERRNO;
 
     if pathlib.Path(cookie_file).exists():
@@ -402,55 +618,14 @@ def session_from_cookies (self, url, cookie):
 
 
 
-def submit (qst, nav, qmgr, c = False):
-
-    self.nextq [self.dt1 or self.dt0] = qst
-
-    self.totscore = math.trunc (int (qst [self.qmap ['score']] + '0') / 10)
-
-    kwargs.setdefault (
-            'headers',
-            dogs.mkheader (self.nextq ['url'], self.referer1)
-            )
-
-    self.sres = self.nav.session.request (**self.nextq, **kwargs)
-
-    self.sres.raise_for_status ()
-    x = self.nextq.pop (self.dt1 or self.dt0)
-
-    self.referer = self.sres.url
-    try:
-        res = self.fetch ()
-
-        self.nextq [self.dt1 or self.dt0] = res
-
-        s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
-
-        self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
-
-        return int (s)
-
-    except:
-        return None
-
-    x = re.search (r"(?P<mark>[01])\s*" +
-            nav.webmap["fb"]["on_qst_submit"].strip (), qmgr.sres.text,
-            re.I);
-
-    if x:
-        return int (x.group ("mark"));
-    else:
-        return errno("No mark", qst, qmgr);
-
 fetch_t = dict;
-
 F_QUESTION = "qst";
 F_REQUEST = "request";
 F_QKEY = "data";
 F_REFERER = "ref";
 F_PSEUDO_ANS = "pseudos"
 F_QMAP = "qmap";
-
+F_LAST_FETCH = None;
 
 def copycase (repl):
     def _copycase(m):
@@ -517,7 +692,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
         except BaseException as err:
             if rt == 1:
                 return errno(err);
-            elif is_Challenge_Request(res):
+            elif need_cookies(nav, res):
                 nav.session = getcookies();
                 logerr = login(nav);
             else:
@@ -525,6 +700,90 @@ def submit(nav, sreq, retry = 3, **kwargs):
 
             rt -= 1;
 
+
+
+def fetch_all(qmgr):
+    if force or (self.dt1 or self.dt0) not in self.nextq:
+        self.fargs.update (url = url1 or self.fargs['url'])
+
+        kwargs.setdefault (
+                'headers',
+                dogs.mkheader (self.fargs ['url'], self.referer)
+                )
+
+        self.qres = self.nav.session.request(**self.fargs , **kwargs)
+
+        self.referer1 = self.qres.url
+
+        self.qres.raise_for_status ()
+        self.nextq = dogs.fill_form (
+                self.qres.text,
+                self.qres.url,
+                flags = dogs.FILL_FLG_EXTRAS,
+                data = {
+                    self.qmap ['ans']: None
+                    }
+                )
+
+    if not self.dt1:
+        self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
+
+    return self.nextq.pop (self.dt1)
+
+
+
+def fetch_one(nav, usr, retry = 3, **kwargs):
+    global F_LAST_FETCH;
+    
+    if not F_LAST_FETCH:
+        f_type = next(fetch_all(nav, usr));
+        if F_QUESTION in f_type:
+            return f_type[F_QUESTION];
+        else:
+            return f_type;
+
+    freq = F_LAST_FETCH[F_REQUEST];
+
+    kwargs.setdefault (
+            'headers',
+            dogs.mkheader (freq ['url'], F_LAST_FETCH[F_REFERER]),
+            )
+
+    while retry:
+        try:
+            res = nav.session.request(**freq , **kwargs);
+
+            res.raise_for_status ()
+            return dogs.fill_form (
+                    res.text,
+                    res.url,
+                    flags = dogs.FILL_FLG_EXTRAS,
+                    data = {
+                        nav.wmap["qmap"]['ans']: None
+                        }
+                    );
+        except BaseException as err:
+            if retry == 1:
+                return errno(err);
+            elif need_cookies(nav, res):
+                nav.session = getcookies(nav);
+                logerr = login(nav);
+            else:
+                logerr = login(nav);
+
+            retry -= 1;
+
+
+def brute_safe(usr, nav, qst):
+    qst1 = fetch_one(usr, nav);
+    if qst1:
+        return re.match(
+                str(qst[nav.wmap["qmap"]["qn"]]),
+
+                str(qst1[nav.wmap["qmap"]["qn"]])
+                );
+    
+    return False;
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         
@@ -540,7 +799,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
                 ),
             )
 
-    qst1 = mask (qst, usr[USR], kwargs.pop("mask", "Nou123456789"));
+    qst1 = mask (qst, usr[P_USR], kwargs.pop("mask", "Nou123456789"));
     
     x = 0;
 
@@ -556,8 +815,12 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
             x = submit(nav, preq);
 
             if x == 0:
-                return errno;
+                return errno();
+            
             return True;
+
+        elif not brute_safe(usr, nav, qst):
+            return errno();
         
 
 
@@ -599,34 +862,6 @@ def _transform_req (self, req, matno, tma , crscode):
                     self._copycase(tma), req[self.dt0][k], flags = re.IGNORECASE)
 
     return req
-
-def fetch(qmgr):
-    if force or (self.dt1 or self.dt0) not in self.nextq:
-        self.fargs.update (url = url1 or self.fargs['url'])
-
-        kwargs.setdefault (
-                'headers',
-                dogs.mkheader (self.fargs ['url'], self.referer)
-                )
-
-        self.qres = self.nav.session.request(**self.fargs , **kwargs)
-
-        self.referer1 = self.qres.url
-
-        self.qres.raise_for_status ()
-        self.nextq = dogs.fill_form (
-                self.qres.text,
-                self.qres.url,
-                flags = dogs.FILL_FLG_EXTRAS,
-                data = {
-                    self.qmap ['ans']: None
-                    }
-                )
-
-    if not self.dt1:
-        self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
-
-    return self.nextq.pop (self.dt1)
 
 
 

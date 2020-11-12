@@ -325,7 +325,8 @@ class Dog:
                 psr = parser;
                 args = psr.parse_args(cmdline);
             elif psr and preproc:
-                arg_gen = iter( preproc(args));
+                args = psr.parse_args(cmdline);
+                arg_gen = preproc(args);
 
                 self.arg_gens.append(arg_gen);
             else:
@@ -533,7 +534,6 @@ class Dog:
                         self.nop, arg = arg);
             mbr.status = st;
             self.status = st;
-            nav = self.get_nav(arg);
             
             if not nav:
                 st = nav;
@@ -550,61 +550,14 @@ class Dog:
             self._alloc(mbr);
 
     
-    def submit_main(self, arg, c = None):
-        if isinstance(c, (bytes, bytearray)):
-            c = c.decode ();
+    def submit_main(self, arg, nav):
 
-        if "qmgr" not in arg:
-            matno =;
-            crs =;
-            tma =;
-            arg["qmgr"] = qstm.QstMgr (
-                    nav = self.nav,
-                    matno = arg[],
-                    crscode = qscr [self.keys.CRSCODE],
-                    tma = qscr [self.keys.TMA],
-                    stop = 10,
-                    qmap = qscr [self.keys.WMAP]["qmap"],
-                    )
+        nav = self.get_nav(arg);
+        if not nav:
+            pass;###handle
 
-        
-        while True: #Answer Discovery loop
-            qst1 = mask (self.qst, self.qmgr, self.mask, self.mvalue);
-
-            for a in dogs.AnyheadList (self.qmgr.pseudos, qst1 [self.qmgr.qmap ["ans"]]):
-
-                qst1 [self.qmgr.qmap ["ans"]] = a;
-                e = submit(qst1, self.nav, self.qmgr);
-
-                if e == 1:
-                    self.qst [qmgr.qmap ["ans"]] = a;
-
-                    e = submit (self.qst, self.nav, self.qmgr);
-
-
-                    if e == 0:
-                        ERRNO = AnswerInconsistent(qst1, self.qst);
-                        yield False;
-                    elif e == 1:
-                        yield self.qst.copy();
-                    elif e == False:
-                        yield False;
-
-                    break;
-
-                elif e == False: #for submit()
-                    yield False;
-
-            self.qst = fetch (self.qmgr);
-            
-            if self.qst == False:
-                yield False;
-
-            x = answer(self.qst, self.amgr);
-            if x != False:
-                self.qst = x;
-
-            count -= 1;
+        for ftype in libdogs.fetch_all(arg, nav):
+            st = libdogs.brute_submit(arg, nav, ftype);
 
     def nop(self):
         """like nop in x86 assembly"""
