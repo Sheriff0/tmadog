@@ -28,6 +28,81 @@ WMAP = 'wmap'
 COOKIES = 'cookies'
 SESSION = 'session'
 
+## custom-copied from cfscrape
+
+
+def is_Captcha_Challenge(resp):
+    try:
+        return (
+            resp.headers.get('Server', '').startswith('cloudflare')
+            and resp.status_code == 403
+            and re.search(
+                r'action="/\S+__cf_chl_captcha_tk__=\S+',
+                resp.text,
+                re.M | re.DOTALL
+            )
+        )
+    except AttributeError:
+        pass
+
+    return False
+
+
+def is_New_IUAM_Challenge(resp):
+    try:
+        return (
+            resp.headers.get('Server', '').startswith('cloudflare')
+            and resp.status_code in [429, 503]
+            and re.search(
+                r'cpo.src\s*=\s*"/cdn-cgi/challenge-platform/\S+orchestrate/jsch/v1"',
+                resp.text,
+                re.M | re.S
+            )
+            and re.search(r'window._cf_chl_enter\(', resp.text, re.M | re.S)
+        )
+    except AttributeError:
+        pass
+
+    return False
+
+
+def is_Firewall_Blocked(resp):
+    try:
+        return (
+            resp.headers.get('Server', '').startswith('cloudflare')
+            and resp.status_code == 403
+            and re.search(
+                r'<span class="cf-error-code">1020</span>',
+                resp.text,
+                re.M | re.DOTALL
+            )
+        )
+    except AttributeError:
+        pass
+
+    return False
+
+def is_New_Captcha_Challenge(resp):
+    try:
+        return (
+            CloudScraper.is_Captcha_Challenge(resp)
+            and re.search(
+                r'cpo.src\s*=\s*"/cdn-cgi/challenge-platform/\S+orchestrate/captcha/v1"',
+                resp.text,
+                re.M | re.S
+            )
+            and re.search(r'window._cf_chl_enter\(', resp.text, re.M | re.S)
+        )
+    except AttributeError:
+        pass
+
+    return False
+
+
+def is_Challenge_Request(resp):
+    return is_Firewall_Blocked(resp) or is_New_Captcha_Challenge(resp) or is_New_IUAM_Challenge(resp) or is_Captcha_Challenge(resp) or is_IUAM_Challenge(resp);
+
+
 
 class errno(BaseException):
     def __init__(self, *pargs, **kwargs):
@@ -41,36 +116,6 @@ class errno(BaseException):
             return True;
         else:
             return False;
-
-    def echo (self, msg):
-        if not hasattr (self, "echopad"):
-            self.echopad = curses.newpad (50, 1000)
-            self.echopad.scrollok (True)
-
-        self.echopad.clear ()
-        self.echopad.addstr (0, 0, msg)
-        self.echopad.noutrefresh (0, 0, self.LINES - 1, 0, self.LINES - 1, self.COLS - 1)
-        self.doupdate ()
-
-
-    def change_keyc99 (self):
-        crscode = self.getstr ("Course Code: ")
-
-        tma = self.getstr ("Tma No(1-3): ")
-
-        if crscode and re.fullmatch (r"\w+", crscode):
-            self.scr_mgr [self.keys.CRSCODE] = crscode
-
-        if tma and re.fullmatch (r"\w+", tma):
-            self.scr_mgr [self.keys.TMA] = tma
-
-        self.boot (self.scr_mgr)
-        self.scr_mgr ["qst"] = None
-
-        self.update_qscr ()
-
-    def login_keyL76 (self):
-        pass
 
 class List:
     def __init__ (self, eter):
@@ -269,7 +314,7 @@ def unassign(nav):
 
 ## this for now, is case-insensitive
 def get_key_usr(key):
-    return key[USERNAME].lower();
+    return key[USR].lower();
 
 ## others are returned "as is"
 def get_key_pwd(key):
@@ -289,7 +334,7 @@ def get_key_webmap(key):
 
 
 def reconfigure(nav, usr):
-    nav.reconfigure(usr[USERNAME],get_key_webmap(usr), usr);
+    nav.reconfigure(usr[USR],get_key_webmap(usr), usr);
     return True;
 
 
@@ -403,10 +448,89 @@ F_QUESTION = "qst";
 F_REQUEST = "request";
 F_QKEY = "data";
 F_REFERER = "ref";
+F_PSEUDO_ANS = "pseudos"
+F_QMAP = "qmap";
 
-def brute_submit(nav, f_type, retry = 3, **kwargs):
 
-    qst = f_type[F_QKEY].copy();
+def copycase (repl):
+    def _copycase(m):
+        return repl.upper () if m['cs'].isupper () else repl.lower ()
+
+    return _copycase
+
+
+def mask (qst, mpat, mvalue):
+    dic1 = requests.structures.OrderedDict ()
+    for k, v in qst.items ():
+        if isinstance (v, str):
+            v = re.sub (r"(?P<cs>" + mpat + ")",
+                    copycase (mvalue), v, flags =
+                    re.I);
+        dic1 [k] = v;
+
+    return dic1;
+
+
+
+def answer_lax(qst, amgr):
+    x = copy.deepcopy (qst);
+
+    x = amgr.answer (x);
+
+    if x and x != ansm.ANS_NOANSWER and qst [amgr.qmap["qid"]] == x[amgr.qmap["qid"]]:
+        return x;
+    else:
+        return qst;
+
+def need_cookies(nav, res):
+    return re.search(nav.wmap["event"]["on_cookie"], res.text, flags = re.I |
+            re.S | re.M) or is_Challenge_Request(res);
+
+def complete(nav, res):
+    return re.search(nav.wmap["event"]["on_complete"], res.text, flags = re.I |
+            re.S | re.M);
+
+
+def is_correct_ans(nav, res):
+    x = re.search (r"(?P<mark>[01])\s*" + nav.webmap
+            ["fb"]["on_qst_submit"].strip (), res.text, re.I);
+
+    if x:
+        x = int (x.group ("mark"));
+        return x;
+    else:
+        return 0;
+
+def submit(nav, sreq, retry = 3, **kwargs):
+    x = 0;
+    rt = retry + 1;
+    while rt:
+        try:
+            res = nav.session.request (**sreq, **kwargs);
+            res.raise_for_status ();
+            
+            x = is_correct_ans(nav, res);
+            
+            return x;
+
+
+        except BaseException as err:
+            if rt == 1:
+                return errno(err);
+            elif is_Challenge_Request(res):
+                nav.session = getcookies();
+                logerr = login(nav);
+            else:
+                logerr = login(nav);
+
+            rt -= 1;
+
+
+def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
+        
+    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY].copy()i, amgr);
+    
+    preq = f_type[F_REQUEST];
 
     kwargs.setdefault (
             'headers',
@@ -416,37 +540,29 @@ def brute_submit(nav, f_type, retry = 3, **kwargs):
                 ),
             )
 
-    sres = nav.session.request (**self.nextq, **kwargs)
+    qst1 = mask (qst, usr[USR], kwargs.pop("mask", "Nou123456789"));
+    
+    x = 0;
 
-    self.sres.raise_for_status ()
-    x = self.nextq.pop (self.dt1 or self.dt0)
+    for a in dogs.AnyheadList (f_type[F_PSEUDO_ANS], qst1 [self.qmgr.qmap ["ans"]]):
 
-    self.referer = self.sres.url
-    try:
-        res = self.fetch ()
+        qst1 [nav.wmap["qmap"]["ans"]] = a;
+        preq[f_type[F_QSUBMIT_T]] = qst1;
+        
+        x = submit(nav, preq);
+        if x == 1:
+            qst [nav.wmap["qmap"]["ans"]] = a;
+            preq[f_type[F_QSUBMIT_T]] = qst;
+            x = submit(nav, preq);
 
-        self.nextq [self.dt1 or self.dt0] = res
-
-        s = (math.trunc (int (res[self.qmap ['score']] + '0') / 10) - self.totscore) == 1
-
-        self.totscore = math.trunc (int (res[self.qmap ['score']] + '0') / 10)
-
-        return int (s)
-
-    except:
-        return None
-
-    x = re.search (r"(?P<mark>[01])\s*" +
-            nav.webmap["fb"]["on_qst_submit"].strip (), qmgr.sres.text,
-            re.I);
-
-    if x:
-        return int (x.group ("mark"));
-    else:
-        return errno("No mark", qst, qmgr);
+            if x == 0:
+                return errno;
+            return True;
+        
 
 
-def answer(qst, amgr):
+
+def answer_strict(qst, amgr):
     try:
         x = copy.deepcopy (qst);
 
@@ -536,17 +652,6 @@ def ch_crscode(qst, qmgr, crscode = ""):
                     self.scr_mgr ["qmgr"]._copycase (crscode), v, flags =
                     re.I)
         out [k] = v
-
-def mask (qst, qmgr, mpat, mvalue):
-    dic1 = requests.structures.OrderedDict ()
-    for k, v in qst.items ():
-        if isinstance (v, str):
-            v = re.mvalue (r"(?P<cs>" + mpat + ")",
-                    qmgr._copycase (mvalue), v, flags =
-                    re.I);
-        dic1 [k] = v;
-
-    return dic1;
 
 
 class Runner:
