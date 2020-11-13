@@ -1,18 +1,8 @@
-import io
-
-class StatusBuffer(io.StringIO):
-    def __init__(self, cline = "#", *pargs, **kwargs):
-        """cline is an internal line delimiter - this is useful to ease the
-        one, status, one, line restrictionand support
-        command whose verbose output for a single status span multiple lines"""
-        self.cline = cline;
-
-
-
 S_NULL = 0;
 S_ERROR = 0b0001;
 S_INT = 0b0010;
 S_OK = 0b0100;
+S_FATAL = 0b0101;
 S_MASK = 0b1111;
 
 class UnknownStatus(BaseException):

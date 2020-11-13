@@ -261,8 +261,8 @@ class Dog:
         return libdogs.unassign(nav); 
 
     def get_nav(self, cli):
-        if not self.prep_argv[0].one_nav and "nav" in cli:
-            return cli["nav"];
+        if not self.prep_argv[0].one_nav:
+            return libdogs.assign(cli);
 
         elif self.prep_argv[0].one_nav:
             if self.nav:
@@ -272,9 +272,6 @@ class Dog:
                 ## when no navigator is passed, libdogs.assign creates one and assign to the given cli.
                 self.nav = libdogs.assign(cli);
 
-        else:
-            self.nav = libdogs.assign(cli);
-            cli["nav"] = self.nav;
             
         if not self.nav:
             status = status.Status(status.S_ERROR, "can't create navigator",
@@ -532,29 +529,23 @@ class Dog:
             if not mbr:    
                 mbr = self._InternalTask(magic = MBR, group = ldr, cmd =
                         self.nop, arg = arg);
-            mbr.status = st;
-            self.status = st;
             
-            if not nav:
-                st = nav;
-                mbr.state = task.TS_TERM;
-            else:
                 # start submiting
-                st = self.submit_main(arg);
-                if not st:
-                    mbr.cmd = self.submit_pre_exec;
-                    mbr.state = task.TS_STOPED;
+            st = self.submit_main(arg);
+            if not st:
+                mbr.cmd = self.submit_pre_exec;
+                mbr.state = task.TS_STOPED;
 
             mbr.status = st;
             mbr["_task_"] = mbr;
             self._alloc(mbr);
 
     
-    def submit_main(self, arg, nav):
+    def submit_main(self, arg):
 
         nav = self.get_nav(arg);
         if not nav:
-            pass;###handle
+            return status.Status();###handle
 
         for ftype in libdogs.fetch_all(arg, nav):
             st = libdogs.brute_submit(arg, nav, ftype);

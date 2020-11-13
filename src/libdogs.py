@@ -12,11 +12,12 @@ import pdb
 import json
 import cloudscraper
 import cookie_parse
-import dogs
 import os
 import sys
 import builtins 
 import pathlib
+
+import status
 
 P_PWD = "pwd",
 P_USR = "matno";
@@ -374,18 +375,6 @@ def mkheader (url, ref = None):
     return headers
 
 
-class errno(BaseException):
-    def __init__(self, *pargs, **kwargs):
-        super ().__init__ (*pargs, **kwargs);
-
-    def __bool__(self):
-        return False;
-
-    def __eq__(self, value):
-        if value == False or value == None:
-            return True;
-        else:
-            return False;
 
 class LastList:
     def __init__ (self, eter):
@@ -416,12 +405,20 @@ class LastList:
         idx = self.idx if idx == None else idx
         return self.list [idx] if idx != None and idx >= 0 else None
 
-def getcookies(nav):
-    pass;
+def cookie_hook(nav):
+    return nav;
 
-def init_hooks(cookies):
-    global getcookies;
-    getcookies = cookies;
+def nav_hook(nav):
+    return nav;
+
+def init_hooks(**kwargs):
+    global cookie_hook;
+
+    if "cookie_hook" in kwargs:
+        cookie_hook = kwargs.pop("cookie_hook");
+
+    if "nav_hook" in kwargs:
+        nav_hook = kwargs.pop("nav_hook"); 
 
 def create_nav(key):
     return navigation.Navigator (
@@ -468,20 +465,22 @@ def discovercrs (usr, nav):
 
 def preprocess(args):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD
-        args = args.__dict__;
 
-        matnos = self.List (args ['matno'])
-        pwds = self.List (args ['pwd'])
-        crscodes = self.List (args ['crscode'])
-        tmas = self.List (args ['tma'])
-        cookies = self.List (args ['cookies'])
-        urls = self.List (args ['url'])
-        wmap = args ['wmap'];
-        P_USR = self.wmap ['kmap']['matno']
-        P_PWD = self.wmap ['kmap']['pwd']
-        usr = {}
-        usr [P_WMAP] = wmap
-        len = max (len (self.crscodes), len (self.tmas), len (self.matnos))
+        args = args.__dict__;
+        matnos = LastList (args ['matno'])
+        pwds = LastList (args ['pwd'])
+        crscodes = LastList (args ['crscode'])
+        tmas = LastList (args ['tma'])
+        cookies = LastList (args ['cookies'])
+        urls = LastList (args ['url'])
+        wmap = configparser.ConfigParser (interpolation =
+            configparser.ExtendedInterpolation ())
+        wmap.read (args["wmap"]);
+        P_USR = wmap ['kmap']['matno']
+        P_PWD = wmap ['kmap']['pwd']
+        argc = max (len (self.crscodes), len (self.tmas), len (self.matnos))
+        usr = {};
+        usr [P_WMAP] = wmap;
 
     for i in range (self.len):
 
@@ -493,7 +492,7 @@ def preprocess(args):
         y = crscodes [i]
 
         if re.match('all',y, re.I):
-            for crs in discovercrs (nav, usr):
+            for crs in discovercrs (nav_hook(usr), usr):
                 usr[P_CRSCODE] = crs;
                 yield usr.copy ();
         else:
@@ -504,15 +503,16 @@ def preprocess(args):
 def logout(nav):
     try:
         nav["logout_page"];
-        return True;
+        return status.Status(status.S_OK);
+
     except BaseException as err:
-        return errno("logout err", err);
+        return status.Status(status.S_ERROR, "logout err", err);
 
 
 def login(nav):
     # to make sure we are safe to login. it shouldn't be problematic at all
     # times.
-    if "profile_page" in nav:
+    if "profile_page" in nav or "tma_page" in nav:
         st = logout(nav);
 
         if not st:
@@ -520,13 +520,10 @@ def login(nav):
 
     try:
         nav["profile_page"];
-        return True;
+        return status.Status(status.S_OK);
 
     except BaseException as err:
-        return errno("login err", err);
-
-def unassign(nav):
-    return logout(nav);
+        return status.Status(status.S_ERROR, "login err", err);
 
 ## this for now, is case-insensitive
 def get_key_usr(key):
@@ -550,8 +547,12 @@ def get_key_webmap(key):
 
 
 def reconfigure(nav, usr):
-    nav.reconfigure(usr[P_USR],get_key_webmap(usr), usr);
-    return True;
+    nav.reconfigure(usr[P_URL], usr[P_WMAP], usr);
+    return nav;
+
+
+def unassign(nav):
+    return logout(nav);
 
 
 def assign(usr, nav = None):
@@ -567,17 +568,8 @@ def assign(usr, nav = None):
     login(nav);
     
 
-class Checker:
-    def __init__(self):
-        pass
 
-class CookieError(BaseException):
-    def __init__(self, *pargs, *kwargs):
-        super ().__init__ (*pargs, **kwargs);
-
-
-def session_from_cookies (url, cookie):
-    global ERRNO;
+def session_from_cookies (url, cookie_file):
 
     if pathlib.Path(cookie_file).exists():
         with open (cookie_file) as f:
@@ -590,10 +582,11 @@ def session_from_cookies (url, cookie):
         cookt = cookie_parse.bake_cookies (cookie_str, url);
 
     except BaseException as err:
-        return errno("can't parse cookies", err);
+        return status.Status(status.S_ERROR, "cookie error", err);
 
     if not cookt:
         return errno("No cookies", cookt);
+        return status.Status(status.S_ERROR, "no cookies", cookt);
 
     session = requests.Session ()
     session.headers = requests.structures.OrderedDict(
@@ -620,7 +613,8 @@ def session_from_cookies (url, cookie):
 
 fetch_t = dict;
 F_QUESTION = "qst";
-F_REQUEST = "request";
+F_SREQUEST = "request";
+F_FREQUEST = "request";
 F_QKEY = "data";
 F_REFERER = "ref";
 F_PSEUDO_ANS = "pseudos"
@@ -661,6 +655,7 @@ def need_cookies(nav, res):
     return re.search(nav.wmap["event"]["on_cookie"], res.text, flags = re.I |
             re.S | re.M) or is_Challenge_Request(res);
 
+
 def complete(nav, res):
     return re.search(nav.wmap["event"]["on_complete"], res.text, flags = re.I |
             re.S | re.M);
@@ -674,7 +669,7 @@ def is_correct_ans(nav, res):
         x = int (x.group ("mark"));
         return x;
     else:
-        return 0;
+        return status.Status(status.S_ERROR, "no marks found", res);
 
 def submit(nav, sreq, retry = 3, **kwargs):
     x = 0;
@@ -684,51 +679,113 @@ def submit(nav, sreq, retry = 3, **kwargs):
             res = nav.session.request (**sreq, **kwargs);
             res.raise_for_status ();
             
-            x = is_correct_ans(nav, res);
+            st = is_correct_ans(nav, res);
+            if isinstance(st, int):
+                return st;
             
-            return x;
 
 
         except BaseException as err:
-            if rt == 1:
-                return errno(err);
-            elif need_cookies(nav, res):
-                nav.session = getcookies();
-                logerr = login(nav);
-            else:
-                logerr = login(nav);
+            if need_cookies(nav, res):
+                cookie_hook(nav);
+
+            st = login(nav);
+            if not st:
+                return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
 
             rt -= 1;
 
+    return status.Status(status.S_ERROR, "submit retries expended", (sreq, res));
 
 
-def fetch_all(qmgr):
-    if force or (self.dt1 or self.dt0) not in self.nextq:
-        self.fargs.update (url = url1 or self.fargs['url'])
+def transform_req (req, usr):
+    global F_QKEY
+    req = copy.deepcopy(req);
+    tma = str (usr[P_TMA]);
+    tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma;
+    matno = usr[P_USR];
+    crscode = usr[P_CRSCODE];
 
-        kwargs.setdefault (
-                'headers',
-                dogs.mkheader (self.fargs ['url'], self.referer)
-                )
+    F_QKEY = 'data' if req['method'] in ('POST', 'post') else 'params'
+    req['url'] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), req['url'], flags = re.IGNORECASE)
 
-        self.qres = self.nav.session.request(**self.fargs , **kwargs)
+    req['url'] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
+            copycase (crscode), req['url'], flags = re.IGNORECASE)
 
-        self.referer1 = self.qres.url
+    req['url'] = re.sub (r'(?P<cs>tma)[1-3]', copycase(tma), req['url'], flags = re.IGNORECASE)
 
-        self.qres.raise_for_status ()
-        self.nextq = dogs.fill_form (
-                self.qres.text,
-                self.qres.url,
-                flags = dogs.FILL_FLG_EXTRAS,
-                data = {
-                    self.qmap ['ans']: None
-                    }
-                )
 
-    if not self.dt1:
-        self.dt1 = 'data' if self.nextq ['method'] in ('POST', 'post') else 'params'
+    for k in req.get(F_QKEY, {}):
+        req[F_QKEY][k] = re.sub (r'(?P<cs>nou)\d{9}', copycase (matno), req[F_QKEY][k], flags = re.IGNORECASE)
 
-    return self.nextq.pop (self.dt1)
+        req[F_QKEY][k] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
+                    copycase (crscode), req[F_QKEY][k], flags = re.IGNORECASE)
+
+        req[F_QKEY][k] = re.sub (r'(?P<cs>tma)[1-3]',
+                    copycase(tma), req[F_QKEY][k], flags = re.IGNORECASE)
+
+    return req;
+
+
+
+def fetch_all(nav, usr, retry = 3, **kwargs):
+    global F_LAST_FETCH;
+
+    to, fro = nav ('qst_page')[:-1];
+
+    freq = transform_req(to, usr);
+    
+    referer = fro.url;
+
+    pseudos = nav.wmap["qmap"]['pseudo_ans'].split (',');
+    
+    result = ftype();
+
+    result[F_PSEUDO_ANS] = pseudo_ans.copy();
+    result[F_QMAP] = nav.wmap["qmap"];
+
+    while True:
+            kwargs.setdefault (
+                    'headers',
+                    mkheader (freq['url'], referer)
+                    )
+            rt = retry + 1;
+            while rt:
+                try:
+                    qres = nav.session.request(**self.freq , **kwargs)
+                    
+                    qres.raise_for_status ();
+
+                    result = ftype();
+
+                    result[F_SREQUEST] = fill_form (
+                            qres.text,
+                            qres.url,
+                            flags = FILL_FLG_EXTRAS,
+                            data = {
+                                nav.wmap["qmap"]['ans']: None
+                                }
+                            )
+                    result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
+
+                    referer = qres.url;
+                    result[F_REFERER] = referer;
+                    F_LAST_FETCH = ftype();
+                    F_LAST_FETCH[F_FREQUEST] = copy.deepcopy(qres);
+                    F_LAST_FETCH[F_REFERER] = referer;
+
+                    yield copy.deepcopy(result);
+                    break;
+
+                except BaseException as err:
+                    if need_cookies(nav, res):
+                        cookie_hook(nav);
+
+                    st = login(nav);
+                    if not st:
+                        return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
+
+                    rt -= 1;
 
 
 
@@ -741,8 +798,8 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
             return f_type[F_QUESTION];
         else:
             return f_type;
-
-    freq = F_LAST_FETCH[F_REQUEST];
+    else: 
+        freq = F_LAST_FETCH[F_FREQUEST];
 
     kwargs.setdefault (
             'headers',
@@ -763,15 +820,15 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
                         }
                     );
         except BaseException as err:
-            if retry == 1:
-                return errno(err);
-            elif need_cookies(nav, res):
-                nav.session = getcookies(nav);
-                logerr = login(nav);
-            else:
-                logerr = login(nav);
+            if need_cookies(nav, res):
+                cookie_hook(nav);
+
+            st = login(nav);
+            if not st:
+                return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
 
             retry -= 1;
+
 
 
 def brute_safe(usr, nav, qst):
@@ -789,12 +846,12 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         
     qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY].copy()i, amgr);
     
-    preq = f_type[F_REQUEST];
+    preq = f_type[F_SREQUEST];
 
     kwargs.setdefault (
             'headers',
             dogs.mkheader (
-                f_type[F_REQUEST]['url'], 
+                f_type[F_SREQUEST]['url'], 
                 f_type.get(F_REFERER, "")
                 ),
             )
@@ -806,23 +863,22 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
     for a in dogs.AnyheadList (f_type[F_PSEUDO_ANS], qst1 [self.qmgr.qmap ["ans"]]):
 
         qst1 [nav.wmap["qmap"]["ans"]] = a;
-        preq[f_type[F_QSUBMIT_T]] = qst1;
+        preq[F_QKEY] = qst1;
         
         x = submit(nav, preq);
         if x == 1:
             qst [nav.wmap["qmap"]["ans"]] = a;
-            preq[f_type[F_QSUBMIT_T]] = qst;
+            preq[f_type[F_QKEY]] = qst;
             x = submit(nav, preq);
 
             if x == 0:
-                return errno();
+                return status.Status(status.S_FATAL, "detected answer is problematic", (preq, qst));
             
             return True;
 
         elif not brute_safe(usr, nav, qst):
-            return errno();
+            return status.Status(status.S_FATAL, "unable to brute for the answers from the server", err);
         
-
 
 
 def answer_strict(qst, amgr):
@@ -839,114 +895,32 @@ def answer_strict(qst, amgr):
     except BaseException as err:
         return errno(qst, amgr);;
 
-def _transform_req (self, req, matno, tma , crscode):
 
-    tma = str (tma)
-    tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma
-    self.dt0 = 'data' if req['method'] in ('POST', 'post') else 'params'
-    req['url'] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req['url'], flags = re.IGNORECASE)
+def addqn(qst, usr, addend = 1):
+    qst = qst.copy ();
+    n = math.trunc (int (qst [usr[P_WMAP]["qmap"]["qn"]] + "0") / 10) + addend;
 
-    req['url'] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
-            self._copycase (crscode), req['url'], flags = re.IGNORECASE)
+    qst [usr[P_WMAP]["qmap"]["qn"]] = str (n);
 
-    req['url'] = re.sub (r'(?P<cs>tma)[1-3]', self._copycase(tma), req['url'], flags = re.IGNORECASE)
+    return qst;
 
 
-    for k in req.get(self.dt0, {}):
-        req[self.dt0][k] = re.sub (r'(?P<cs>nou)\d{9}', self._copycase (matno), req[self.dt0][k], flags = re.IGNORECASE)
+def addscrore(qst, usr, addend = 1):
+    qst = qst.copy ();
+    n = math.trunc (int (qst [usr[P_WMAP]["qmap"]["score"]] + "0") / 10) + addend;
 
-        req[self.dt0][k] = re.sub (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)',
-                    self._copycase (crscode), req[self.dt0][k], flags = re.IGNORECASE)
+    qst [usr[P_WMAP]["qmap"]["score"]] = str (n)
 
-        req[self.dt0][k] = re.sub (r'(?P<cs>tma)[1-3]',
-                    self._copycase(tma), req[self.dt0][k], flags = re.IGNORECASE)
-
-    return req
+    return qst;
 
 
-
-def addqn(qst, qmgr, addend = 1):
-        qst = qst.copy ();
-        n = math.trunc (int (qst [qmgr.qmap["qn"]] + "0") / 10) + addend;
-
-        qst [qmgr.qmap ["qn"]] = str (n);
-
-
-def addscrore(qst, qmgr, addend = 1):
-            qst = qst.copy ();
-            n = math.trunc (int (qst [qmgr.qmap ["score"]] + "0") / 10) + addend;
-
-            qst [qmgr.qmap ["score"]] = str (n)
-
-
-def ch_crscode(qst, qmgr, crscode = ""):
+def ch_crscode(qst, usr, crscode = ""):
     out = {};
     for k,v in qst.copy ().items ():
         if isinstance (v, str):
-            v = re.sub (r"(?P<cs>" + self.scr_mgr ["crscode"] + ")",
-                    self.scr_mgr ["qmgr"]._copycase (crscode), v, flags =
+            v = re.sub (r"(?P<cs>" + usr [P_CRSCODE] + ")",
+                    copycase (crscode), v, flags =
                     re.I)
         out [k] = v
 
-
-class Runner:
-    def __init__(self, qmgr, amgr, nav, mask, qst = False, mvalue = "Nou123456789"):
-        self.qst = qst;
-        self.qmgr = qmgr;
-        self.amgr = amgr;
-        self.nav = nav;
-        self.mvalue = mvalue;
-        self.mask = mask;
-
-    def start(c = None, count = 1):
-        yield from self.__iter__ (c, count);
-
-    def __iter__ (self, c = None, count = 1):
-
-        if isinstance(c, (bytes, bytearray)):
-            c = c.decode ();
-        
-        if not self.qst:
-            self.qst = fetch (self.qmgr);
-            if self.qst == False:
-                yield False;
-
-        self.qst [self.qmgr.qmap ["ans"]] = c;
-
-        while count: #Answer Discovery loop
-            qst1 = mask (self.qst, self.qmgr, self.mask, self.mvalue);
-
-            for a in dogs.AnyheadList (self.qmgr.pseudos, qst1 [self.qmgr.qmap ["ans"]]):
-
-                qst1 [self.qmgr.qmap ["ans"]] = a;
-                e = submit(qst1, self.nav, self.qmgr);
-
-                if e == 1:
-                    self.qst [qmgr.qmap ["ans"]] = a;
-
-                    e = submit (self.qst, self.nav, self.qmgr);
-
-
-                    if e == 0:
-                        ERRNO = AnswerInconsistent(qst1, self.qst);
-                        yield False;
-                    elif e == 1:
-                        yield self.qst.copy();
-                    elif e == False:
-                        yield False;
-
-                    break;
-
-                elif e == False: #for submit()
-                    yield False;
-
-            self.qst = fetch (self.qmgr);
-            
-            if self.qst == False:
-                yield False;
-
-            x = answer(self.qst, self.amgr);
-            if x != False:
-                self.qst = x;
-
-            count -= 1;
+    return out;
