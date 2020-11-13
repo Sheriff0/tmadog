@@ -28,6 +28,20 @@ P_WMAP = 'wmap'
 P_COOKIES = 'cookies'
 P_SESSION = 'session'
 
+
+class AppendList(argparse.Action):
+    def __init__(self,*posargs,**kwargs):
+        super().__init__(*posargs, **kwargs);
+    def __call__(self, parser, namespace, values, opt_string):
+        if not hasattr(namespace, self.dest) or getattr(namespace,
+                self.dest) == None:
+            setattr(namespace, self.dest, []);
+        if isinstance(values, list):
+            getattr(namespace, self.dest).extend(values);
+        else:
+            getattr(namespace, self.dest).append(values)
+
+
 def is_Challenge_Request(resp):
     return cloudscraper.is_Firewall_Blocked(resp) or
 cloudscraper.is_New_Captcha_Challenge(resp) or
@@ -445,7 +459,7 @@ def is_correct_ans(nav, res):
 def logout(nav):
     try:
         nav["logout_page"];
-        return status.Status(status.S_OK);
+        return nav;
 
     except BaseException as err:
         return status.Status(status.S_ERROR, "logout err", err);
@@ -462,7 +476,7 @@ def login(nav):
 
     try:
         nav["profile_page"];
-        return status.Status(status.S_OK);
+        return nav;
 
     except BaseException as err:
         return status.Status(status.S_ERROR, "login err", err);
@@ -479,7 +493,7 @@ def rlogout(nav, retry = 3):
             nav.cache["logout_page"] = lres;
             # passed here is always sucess - no clean way to confirm a sucessful
             # logout as no page depends on its page
-            return status.Status(status.S_OK);
+            return nav; 
 
         except BaseException as err:
             if need_cookies(nav, lres):
@@ -509,7 +523,7 @@ def rlogin(nav, retry = 3):
             ## will raise if not logged-in
             nav("tma_page")[:-1];
 
-            return status.Status(status.S_OK);
+            return nav;
 
         except BaseException as err:
             if need_cookies(nav, lres):
@@ -651,14 +665,13 @@ def unassign(nav):
 def assign(usr, nav = None):
     if nav == None:
         nav = create_nav(usr);
+        return (rlogin(nav));
     
     else:
         if self.get_key_usr(self.nav.keys) != get_key_usr(cli):
-            reconfigure(nav, usr);
-    # at all times this should'nt be problematic (whether a user is logged in or
-    # not)
-    unassign(nav);
-    rlogin(nav);
+            # maybe we don't need this
+            #unassign(nav);
+            return rlogin(reconfigure(nav, usr));
     
 
 

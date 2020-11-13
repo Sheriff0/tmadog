@@ -1,0 +1,63 @@
+[retros]
+rumbu = tqatri
+xstore = trextri
+
+[event]
+on_qst_submit = mark\W+for\W+question
+on_complete = You\W+have\W+already\W+complete
+on_cookie = Checking\W+your\W+browser
+
+[kmap]
+usr = [Matric Number]
+pwd = [Password]
+
+
+[home_page]
+path = /:
+requires =
+volatile =
+indices = 0
+
+[login_page]
+keys = ${kmap:matno}/${kmap:pwd}
+indices = 0
+path = Login
+volatile =
+requires = home_page
+
+[logout_page]
+path = Logout
+indices = 0
+requires = profile_page
+volatile =
+
+[qst_page]
+path = TMA1
+indices = 0
+requires = tma_page
+volatile = logout_page
+
+[tma_page]
+path = 2020/2 TMA1
+indices = 0
+volatile = logout_page
+requires = profile_page
+
+[profile_page]
+path = ${login_page:keys}
+indices = 0
+requires = login_page
+volatile = logout_page
+
+[qmap]
+qdescr = qdescr
+ans = ans
+score = totscore
+qn = qj
+crscode = crscode
+qid = qid
+opta = opta
+optb = optb
+optc = optc
+optd = optd
+pseudo_ans = A,B,C,D

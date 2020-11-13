@@ -56,7 +56,7 @@ def gettvalue(task):
 class Task:
     tid_tab = {};
 
-    @static
+    @staticmethod
     def set_tdir(Task, tdir):
         if not tdir or (hasattr(tdir, "__setitem__") and hasattr(tdir, "__getitem__") and hasattr(tdir, "__contains__")):
             raise TypeError("Invalid Task directory");
@@ -73,9 +73,6 @@ class Task:
             raise NoTask("Invalid Task", tid);
 
         self.tid = tid;
-        ## for tgroup members to know theier position in the group - the leader
-        ## of a groups' lastindex is always non-zero 
-        self.lastindex = 0;
         ## the global index possible in a task table
         self.aindex = 0;
         self.refcount = 0;
@@ -83,16 +80,12 @@ class Task:
         self.status = status;
         self.disp = disp;
         self.state = state;
+        # to support linked lists
         self.nxt = nxt;
-
+        # to support group of tasks and fast access to the begining of a linked
+        # list. The first item can be the leader and every .nxt from itself and
+        # any other .nxt are member
         self.tgroup = group;
-        if self.tgroup:
-            if not isinstance(self.tgroup, type(self)):
-                raise TypeError("task group not %s" % (repr(type(self),)));
-
-            self.tgroup.refcount += 1;
-            self.tgroup.lastindex += 1;
-            self.lastindex = self.tgroup.lastindex;
 
     def __str__(self):
         return str(self.tid_tab[self.tid]);

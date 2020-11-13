@@ -17,16 +17,16 @@ import os
 import sys
 
 import status
-import task
-import preprocessor
+import tasker
+import libdogs
 
 #CTYPE attributes
 CTYPE_LEN = 2; #bits
 CTYPE_MASK = 0xc0;
 
 ## 2-bits command type
-## Currently, commands block (can't be run by send_task independently) or
-## otherwise (can be run on the calling thread by send_task).
+## Currently, commands block (can't be run by send_task() independently) or
+## otherwise (can be run on the calling thread by send_task()).
 
 CTYPE_BLOCK = 0;
 CTYPE_NOBLOCK = 1;
@@ -44,15 +44,9 @@ def MKCMD(cmd, ctype):
 
 #A valid task id(magic) is 6 LSb command and 2 MSb type
 CMD_NULL = MKCMD(0, CTYPE_NOBLOCK);
-CMD_SUBMIT = MKCMD(0, CTYPE_BLOCK);
-CMD_PRINT = MKCMD(1, CTYPE_NOBLOCK);
+CMD_SUBMIT = MKCMD(1, CTYPE_BLOCK);
 CMD_JOBS = MKCMD(2, CTYPE_NOBLOCK);
 CMD_STATUS = MKCMD(3, CTYPE_NOBLOCK);
-CMD_ADD = MKCMD(4, CTYPE_NOBLOCK);
-CMD_RM = MKCMD(5, CTYPE_NOBLOCK);
-CMD_SET_CMDL = MKCMD(6, CTYPE_NOBLOCK);
-CMD_SET_COOKIE = MKCMD(7, CTYPE_NOBLOCK);
-CMD_SET_NAV = MKCMD(8, CTYPE_BLOCK);
 
 
 def GETCTYPE(cmd):
@@ -63,38 +57,17 @@ def MKCTYPE(ctype, cmd):
     return ctype >> CMD_SIZE;
 
 
-
-class DTask(task.Task):
+class DTask(tasker.Task):
     def __init__(self, *pargs, *kwargs):
         super ().__init__ (*pargs, **kwargs);
 
 DTask.set_tdir(
         {
             CMD_SUBMIT: "submit",
-            CMD_PRINT: "print",
-            CMD_ADD: "add",
-            CMD_CHANGE: "change",
-            CMD_RM: "remove",
-            CMD_STATUS: "status",
-            CMD_JOBS: "jobs",
-            CMD_USERS: "users",
-            CMD_SET_CMDL: "setup_cmdline",
-            CMD_SET_CMDL: "setup_nav"
+            CMD_STATUS: "nop",
+            CMD_JOBS: "nop",
             }
         );
-
-
-class AppendList(argparse.Action):
-    def __init__(self,*posargs,**kwargs):
-        super().__init__(*posargs, **kwargs);
-    def __call__(self, parser, namespace, values, opt_string):
-        if not hasattr(namespace, self.dest) or getattr(namespace,
-                self.dest) == None:
-            setattr(namespace, self.dest, []);
-        if isinstance(values, list):
-            getattr(namespace, self.dest).extend(values);
-        else:
-            getattr(namespace, self.dest).append(values)
 
 
 class CmdlineErr(argparse.ArgumentError):
@@ -102,20 +75,19 @@ class CmdlineErr(argparse.ArgumentError):
         super ().__init__ (*pargs, **kwargs);
 
 parser = argparse.ArgumentParser ();
-
+parser.add_argument ('--debug', action = 'store_true', help = 'To enable debug mode')
 class Dog:
-
     def start(self):
-        """start the dog - blocks until .end() is called somehow"""
+        """start the dog loop - blocks until .end() is called somehow"""
         self.started = True;
 
         while self.started:
             if self.pc < self.tasktab_size:
                 task = self.tasktab[self.pc];
-                if task.state == task.TS_RUNNABLE:
+                if task.state == tasker.TS_RUNNABLE:
                     self.run(task);
 
-                self.pc += 1;
+                    self.pc += 1;
     
     def run(self, task):
         return self.getcmd(task)(task);
@@ -126,7 +98,7 @@ class Dog:
         if isinstance(task, self._InternalTask):
             return task.cmd;
         elif isinstance(task, DTask):
-            return getattr(self, task.gettvalue(task));
+            return getattr(self, tasker.gettvalue(task));
         
 
     
@@ -141,7 +113,6 @@ class Dog:
         ## emulate a processor jump using simple indirection rather than prepend the tasklist
         ## NOTE make thread-safe.
 
-    
         # jmp format
         # ==========
         # task.status.message = "jmp"
@@ -156,9 +127,9 @@ class Dog:
             # take action
             pass;
 
-        if task.status.message == "lr":
+        if task.status.message == "jmp":
             ## do a return
-            task.state = task.TS_EXITED;
+            task.state = tasker.TS_EXITED;
 
             # to point pc rightly when .start() increments it
             self.pc = task.args - 1;
@@ -184,7 +155,7 @@ class Dog:
         task = None;
 
         if isinstance(task_or_str, str):
-            tid = task.gettid(DTask(), task_or_str.split()[0]);
+            tid = tasker.gettid(DTask(), task_or_str.split()[0]);
             if not tid:
                 return None;
             task = DTask(
@@ -213,9 +184,9 @@ class Dog:
     def stop_task(self, ta):
         if isinstance(ta, int):
             if ta < self.tasktab_size:
-                self.tasktab[ta].state = task.TS_STOPED;
+                self.tasktab[ta].state = tasker.TS_STOPED;
         elif isinstance(ta, (DTask, self._InternalTask)):
-            ta.state = task.TS_STOPED;
+            ta.state = tasker.TS_STOPED;
 
         elif isinstance(ta, list):
             for t in ta:
@@ -228,7 +199,6 @@ class Dog:
         self.arg_gens = scrm.QScrList();
         self.prep_argv = scrm.QScrList();
         self.prep_argc = 0;
-        self.sbuffer = status.StatusBuffer();
         self.status = status.Status();
         self.pc = pc_type(0);
         self.tasktab = scrm.QScrList();
@@ -517,12 +487,12 @@ class Dog:
                     # execute
                     st = self.submit_main(ldr.nxt.args);
                     if st.code == status.S_FATAL:
-                        ldr.nxt.state = task.TS_TERM;
+                        ldr.nxt.state = tasker.TS_TERM;
                     elif st.code == status.S_ERROR:
                         ldr.nxt.cmd = self.submit_pre_exec;
-                        ldr.nxt.state = task.TS_STOPED;
+                        ldr.nxt.state = tasker.TS_STOPED;
                     elif st:
-                        ldr.nxt.state = task.TS_EXITED;
+                        ldr.nxt.state = tasker.TS_EXITED;
 
                     ldr.nxt.status = st;
                     self.status = st;
@@ -543,12 +513,12 @@ class Dog:
                     # start submiting
                     st = self.submit_main(arg);
                     if st.code == status.S_FATAL:
-                        mbr.state = task.TS_TERM;
+                        mbr.state = tasker.TS_TERM;
                     elif st.code == status.S_ERROR:
                         mbr.cmd = self.submit_pre_exec;
-                        mbr.state = task.TS_STOPED;
+                        mbr.state = tasker.TS_STOPED;
                     elif st:
-                        mbr.state = task.TS_EXITED;
+                        mbr.state = tasker.TS_EXITED;
 
                     mbr.status = st;
                     self.status = st;
@@ -561,12 +531,12 @@ class Dog:
             # do the member only
             st = self.submit_main(mbr.args);
             if st.code == status.S_FATAL:
-                mbr.state = task.TS_TERM;
+                mbr.state = tasker.TS_TERM;
             elif st.code == status.S_ERROR:
                 mbr.cmd = self.submit_pre_exec;
-                mbr.state = task.TS_STOPED;
+                mbr.state = tasker.TS_STOPED;
             elif st:
-                mbr.state = task.TS_EXITED;
+                mbr.state = tasker.TS_EXITED;
 
             mbr.status = st;
             self.status = st;
@@ -595,19 +565,13 @@ class Dog:
     class _InternalTask(DTask):
         """ instances of this can find themselves in tha tasktab.
             It is meant for use internally by method that want a task object that is ligther, laxer, and more
-            customizable than task.DTask
+            customizable than tasker.DTask
             """
-        def __init__(self, cmd, tid = 0, state = task.TS_RUNNABLE,
-            disp = task.TDISP_PUBLIC, *pargs, **kwargs):
-            self.tid = tid;
-            self.pargs = pargs;
-            self.tid = tid;
-            self.state = state;
-            self.disp = disp;
+        def __init__(self, cmd, magic, *pargs, **kwargs):
+            self.magic = magic
             self.cmd = cmd;
+            super ().__init__ (*pargs, **kwargs);
 
-            for k,v in kwargs:
-                setattr(self, k, v);
 
 
 def change(self, args):
