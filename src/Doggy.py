@@ -320,14 +320,14 @@ class Dog:
         try:
             if not psr:
                 psr = parser;
-                args = psr.parse_args(cmdline);
+                args = psr.parse_args(cmdline.split());
             elif psr and preproc:
-                args = psr.parse_args(cmdline);
+                args = psr.parse_args(cmdline.split());
                 arg_gen = preproc(args);
 
                 self.arg_gens.append(arg_gen);
             else:
-                args = psr.parse_args(cmdline);
+                args = psr.parse_args(cmdline.split());
             self.cmdline.append(
                     (
                         cmdline,
@@ -420,15 +420,17 @@ class Dog:
         if not hasattr(self, "submit_parser"):
             parser = argparse.ArgumentParser ("submit");
             parser.add_argument ('--matno', help = 'Your Matric Number', action
-                    = AppendList);
+                    = libdogs.AppendList, dest = libdogs.P_USR);
 
             parser.add_argument ('--pwd', help = 'Your password',
-                    action = AppendList);
+                    action = libdogs.AppendList, dest = libdogs.P_PWD);
 
             parser.add_argument ('--crscode', help = 'Your target course',
-                    action = AppendList);
+                    action = libdogs.AppendList, dest = libdogs.P_CRSCODE);
 
-            parser.add_argument ('--tma', help = 'Your target TMA for the chosen course', action = AppendList);
+            parser.add_argument ('--tma', 
+                    help = 'Your target TMA for the chosen
+                    course', action = libdogs.AppendList, dest = libdogs.P_TMA);
 
             setattr(self, "submit_parser", parser);
 
@@ -440,7 +442,7 @@ class Dog:
                 ## ...
                 ## ...
                 args = self.setup_cmdline(task.args, psr = getattr(self,
-                    "submit_parser"), preproc = preprocessor.Preprocessor);
+                    "submit_parser"), preproc = libdogs.preprocess);
                 if not args:
                     st = status.Status(status.S_ERROR);
 
@@ -453,7 +455,7 @@ class Dog:
                        magic = GRP);
                 
                 ## to keep kick-start schedule pre-execution
-                self.jmp(grp_leader);
+                self.submit_pre_exec(grp_leader);
 
             elif isinstance(ta, self._InternalTask):
                 ##handle those created elsewhere
@@ -474,17 +476,6 @@ class Dog:
         else:
             ## answer a direct external/internal call
             pass;
-
-    def submit_arg_check(self, arg, gldr = None):
-        ##NOTE correct the checks
-        g = ( hasattr(arg, "__contains__")
-                            and hasattr(arg, "keys")) or "url" in
-                    arg;
-                    
-        if isinstance(gldr, DTask):
-            g = g and ("matno" in arg and arg["matno"] in ldr.args.matno);
-
-        return g;
 
     def submit_pre_exec(self, task):
         """pre-executor for the submit command. 
@@ -508,47 +499,87 @@ class Dog:
         
         ldr = None;
         mbr = None;
-        arg = None;
 
         if task.magic == LDR:
             ldr = task;
+            mbr = task.nxt;
         elif task.magic == MBR:
             ldr = task.group;
             mbr = task;
-            arg = arg if mbr.arg == None and self.submit_arg_check(mbr.arg, ldr) else mbr.arg;
         
-        for arg in self.argv():
-            if not self.submit_arg_check(arg):
-                continue;
+        if not mbr:
+            self._alloc(ldr);
+            # do create and do all members recursively
+            if ldr.nxt:
+                # members are already created - execute assuming they are in the
+                # task list
+                while ldr.next:
+                    # execute
+                    st = self.submit_main(ldr.nxt.args);
+                    if st.code == status.S_FATAL:
+                        ldr.nxt.state = task.TS_TERM;
+                    elif st.code == status.S_ERROR:
+                        ldr.nxt.cmd = self.submit_pre_exec;
+                        ldr.nxt.state = task.TS_STOPED;
+                    elif st:
+                        ldr.nxt.state = task.TS_EXITED;
 
-            arg = self.prep_argv[i];
-            
-            if not mbr:
-                mbr = mbr if "_task_" not in arg else arg["_task_"];
-            
-            if not mbr:    
-                mbr = self._InternalTask(magic = MBR, group = ldr, cmd =
-                        self.nop, arg = arg);
-            
-                # start submiting
-            st = self.submit_main(arg);
-            if not st:
+                    ldr.nxt.status = st;
+                    self.status = st;
+                    ldr = ldr.nxt;
+            else:
+                # create them and pre_execute them
+                prev = None;
+
+                for arg in self.argv():
+                    if not libdogs.is_arg_valid(ldr.args, arg):
+                        continue;
+
+                    mbr = self._InternalTask(magic = MBR, group = ldr, cmd =
+                                self.nop, arg = arg);
+                    if not ldr.nxt:
+                        ldr.nxt = mbr;
+
+                    # start submiting
+                    st = self.submit_main(arg);
+                    if st.code == status.S_FATAL:
+                        mbr.state = task.TS_TERM;
+                    elif st.code == status.S_ERROR:
+                        mbr.cmd = self.submit_pre_exec;
+                        mbr.state = task.TS_STOPED;
+                    elif st:
+                        mbr.state = task.TS_EXITED;
+
+                    mbr.status = st;
+                    self.status = st;
+                    if prev:
+                        prev.nxt = mbr;
+                    prev = mbr;
+                    self._alloc(mbr);
+
+        else:
+            # do the member only
+            st = self.submit_main(mbr.args);
+            if st.code == status.S_FATAL:
+                mbr.state = task.TS_TERM;
+            elif st.code == status.S_ERROR:
                 mbr.cmd = self.submit_pre_exec;
                 mbr.state = task.TS_STOPED;
+            elif st:
+                mbr.state = task.TS_EXITED;
 
             mbr.status = st;
-            mbr["_task_"] = mbr;
-            self._alloc(mbr);
-
+            self.status = st;
+            return st;
     
     def submit_main(self, arg):
 
         nav = self.get_nav(arg);
         if not nav:
-            return status.Status();###handle
+            return nav;###handle
 
         for ftype in libdogs.fetch_all(arg, nav):
-            st = libdogs.brute_submit(arg, nav, ftype);
+            return libdogs.brute_submit(arg, nav, ftype);
 
     def nop(self):
         """like nop in x86 assembly"""

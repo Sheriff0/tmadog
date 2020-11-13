@@ -63,7 +63,8 @@ class Task:
 
         Task.tid_tab = copy.deepcopy(tdir);
 
-    def __init__ (self, tid = 0, args = None, status = None, group = None, state = TS_RUNNABLE,
+    def __init__ (self, tid = 0, args = None, status = None, group = None, nxt =
+            None, state = TS_RUNNABLE,
             disp = TDISP_PUBLIC):
 
         tid = gettid(self, tid);
@@ -82,6 +83,7 @@ class Task:
         self.status = status;
         self.disp = disp;
         self.state = state;
+        self.nxt = nxt;
 
         self.tgroup = group;
         if self.tgroup:
@@ -91,9 +93,6 @@ class Task:
             self.tgroup.refcount += 1;
             self.tgroup.lastindex += 1;
             self.lastindex = self.tgroup.lastindex;
-
-    def __bool__(self):
-        return self.state == TS_RUNNABLE;
 
     def __str__(self):
         return str(self.tid_tab[self.tid]);

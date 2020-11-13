@@ -420,6 +420,106 @@ def init_hooks(**kwargs):
     if "nav_hook" in kwargs:
         nav_hook = kwargs.pop("nav_hook"); 
 
+def need_cookies(nav, res):
+    return re.search(nav.wmap["event"]["on_cookie"], res.text, flags = re.I |
+            re.S | re.M) or is_Challenge_Request(res);
+
+
+def complete(nav, res):
+    return re.search(nav.wmap["event"]["on_complete"], res.text, flags = re.I |
+            re.S | re.M);
+
+
+def is_correct_ans(nav, res):
+    x = re.search (r"(?P<mark>[01])\s*" + nav.webmap
+            ["fb"]["on_qst_submit"].strip (), res.text, re.I);
+
+    if x:
+        x = int (x.group ("mark"));
+        return x;
+    else:
+        return status.Status(status.S_ERROR, "no marks found", res);
+
+
+
+def logout(nav):
+    try:
+        nav["logout_page"];
+        return status.Status(status.S_OK);
+
+    except BaseException as err:
+        return status.Status(status.S_ERROR, "logout err", err);
+
+
+def login(nav):
+    # to make sure we are safe to login. it shouldn't be problematic at all
+    # times.
+    if "profile_page" in nav or "tma_page" in nav:
+        st = logout(nav);
+
+        if not st:
+            return st;
+
+    try:
+        nav["profile_page"];
+        return status.Status(status.S_OK);
+
+    except BaseException as err:
+        return status.Status(status.S_ERROR, "login err", err);
+
+
+## variants with retries
+def rlogout(nav, retry = 3):
+    retry += 1;
+    lreq, fro = nav("logout_page")[:-1];
+    while retry:
+        try:
+            lres = nav.session.request(**lreq , **kwargs);
+            lres.raise_for_status();
+            nav.cache["logout_page"] = lres;
+            # passed here is always sucess - no clean way to confirm a sucessful
+            # logout as no page depends on its page
+            return status.Status(status.S_OK);
+
+        except BaseException as err:
+            if need_cookies(nav, lres):
+                cookie_hook(nav);
+
+            retry -= 1;
+
+    return status.Status(status.S_ERROR, "logout err", lres);
+
+
+def rlogin(nav, retry = 3):
+    if "profile_page" in nav or "tma_page" in nav:
+        st = rlogout(nav, retry);
+
+        if not st:
+            return st;
+
+    retry += 1;
+    
+    lreq, fro = nav("profile_page")[:-1];
+
+    while retry:
+        try:
+            lres = nav.session.request(**lreq , **kwargs)
+            lres.raise_for_status();
+            nav.cache["profile_page"] = lres;
+            ## will raise if not logged-in
+            nav("tma_page")[:-1];
+
+            return status.Status(status.S_OK);
+
+        except BaseException as err:
+            if need_cookies(nav, lres):
+                cookie_hook(nav);
+
+            retry -= 1;
+
+    return status.Status(status.S_ERROR, "login err", lres);
+
+
 def create_nav(key):
     return navigation.Navigator (
             key[P_URL],
@@ -431,37 +531,53 @@ def create_nav(key):
 def discovercrs (usr, nav):
     ## incase that isn't done already
     reconfigure(nav, usr);
-    login(nav);
-    to, tpage = nav ('qst_page')[:-1]
-    idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
-    path = nav.webmap ['qst_page']['path'].split (',')[-1]
-
-    idx += 1
-
-    while True: #crscode discovery
-        dt = 'data' if to ['method'] in ('POST', 'post') else 'params'
-
-        m = None
-
-        for k in to.get (dt, {}).values ():
-            m = re.search (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', k)
-
-            if m:
-                break
-
-        if m:
-            yield m.group (0)
-
-        try:
-            rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
-                usr [P_URL]))
-
-            to = next (rec)
-        except TypeError:
-            break
+    st = rlogin(nav);
+    if not st:
+        yield st;
+    
+    else:
+        to, tpage = nav ('qst_page')[:-1]
+        idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
+        path = nav.webmap ['qst_page']['path'].split (',')[-1]
 
         idx += 1
 
+        while True: #crscode discovery
+            dt = 'data' if to ['method'] in ('POST', 'post') else 'params'
+
+            m = None
+
+            for k in to.get (dt, {}).values ():
+                m = re.search (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', k)
+
+                if m:
+                    break
+
+            if m:
+                yield m.group (0)
+
+            try:
+                rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
+                    usr [P_URL]))
+
+                to = next (rec)
+            except TypeError:
+                break
+
+            idx += 1
+
+def is_arg_valid(cmdl, arg):
+    # a usr being in the group of users is the only concrete proof of validity
+    if P_USR in cmdl.__dict__ and P_USR in arg:
+        return arg[P_USR] in cmdl.__dict__[P_USR];
+    else:
+        return False;
+
+def is_net_valid_arg(arg):
+    # an arg can only go rogue when validated against a network. So, return the
+    # only value that can necessitate such a validation in the first place as
+    # this is the only place where the result lives.
+    return arg[P_CRSCODE];
 
 def preprocess(args):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD
@@ -495,35 +611,12 @@ def preprocess(args):
             for crs in discovercrs (nav_hook(usr), usr):
                 usr[P_CRSCODE] = crs;
                 yield usr.copy ();
+                if not crs:
+                    break;
         else:
             usr[P_CRSCODE] = y;
             yield usr.copy ();
 
-
-def logout(nav):
-    try:
-        nav["logout_page"];
-        return status.Status(status.S_OK);
-
-    except BaseException as err:
-        return status.Status(status.S_ERROR, "logout err", err);
-
-
-def login(nav):
-    # to make sure we are safe to login. it shouldn't be problematic at all
-    # times.
-    if "profile_page" in nav or "tma_page" in nav:
-        st = logout(nav);
-
-        if not st:
-            return st;
-
-    try:
-        nav["profile_page"];
-        return status.Status(status.S_OK);
-
-    except BaseException as err:
-        return status.Status(status.S_ERROR, "login err", err);
 
 ## this for now, is case-insensitive
 def get_key_usr(key):
@@ -565,7 +658,7 @@ def assign(usr, nav = None):
     # at all times this should'nt be problematic (whether a user is logged in or
     # not)
     unassign(nav);
-    login(nav);
+    rlogin(nav);
     
 
 
@@ -585,7 +678,6 @@ def session_from_cookies (url, cookie_file):
         return status.Status(status.S_ERROR, "cookie error", err);
 
     if not cookt:
-        return errno("No cookies", cookt);
         return status.Status(status.S_ERROR, "no cookies", cookt);
 
     session = requests.Session ()
@@ -651,26 +743,6 @@ def answer_lax(qst, amgr):
     else:
         return qst;
 
-def need_cookies(nav, res):
-    return re.search(nav.wmap["event"]["on_cookie"], res.text, flags = re.I |
-            re.S | re.M) or is_Challenge_Request(res);
-
-
-def complete(nav, res):
-    return re.search(nav.wmap["event"]["on_complete"], res.text, flags = re.I |
-            re.S | re.M);
-
-
-def is_correct_ans(nav, res):
-    x = re.search (r"(?P<mark>[01])\s*" + nav.webmap
-            ["fb"]["on_qst_submit"].strip (), res.text, re.I);
-
-    if x:
-        x = int (x.group ("mark"));
-        return x;
-    else:
-        return status.Status(status.S_ERROR, "no marks found", res);
-
 def submit(nav, sreq, retry = 3, **kwargs):
     x = 0;
     rt = retry + 1;
@@ -699,7 +771,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
 
 
 def transform_req (req, usr):
-    global F_QKEY
+    global F_QKEY;
     req = copy.deepcopy(req);
     tma = str (usr[P_TMA]);
     tma = 'tma' + tma if not tma.startswith (('tma', 'Tma', 'TMA')) else tma;
@@ -744,7 +816,9 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
     result[F_PSEUDO_ANS] = pseudo_ans.copy();
     result[F_QMAP] = nav.wmap["qmap"];
 
-    while True:
+    done = False;
+
+    while not done:
             kwargs.setdefault (
                     'headers',
                     mkheader (freq['url'], referer)
@@ -752,7 +826,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
             rt = retry + 1;
             while rt:
                 try:
-                    qres = nav.session.request(**self.freq , **kwargs)
+                    qres = nav.session.request(**freq , **kwargs)
                     
                     qres.raise_for_status ();
 
@@ -776,14 +850,22 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
 
                     yield copy.deepcopy(result);
                     break;
+                
 
                 except BaseException as err:
-                    if need_cookies(nav, res):
+
+                    if complete(nav, qres):
+                        yield status.Status(status.S_OK, "no more question",
+                                qres);
+                        done = True;
+                        break;
+
+                    elif need_cookies(nav, res):
                         cookie_hook(nav);
 
                     st = login(nav);
                     if not st:
-                        return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
+                        yield status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
 
                     rt -= 1;
 
