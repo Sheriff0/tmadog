@@ -6,7 +6,7 @@ S_FATAL = 0b0101;
 S_MASK = 0b1111;
 
 class UnknownStatus(BaseException):
-    def __init__(self, *pargs, *kwargs):
+    def __init__(self, *pargs, **kwargs):
         super ().__init__ (*pargs, **kwargs);
 
 

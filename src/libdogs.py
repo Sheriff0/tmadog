@@ -16,10 +16,17 @@ import os
 import sys
 import builtins 
 import pathlib
+import requests_html
+import re
+from urllib import parse
+import lxml
+import pdb
+import argparse
+
 
 import status
 
-P_PWD = "pwd",
+P_PWD = "pwd";
 P_USR = "matno";
 P_CRSCODE = 'crscode'
 P_TMA = 'tma'
@@ -43,17 +50,7 @@ class AppendList(argparse.Action):
 
 
 def is_Challenge_Request(resp):
-    return cloudscraper.is_Firewall_Blocked(resp) or
-cloudscraper.is_New_Captcha_Challenge(resp) or
-cloudscraper.is_New_IUAM_Challenge(resp) or
-cloudscraper.is_Captcha_Challenge(resp) or cloudscraper.is_IUAM_Challenge(resp);
-
-
-import requests_html
-import re
-from urllib import parse
-import lxml
-import pdb
+    return cloudscraper.is_Firewall_Blocked(resp) or cloudscraper.is_New_Captcha_Challenge(resp) or cloudscraper.is_New_IUAM_Challenge(resp) or cloudscraper.is_Captcha_Challenge(resp) or cloudscraper.is_IUAM_Challenge(resp);
 
 requests = requests_html.requests
 
@@ -239,8 +236,6 @@ class AnyheadList:
 
             return self.dict_arr ['-' + str (idx)]
 
-
-#__all__ = ['click', 'fill_form', 'getdef_value']
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
@@ -435,12 +430,12 @@ def init_hooks(**kwargs):
         nav_hook = kwargs.pop("nav_hook"); 
 
 def need_cookies(nav, res):
-    return re.search(nav.wmap["event"]["on_cookie"], res.text, flags = re.I |
+    return re.search(nav.webmap["event"]["on_cookie"], res.text, flags = re.I |
             re.S | re.M) or is_Challenge_Request(res);
 
 
 def complete(nav, res):
-    return re.search(nav.wmap["event"]["on_complete"], res.text, flags = re.I |
+    return re.search(nav.webmap["event"]["on_complete"], res.text, flags = re.I |
             re.S | re.M);
 
 
@@ -594,25 +589,22 @@ def is_net_valid_arg(arg):
     return arg[P_CRSCODE];
 
 def preprocess(args):
-    global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD
+    global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
 
-        args = args.__dict__;
-        matnos = LastList (args ['matno'])
-        pwds = LastList (args ['pwd'])
-        crscodes = LastList (args ['crscode'])
-        tmas = LastList (args ['tma'])
-        cookies = LastList (args ['cookies'])
-        urls = LastList (args ['url'])
-        wmap = configparser.ConfigParser (interpolation =
-            configparser.ExtendedInterpolation ())
-        wmap.read (args["wmap"]);
-        P_USR = wmap ['kmap']['matno']
-        P_PWD = wmap ['kmap']['pwd']
-        argc = max (len (self.crscodes), len (self.tmas), len (self.matnos))
-        usr = {};
-        usr [P_WMAP] = wmap;
+    args = args.__dict__;
+    matnos = LastList (args [P_USR]);
+    pwds = LastList (args [P_PWD]);
+    crscodes = LastList (args [P_CRSCODE]);
+    tmas = LastList (args [P_TMA]);
+    urls = LastList (args [P_URL]);
+    wmap = args["wmap"];
+    P_USR = wmap ['kmap']['matno']
+    P_PWD = wmap ['kmap']['pwd']
+    argc = max (len (crscodes), len (tmas), len (matnos))
+    usr = {};
+    usr [P_WMAP] = wmap;
 
-    for i in range (self.len):
+    for i in range (argc):
 
         usr[P_USR] = matnos [i]
         usr[P_PWD] = pwds [i]
@@ -621,7 +613,7 @@ def preprocess(args):
 
         y = crscodes [i]
 
-        if re.match('all',y, re.I):
+        if re.match('all', y, re.I):
             for crs in discovercrs (nav_hook(usr), usr):
                 usr[P_CRSCODE] = crs;
                 yield usr.copy ();
@@ -665,13 +657,14 @@ def unassign(nav):
 def assign(usr, nav = None):
     if nav == None:
         nav = create_nav(usr);
-        return (rlogin(nav));
+        return rlogin(nav);
     
-    else:
-        if self.get_key_usr(self.nav.keys) != get_key_usr(cli):
-            # maybe we don't need this
-            #unassign(nav);
-            return rlogin(reconfigure(nav, usr));
+    if self.get_key_usr(self.nav.keys) != get_key_usr(cli):
+        # maybe we don't need this
+        #unassign(nav);
+        return rlogin(reconfigure(nav, usr));
+    
+    return nav;
     
 
 
@@ -764,12 +757,8 @@ def submit(nav, sreq, retry = 3, **kwargs):
             res = nav.session.request (**sreq, **kwargs);
             res.raise_for_status ();
             
-            st = is_correct_ans(nav, res);
-            if isinstance(st, int):
-                return st;
+            return is_correct_ans(nav, res);
             
-
-
         except BaseException as err:
             if need_cookies(nav, res):
                 cookie_hook(nav);
@@ -822,12 +811,12 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
     
     referer = fro.url;
 
-    pseudos = nav.wmap["qmap"]['pseudo_ans'].split (',');
+    pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
     
     result = ftype();
 
     result[F_PSEUDO_ANS] = pseudo_ans.copy();
-    result[F_QMAP] = nav.wmap["qmap"];
+    result[F_QMAP] = nav.webmap["qmap"];
 
     done = False;
 
@@ -850,7 +839,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                             qres.url,
                             flags = FILL_FLG_EXTRAS,
                             data = {
-                                nav.wmap["qmap"]['ans']: None
+                                nav.webmap["qmap"]['ans']: None
                                 }
                             )
                     result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
@@ -864,11 +853,10 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                     yield copy.deepcopy(result);
                     break;
                 
-
                 except BaseException as err:
 
                     if complete(nav, qres):
-                        yield status.Status(status.S_OK, "no more question",
+                        yield status.Status(status.S_NULL, "no more question",
                                 qres);
                         done = True;
                         break;
@@ -889,7 +877,7 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
     
     if not F_LAST_FETCH:
         f_type = next(fetch_all(nav, usr));
-        if F_QUESTION in f_type:
+        if f_type and F_QUESTION in f_type:
             return f_type[F_QUESTION];
         else:
             return f_type;
@@ -898,7 +886,7 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
 
     kwargs.setdefault (
             'headers',
-            dogs.mkheader (freq ['url'], F_LAST_FETCH[F_REFERER]),
+            mkheader (freq ['url'], F_LAST_FETCH[F_REFERER]),
             )
 
     while retry:
@@ -906,12 +894,12 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
             res = nav.session.request(**freq , **kwargs);
 
             res.raise_for_status ()
-            return dogs.fill_form (
+            return fill_form (
                     res.text,
                     res.url,
-                    flags = dogs.FILL_FLG_EXTRAS,
+                    flags = FILL_FLG_EXTRAS,
                     data = {
-                        nav.wmap["qmap"]['ans']: None
+                        nav.webmap["qmap"]['ans']: None
                         }
                     );
         except BaseException as err:
@@ -930,22 +918,22 @@ def brute_safe(usr, nav, qst):
     qst1 = fetch_one(usr, nav);
     if qst1:
         return re.match(
-                str(qst[nav.wmap["qmap"]["qn"]]),
+                str(qst[nav.webmap["qmap"]["qn"]]),
 
-                str(qst1[nav.wmap["qmap"]["qn"]])
+                str(qst1[nav.webmap["qmap"]["qn"]])
                 );
     
     return False;
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         
-    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY].copy()i, amgr);
+    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY].copy(), amgr);
     
     preq = f_type[F_SREQUEST];
 
     kwargs.setdefault (
             'headers',
-            dogs.mkheader (
+            mkheader (
                 f_type[F_SREQUEST]['url'], 
                 f_type.get(F_REFERER, "")
                 ),
@@ -955,21 +943,28 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
     
     x = 0;
 
-    for a in dogs.AnyheadList (f_type[F_PSEUDO_ANS], qst1 [self.qmgr.qmap ["ans"]]):
+    for a in AnyheadList (f_type[F_PSEUDO_ANS], qst1 [self.qmgr.qmap ["ans"]]):
 
-        qst1 [nav.wmap["qmap"]["ans"]] = a;
+        qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
         
-        x = submit(nav, preq);
+        x = submit(nav, preq, retry);
         if x == 1:
-            qst [nav.wmap["qmap"]["ans"]] = a;
+            qst [nav.webmap["qmap"]["ans"]] = a;
             preq[f_type[F_QKEY]] = qst;
-            x = submit(nav, preq);
+            x = submit(nav, preq, retry);
 
             if x == 0:
+                if amgr:
+                    amgr.check(qst, x);
                 return status.Status(status.S_FATAL, "detected answer is problematic", (preq, qst));
-            
-            return True;
+           
+            elif x == 1:
+                if amgr:
+                    amgr.check(qst, x);
+                return status.Status(status.S_OK, "success", qst);
+            else:
+                return x;
 
         elif not brute_safe(usr, nav, qst):
             return status.Status(status.S_FATAL, "unable to brute for the answers from the server", err);
@@ -985,10 +980,10 @@ def answer_strict(qst, amgr):
         if x and x != ansm.ANS_NOANSWER and qst [qmgr.qmap ["qid"]] == x [qmgr.qmap ["qid"]]:
             return x;
 
-        return errno(qst, amgr);
+        return status.Status(status.S_NULL, "can't answer", (qst, amgr));
 
     except BaseException as err:
-        return errno(qst, amgr);;
+        return status.Status(status.S_NULL, "can't answer", (qst, amgr));
 
 
 def addqn(qst, usr, addend = 1):

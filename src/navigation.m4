@@ -1,5 +1,5 @@
 import configparser
-import dogs
+import libdogs
 import requests
 import urllib.parse
 import re
@@ -65,22 +65,22 @@ class Recipe (object):
 							}
 
 					req.update (
-							dogs.fill_form (
+							libdogs.fill_form (
 								url = self.start.url,
 								idx = int (i),
 								html = self.start.text,
 								data = data,
-								flags = dogs.FILL_FLG_EXTRAS
+								flags = libdogs.FILL_FLG_EXTRAS
 								)
 							)
 				else:
 					req.update (
-							dogs.click (
+							libdogs.click (
 								url = self.start.url,
 								idx = int (i),
 								html = self.start.text,
 								button = s,
-								flags = dogs.FILL_FLG_EXTRAS
+								flags = libdogs.FILL_FLG_EXTRAS
 
 								)
 							)
@@ -215,7 +215,7 @@ class Navigator (object):
 		for i, r in zip (range (req_gen.len)[sl], gen):
 
 			self.kwargs ['headers'].update (
-					dogs.mkheader (r ['url'], referer)
+					libdogs.mkheader (r ['url'], referer)
 					)
 
 			res = self.session.request (**r, **self.kwargs)

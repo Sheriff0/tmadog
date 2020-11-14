@@ -90,6 +90,3 @@ class Task:
     def __str__(self):
         return str(self.tid_tab[self.tid]);
 
-    def __iter__(self): #for possible conversion to json
-        yield None;
-

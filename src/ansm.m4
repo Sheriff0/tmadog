@@ -221,7 +221,7 @@ ifdef(
 `'dnl
 )dnl
 
-    def check (self, qst, mark, effective):
+    def check (self, qst, mark, effective = None):
         if mark == 0:
             qst = qst.copy ()
 ifdef(

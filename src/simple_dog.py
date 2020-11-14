@@ -34,13 +34,19 @@ class SimpleDog:
         self.status = status.Status();
         self.tasktab = scrm.QScrList();
         self.amgr = amgr;
-        self.usrs = iter(usrs);
+        self.usrs = usrs;
         self.nav = None;
 
     def get_nav(self, cli):
         self.nav = libdogs.assign(cli, self.nav);
         return self.nav;
 
+    def _alloc(self, task = None):
+        if not isinstance(task, (DTask, self._InternalTask)):
+            return None;
+
+        self.tasktab.append(task);
+        self.tasktab_size += 1;
 
     def argv(self):
         """iterate over all arguments - raw and preprocessed.
@@ -97,7 +103,7 @@ class SimpleDog:
             return None;
 
     def submit(self, task):
-        if not hasattr(task, "magic"):
+        if not hasattr(task, "magic") or (task.magic != SUB_MBR and task.magic != SUB_LDR):
             task = self._InternalTask(cmd = self.submit_pre_exec, args = task.args,
                    magic = SUB_LDR);
         
@@ -130,8 +136,7 @@ class SimpleDog:
             return self.status;
         
         if not mbr:
-            self._alloc(ldr);
-            # do create and do all members recursively
+            # do create and do all members recursively if necessary
             if ldr.nxt:
                 # members are already created - execute assuming they are in the
                 # task list
@@ -150,10 +155,14 @@ class SimpleDog:
                     self.status = st;
                     ldr = ldr.nxt;
             else:
+                self._alloc(ldr);
                 # create them and pre_execute them
                 prev = ldr;
 
                 for arg in self.argv():
+                    if not libdogs.is_net_valid_arg(arg):
+                        continue;
+
                     mbr = self._InternalTask(magic = SUB_MBR, group = ldr, cmd =
                                 self.nop, args = arg);
                     # start submiting
@@ -195,8 +204,12 @@ class SimpleDog:
             return nav;###handle
 
         for ftype in libdogs.fetch_all(arg, nav):
-            st = libdogs.brute_submit(arg, nav, ftype);
-            if st.code == status.S_FATAL:
+            if not ftype:
+                st = ftype;
+                break;
+
+            st = libdogs.brute_submit(arg, nav, ftype, self.amgr);
+            if not st:
                 break;
 
         return st;
@@ -205,12 +218,25 @@ class SimpleDog:
         """like nop in x86 assembly"""
         pass;
 
-    class _InternalTask(DTask):
+    class _InternalTask:
         """ instances of this can find themselves in tha tasktab.
             It is meant for use internally by method that want a task object that is ligther, laxer, and more
             customizable than tasker.DTask
             """
-        def __init__(self, cmd, magic, *pargs, **kwargs):
+        def __init__(self, cmd, magic = 0, tid = 0, args = None, status = None, group = None, nxt = None, state = tasker.TS_RUNNABLE, disp = tasker.TDISP_PUBLIC):
             self.magic = magic
             self.cmd = cmd;
-            super ().__init__ (*pargs, **kwargs);
+            self.tid = tid;
+            ## the global index possible in a task table
+            self.aindex = 0;
+            self.refcount = 0;
+            self.args = args;
+            self.status = status;
+            self.disp = disp;
+            self.state = state;
+            # to support linked lists
+            self.nxt = nxt;
+            # to support group of tasks and fast access to the begining of a linked
+            # list. The first item can be the leader and every .nxt from itself and
+            # any other .nxt are member
+            self.tgroup = group;
