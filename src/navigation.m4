@@ -143,7 +143,7 @@ class Navigator (object):
 
 		v = self.webmap.get (s, 'volatile', fallback = '')
 
-		if s in self and (not v or v not in self):
+		if s in self and sl.stop == None and (not v or v not in self):
 			return self.cache [s]
 
 		elif (not v or v not in self) and '%s:%s' % (s, sl.stop) in self:

@@ -25,9 +25,14 @@ import argparse
 
 
 import status
+import logging
+
+logger = logging.getLogger('tmadog.libdog');
 
 P_PWD = "pwd";
 P_USR = "matno";
+P_PWD_OLD = P_PWD;
+P_USR_OLD = P_USR;
 P_CRSCODE = 'crscode'
 P_TMA = 'tma'
 P_URL = 'url'
@@ -50,7 +55,7 @@ class AppendList(argparse.Action):
 
 
 def is_Challenge_Request(resp):
-    return cloudscraper.is_Firewall_Blocked(resp) or cloudscraper.is_New_Captcha_Challenge(resp) or cloudscraper.is_New_IUAM_Challenge(resp) or cloudscraper.is_Captcha_Challenge(resp) or cloudscraper.is_IUAM_Challenge(resp);
+    return cloudscraper.CloudScraper.is_Firewall_Blocked(resp) or cloudscraper.CloudScraper.is_New_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_New_IUAM_Challenge(resp) or cloudscraper.CloudScraper.is_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_IUAM_Challenge(resp);
 
 requests = requests_html.requests
 
@@ -266,8 +271,14 @@ def fill_form (
     tform = html.cssselect (selector)
 
     if not len (tform):
+        logger.critical(
+                "No such form with css selector %s in page\n====\nhtml\n====\n%s\n==============", 
+                selector,
+                s,
+                );
         raise DogTypeError ('No form found')
     else:
+        logger.debug("found form with selector %s", selector);
         tform = tform[idx]
 
     targs = {}
@@ -287,7 +298,8 @@ def fill_form (
     ifields = FDict (lxml.html.tostring (tform, with_tail = False, encoding = 'unicode'), tform.inputs)
 
     ifields.update (data)
-
+    
+    logger.debug("filling form");
     for k in ifields:
 
         if ifields[k] is None and not k in data:
@@ -327,8 +339,10 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
             break
 
     if c != idx:
+        logger.debug("can't find button.. not clicking..");
         raise DogTypeError ('No such button %s found' % (button))
-
+    
+    logger.debug("found button.. clicking..");
     t = m.tag
 
     if t in ('form', 'FORM'):
@@ -415,36 +429,62 @@ class LastList:
         return self.list [idx] if idx != None and idx >= 0 else None
 
 def cookie_hook(nav):
-    return nav;
+    return None;
 
 def nav_hook(nav):
-    return nav;
+    return None;
 
 def init_hooks(**kwargs):
-    global cookie_hook;
+    global cookie_hook, nav_hook;
+
+    logger.debug("initializing requested hooks");
 
     if "cookie_hook" in kwargs:
         cookie_hook = kwargs.pop("cookie_hook");
 
     if "nav_hook" in kwargs:
         nav_hook = kwargs.pop("nav_hook"); 
+    logger.debug("done..");
 
 def need_cookies(nav, res):
-    return re.search(nav.webmap["event"]["on_cookie"], res.text, flags = re.I |
+    m = re.search(nav.webmap["events"]["on_cookie"], res.text, flags = re.I |
             re.S | re.M) or is_Challenge_Request(res);
+    if m:
+        logger.debug("cookie needed\n=======message\n=======\n%s========",
+                res.text[m.start():]);
+    else:
+        logger.debug("no cookie needed");
+
+    return m;
 
 
 def complete(nav, res):
-    return re.search(nav.webmap["event"]["on_complete"], res.text, flags = re.I |
+    m = re.search(nav.webmap["events"]["on_complete"], res.text, flags = re.I |
             re.S | re.M);
+    if m:
+        logger.debug("quiz completed\n=======message\n=======\n%s========",
+                res.text[m.start():]);
+    else:
+        logger.debug("quiz uncompleted");
+
+    return m;
+
 
 
 def is_correct_ans(nav, res):
-    x = re.search (r"(?P<mark>[01])\s*" + nav.webmap
-            ["fb"]["on_qst_submit"].strip (), res.text, re.I);
+    m = re.search (r"(?P<mark>[01])\s*" + nav.webmap
+            ["events"]["on_qst_submit"].strip (), res.text, re.I);
 
-    if x:
-        x = int (x.group ("mark"));
+
+    if m:
+        x = int (m.group ("mark"));
+        if x:
+            logger.debug("bravo!! correct answer\n=======message\n=======\n%s========",
+                res.text[m.start():]);
+        else:
+            logger.debug("oops!! wrong answer\n=======message\n=======\n%s========",
+                res.text[m.start():]);
+
         return x;
     else:
         return status.Status(status.S_ERROR, "no marks found", res);
@@ -454,9 +494,12 @@ def is_correct_ans(nav, res):
 def logout(nav):
     try:
         nav["logout_page"];
+        logger.info("logout(): logged user %s out", nav.keys[P_USR]);
         return nav;
 
     except BaseException as err:
+        logger.info("logout(): unable to log user %s out due to unknown error %s",
+                nav.keys[P_USR], err);
         return status.Status(status.S_ERROR, "logout err", err);
 
 
@@ -470,15 +513,18 @@ def login(nav):
             return st;
 
     try:
-        nav["profile_page"];
+        # for compatibility with testing dogrc's
+        nav["tma_page"];
+        logger.info("login(): successfully logged in user %s", nav.keys[P_USR]);
         return nav;
 
     except BaseException as err:
+        logger.info("login(): can't log user %s in", nav.keys[P_USR]);
         return status.Status(status.S_ERROR, "login err", err);
 
 
-## variants with retries
-def rlogout(nav, retry = 3):
+# very conservative variants with optional retries
+def rlogout(nav, retry = 3, **kwargs):
     retry += 1;
     lreq, fro = nav("logout_page")[:-1];
     while retry:
@@ -492,14 +538,16 @@ def rlogout(nav, retry = 3):
 
         except BaseException as err:
             if need_cookies(nav, lres):
-                cookie_hook(nav);
+                # running-out of cookies is technically a successful
+                # logout (atleast for our current target);
+                return nav;
 
             retry -= 1;
 
     return status.Status(status.S_ERROR, "logout err", lres);
 
 
-def rlogin(nav, retry = 3):
+def rlogin(nav, retry = 3, **kwargs):
     if "profile_page" in nav or "tma_page" in nav:
         st = rlogout(nav, retry);
 
@@ -514,10 +562,9 @@ def rlogin(nav, retry = 3):
         try:
             lres = nav.session.request(**lreq , **kwargs)
             lres.raise_for_status();
-            nav.cache["profile_page"] = lres;
             ## will raise if not logged-in
             nav("tma_page")[:-1];
-
+            nav.cache["profile_page"] = lres;
             return nav;
 
         except BaseException as err:
@@ -527,6 +574,68 @@ def rlogin(nav, retry = 3):
             retry -= 1;
 
     return status.Status(status.S_ERROR, "login err", lres);
+
+
+def lazy_logout(nav, retry = 3, **kwargs):
+    # lazy-easy
+    st = nav.cache.pop("profile_page", None);
+    st = nav.cache.pop("tma_page", None);
+    return nav;
+
+
+def lazy_login(nav, retry = 3, **kwargs):
+    st = nav.cache.pop("profile_page", None);
+    st = nav.cache.pop("tma_page", None);
+
+    retry += 1;
+    
+    logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
+    lreq, fro = nav("tma_page")[:-1];
+    referer = fro.url;
+
+    kwargs.setdefault (
+            'headers',
+            mkheader (lreq['url'], referer)
+            )
+
+    while retry:
+        try:
+            lres = nav.session.request(**lreq , **kwargs)
+            lres.raise_for_status();
+            ## will raise if not logged-in
+            logger.info("lazy_login(): sucessfully logged-in %s", nav.keys[P_USR]);
+            nav.cache["tma_page"] = lres;
+            return nav;
+        
+        except DogTypeError as err:
+            if need_cookies(nav, lres):
+                st = cookie_hook(nav);
+                if not st:
+                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+            logger.info("lazy_login(): loggin unsucessful for %s due to %s",
+                    nav.keys[P_USR], err);
+
+            retry -= 1;
+
+        except requests.HTTPError as err:
+            if need_cookies(nav, lres):
+                st = cookie_hook(nav);
+                if not st:
+                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+
+            logger.info("lazy_login(): loggin unsucessful for %s due to %s," +
+                    "retrying" if retry > 1 else "not retrying",
+                    nav.keys[P_USR], err);
+            retry -= 1;
+
+        except BaseException as err:
+            logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
+                    nav.keys[P_USR], err);
+
+            return status.Status(status.S_ERROR, "unknown err", (lres, err));
+
+    return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
+
 
 
 def create_nav(key):
@@ -539,12 +648,15 @@ def create_nav(key):
 
 def discovercrs (usr, nav):
     ## incase that isn't done already
-    reconfigure(nav, usr);
-    st = rlogin(nav);
+    st = assign(usr, nav);
     if not st:
+        logger.info("discovery mode setup failed for %s.. skipping", usr[P_USR]);
         yield st;
     
     else:
+        logger.info("trying to discover courses for %s",
+                    nav.keys[P_USR]);
+
         to, tpage = nav ('qst_page')[:-1]
         idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
         path = nav.webmap ['qst_page']['path'].split (',')[-1]
@@ -563,6 +675,7 @@ def discovercrs (usr, nav):
                     break
 
             if m:
+                logger.info("found %s", m.group(0));
                 yield m.group (0)
 
             try:
@@ -577,16 +690,22 @@ def discovercrs (usr, nav):
 
 def is_arg_valid(cmdl, arg):
     # a usr being in the group of users is the only concrete proof of validity
-    if P_USR in cmdl.__dict__ and P_USR in arg:
+    if (P_USR in cmdl.__dict__ and P_USR in arg):
         return arg[P_USR] in cmdl.__dict__[P_USR];
+
+    elif P_USR_OLD in cmdl.__dict__ and P_USR_OLD in arg:
+        return arg[P_USR_OLD] in cmdl.__dict__[P_USR_OLD];
+
+    elif P_USR_OLD in cmdl.__dict__ and P_USR in arg:
+        return arg[P_USR] in cmdl.__dict__[P_USR_OLD];
     else:
         return False;
 
-def is_net_valid_arg(arg):
+def is_net_valid_arg(cmdl, arg):
     # an arg can only go rogue when validated against a network. So, return the
     # only value that can necessitate such a validation in the first place as
     # this is the only place where the result lives.
-    return arg[P_CRSCODE];
+    return is_arg_valid(cmdl, arg) and arg[P_CRSCODE];
 
 def preprocess(args):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
@@ -598,7 +717,7 @@ def preprocess(args):
     tmas = LastList (args [P_TMA]);
     urls = LastList (args [P_URL]);
     wmap = args["wmap"];
-    P_USR = wmap ['kmap']['matno']
+    P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
     usr = {};
@@ -614,7 +733,10 @@ def preprocess(args):
         y = crscodes [i]
 
         if re.match('all', y, re.I):
-            for crs in discovercrs (nav_hook(usr), usr):
+            logger.info("preprocess(): no course specified for, entering discovery mode %s",
+                    usr[P_USR]);
+
+            for crs in discovercrs (usr, nav_hook(usr)):
                 usr[P_CRSCODE] = crs;
                 yield usr.copy ();
                 if not crs:
@@ -651,27 +773,29 @@ def reconfigure(nav, usr):
 
 
 def unassign(nav):
-    return logout(nav);
+    return lazy_logout(nav);
 
 
 def assign(usr, nav = None):
     if nav == None:
         nav = create_nav(usr);
-        return rlogin(nav);
+        return lazy_login(nav);
     
-    if self.get_key_usr(self.nav.keys) != get_key_usr(cli):
+    elif get_key_usr(nav.keys) != get_key_usr(usr):
         # maybe we don't need this
         #unassign(nav);
-        return rlogin(reconfigure(nav, usr));
+        return lazy_login(reconfigure(nav, usr));
+    else:
+        return nav;
     
-    return nav;
     
 
 
 def session_from_cookies (url, cookie_file):
-
-    if pathlib.Path(cookie_file).exists():
+    fi = pathlib.Path(cookie_file);
+    if fi.exists():
         with open (cookie_file) as f:
+            logger.info("reading cookie file...");
             cookie_str = f.read ();
 
     else:
@@ -681,11 +805,14 @@ def session_from_cookies (url, cookie_file):
         cookt = cookie_parse.bake_cookies (cookie_str, url);
 
     except BaseException as err:
+        logger.info("cookie parsing error %s", err);
         return status.Status(status.S_ERROR, "cookie error", err);
 
     if not cookt:
+        logger.info("no cookies found... really hungry");
         return status.Status(status.S_ERROR, "no cookies", cookt);
-
+    
+    logger.info("got cookie created by %s", cookt [0]['User-Agent']);
     session = requests.Session ()
     session.headers = requests.structures.OrderedDict(
             (
@@ -742,12 +869,16 @@ def mask (qst, mpat, mvalue):
 def answer_lax(qst, amgr):
     x = copy.deepcopy (qst);
 
-    x = amgr.answer (x);
+    qst = amgr.answer (qst);
 
-    if x and x != ansm.ANS_NOANSWER and qst [amgr.qmap["qid"]] == x[amgr.qmap["qid"]]:
-        return x;
-    else:
+    logger.info("answer_lax(): checking for answer to question in cache");
+
+    if qst and qst != ansm.ANS_NOANSWER and qst [amgr.qmap["qid"]] == x[amgr.qmap["qid"]]:
+        logger.info("answer_lax(): answer found in local cache");
         return qst;
+    else:
+        logger.info("answer_lax(): no answer found in local cache");
+        return x;
 
 def submit(nav, sreq, retry = 3, **kwargs):
     x = 0;
@@ -759,16 +890,16 @@ def submit(nav, sreq, retry = 3, **kwargs):
             
             return is_correct_ans(nav, res);
             
-        except BaseException as err:
-            if need_cookies(nav, res):
-                cookie_hook(nav);
-
-            st = login(nav);
+        except requests.HTTPError as err:
+            st = can_retry(nav, res);
             if not st:
-                return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
-
+                return st;
+            logger.info("libdog.submit(): submit unsucessful for due to %s," +
+                    "retrying" if rt > 1 else "not retrying",
+                    err);
             rt -= 1;
 
+    logger.info("lazy_login(): submit unsucessful, suspending");
     return status.Status(status.S_ERROR, "submit retries expended", (sreq, res));
 
 
@@ -801,6 +932,26 @@ def transform_req (req, usr):
     return req;
 
 
+def can_retry(nav, qres):
+    if need_cookies(nav, qres):
+        st = cookie_hook(nav);
+
+        if not st:
+            return status.Status(status.S_ERROR, "no cookie in navigator",
+                    (qres.request, qres, st));
+
+        st = lazy_login(nav);
+        if not st:
+            return status.Status(status.S_ERROR, "submit/login err",
+                    (qres.request, qres, st));
+
+    elif complete(nav, qres):
+        return status.Status(status.S_NULL, "no more question",
+                qres);
+
+    return True;
+
+
 
 def fetch_all(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH;
@@ -810,12 +961,14 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
     freq = transform_req(to, usr);
     
     referer = fro.url;
+    
+    logger.info("fetch_all(): preparing to fetch all questions.");
 
     pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
     
-    result = ftype();
+    result = fetch_t();
 
-    result[F_PSEUDO_ANS] = pseudo_ans.copy();
+    result[F_PSEUDO_ANS] = pseudos.copy();
     result[F_QMAP] = nav.webmap["qmap"];
 
     done = False;
@@ -832,8 +985,6 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                     
                     qres.raise_for_status ();
 
-                    result = ftype();
-
                     result[F_SREQUEST] = fill_form (
                             qres.text,
                             qres.url,
@@ -842,33 +993,58 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                                 nav.webmap["qmap"]['ans']: None
                                 }
                             )
+
                     result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
+
+                    logger.info(
+                            "fetch_all(): successful fetched question %s for %s in %s", 
+                            result[F_QKEY][nav.webmap["qmap"]["qn"]],
+                            usr[P_USR],
+                            usr[P_CRSCODE]
+                            );
+
 
                     referer = qres.url;
                     result[F_REFERER] = referer;
-                    F_LAST_FETCH = ftype();
-                    F_LAST_FETCH[F_FREQUEST] = copy.deepcopy(qres);
+                    F_LAST_FETCH = fetch_t();
+                    F_LAST_FETCH[F_FREQUEST] = copy.deepcopy(freq);
                     F_LAST_FETCH[F_REFERER] = referer;
 
                     yield copy.deepcopy(result);
                     break;
                 
-                except BaseException as err:
-
-                    if complete(nav, qres):
-                        yield status.Status(status.S_NULL, "no more question",
-                                qres);
+                except DogTypeError as err:
+                    st = can_retry(nav, qres);
+                    if not st:
+                        yield st;
                         done = True;
                         break;
 
-                    elif need_cookies(nav, res):
-                        cookie_hook(nav);
-
-                    st = login(nav);
-                    if not st:
-                        yield status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
-
+                    logger.info("fetch_all(): fetch unsucessful for due to %s," +
+                            "retrying" if rt > 1 else "not retrying",
+                            err);
                     rt -= 1;
+
+                except requests.HTTPError as err:
+                    st = can_retry(nav, qres);
+                    if not st:
+                        yield st;
+                        done = True;
+                        break;
+
+                    logger.info("fetch_all(): fetch unsucessful for due to %s," +
+                            "retrying" if rt > 1 else "not retrying",
+                            err);
+                    rt -= 1;
+
+                except BaseException as err:
+                    logger.info("fetch_all(): fetch unsucessful for %s due to %s, suspending",
+                            nav.keys[P_USR], err);
+
+                    yield status.Status(status.S_ERROR, "unknown err", (qres, err));
+                    done = True;
+                    break;
+
 
 
 
@@ -902,32 +1078,36 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
                         nav.webmap["qmap"]['ans']: None
                         }
                     );
-        except BaseException as err:
-            if need_cookies(nav, res):
-                cookie_hook(nav);
-
-            st = login(nav);
+        except DogTypeError as err:
+            st = can_retry(nav, qres);
             if not st:
-                return status.Status(status.S_ERROR, "submit/login err", (sreq, res, st));
+                return st;
+            rt -= 1;
 
-            retry -= 1;
+        except requests.HTTPError as err:
+            st = can_retry(nav, qres);
+            if not st:
+                return st;
+            rt -= 1;
 
 
+def brute_safe(nav, usr, qst):
+    qst1 = fetch_one(nav, usr);
+    if isinstance(qst1, status.Status) and qst1.code == status.S_NULL:
+        return True;
 
-def brute_safe(usr, nav, qst):
-    qst1 = fetch_one(usr, nav);
-    if qst1:
+    elif qst1:
         return re.match(
                 str(qst[nav.webmap["qmap"]["qn"]]),
 
-                str(qst1[nav.webmap["qmap"]["qn"]])
+                str(qst1[F_QKEY][nav.webmap["qmap"]["qn"]])
                 );
     
     return False;
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         
-    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY].copy(), amgr);
+    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY], amgr);
     
     preq = f_type[F_SREQUEST];
 
@@ -943,7 +1123,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
     
     x = 0;
 
-    for a in AnyheadList (f_type[F_PSEUDO_ANS], qst1 [self.qmgr.qmap ["ans"]]):
+    for a in AnyheadList (f_type[F_PSEUDO_ANS], qst1 [nav.webmap["qmap"]["ans"]]):
 
         qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
@@ -951,7 +1131,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         x = submit(nav, preq, retry);
         if x == 1:
             qst [nav.webmap["qmap"]["ans"]] = a;
-            preq[f_type[F_QKEY]] = qst;
+            preq[F_QKEY] = qst;
             x = submit(nav, preq, retry);
 
             if x == 0:
@@ -966,8 +1146,8 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
             else:
                 return x;
 
-        elif not brute_safe(usr, nav, qst):
-            return status.Status(status.S_FATAL, "unable to brute for the answers from the server", err);
+        elif not brute_safe(nav, usr, qst):
+            return status.Status(status.S_FATAL, "unable to brute for the answers from the server", qst);
         
 
 

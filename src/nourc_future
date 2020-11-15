@@ -2,7 +2,7 @@
 rumbu = tqatri
 xstore = trextri
 
-[event]
+[events]
 on_qst_submit = mark\W+for\W+question
 on_complete = You\W+have\W+already\W+complete
 on_cookie = Checking\W+your\W+browser
@@ -19,7 +19,7 @@ volatile =
 indices = 0
 
 [login_page]
-keys = ${kmap:matno}/${kmap:pwd}
+keys = ${kmap:usr}/${kmap:pwd}
 indices = 0
 path = Login
 volatile =

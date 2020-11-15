@@ -33,6 +33,7 @@ class SimpleDog:
         self.prep_argc = 0;
         self.status = status.Status();
         self.tasktab = scrm.QScrList();
+        self.tasktab_size = 0;
         self.amgr = amgr;
         self.usrs = usrs;
         self.nav = None;
@@ -42,9 +43,6 @@ class SimpleDog:
         return self.nav;
 
     def _alloc(self, task = None):
-        if not isinstance(task, (DTask, self._InternalTask)):
-            return None;
-
         self.tasktab.append(task);
         self.tasktab_size += 1;
 
@@ -103,7 +101,7 @@ class SimpleDog:
             return None;
 
     def submit(self, task):
-        if not hasattr(task, "magic") or (task.magic != SUB_MBR and task.magic != SUB_LDR):
+        if not hasattr(task, "magic") or (task.magic != SUB_MBR or task.magic != SUB_LDR):
             task = self._InternalTask(cmd = self.submit_pre_exec, args = task.args,
                    magic = SUB_LDR);
         
@@ -160,7 +158,7 @@ class SimpleDog:
                 prev = ldr;
 
                 for arg in self.argv():
-                    if not libdogs.is_net_valid_arg(arg):
+                    if not libdogs.is_net_valid_arg(ldr.args, arg):
                         continue;
 
                     mbr = self._InternalTask(magic = SUB_MBR, group = ldr, cmd =
@@ -203,7 +201,7 @@ class SimpleDog:
         if not nav:
             return nav;###handle
 
-        for ftype in libdogs.fetch_all(arg, nav):
+        for ftype in libdogs.fetch_all(nav, arg):
             if not ftype:
                 st = ftype;
                 break;
@@ -239,4 +237,4 @@ class SimpleDog:
             # to support group of tasks and fast access to the begining of a linked
             # list. The first item can be the leader and every .nxt from itself and
             # any other .nxt are member
-            self.tgroup = group;
+            self.group = group;

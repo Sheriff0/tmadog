@@ -2,11 +2,13 @@
 rumbu = tqatri
 xstore = trextri
 
-[fb]
-on_qst_submit = mark for question
+[events]
+on_qst_submit = mark\W+for\W+question
+on_complete = You\W+have\W+already\W+complete
+on_cookie = Checking\W+your\W+browser
 
 [kmap]
-matno = [Matric Number]
+usr = [Matric Number]
 pwd = [Password]
 
 
@@ -17,7 +19,7 @@ volatile =
 indices = 0
 
 [login_page]
-keys = ${kmap:matno}/${kmap:pwd}
+keys = ${kmap:usr}/${kmap:pwd}
 indices = 0
 path = Login
 volatile =
@@ -26,7 +28,7 @@ requires = home_page
 [logout_page]
 path = Logout
 indices = 0
-requires = tma_page
+requires = profile_page
 volatile =
 
 [qst_page]

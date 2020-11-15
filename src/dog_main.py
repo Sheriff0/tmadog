@@ -19,26 +19,55 @@ import cookie_parse
 import dogs
 import qstwriter
 import pathlib
+import os
 
-
+import logging
 import libdogs
 import simple_dog
 
 
 def getcookie(nav, args = None):
     if not args:
-        fi = input("""
-Please input a cookie file (e.g from the browser)--> """);
+        fi = pathlib.Path(input("""
+Please input a cookie file (e.g from the browser)--> """));
+
 
     else:
         fi = args.cookies;
 
-    session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], fi);
+    session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], repr(fi));
     if session:
         nav.session = session;
     return nav;
 
-def main (args):
+def main (args, pkg_name):
+
+    pkg_name = pathlib.Path(pkg_name);
+
+    pkg_dir = pathlib.Path(os.sep.join(str(pkg_name.resolve()).split(os.sep)[:-1]));
+
+    logger = logging.getLogger('tmadog');
+
+    logger.setLevel(logging.NOTSET);
+    # create file handler which logs even debug messages
+    dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
+    dfh.setLevel(logging.DEBUG);
+
+    fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = "w");
+    fatal.setLevel(logging.CRITICAL);
+
+    stdout = logging.StreamHandler();
+    stdout.setLevel(logging.INFO);
+
+    dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));
+
+    stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));
+
+    # add the handlers to the logger
+    logger.addHandler(dfh);
+    logger.addHandler(fatal);
+    logger.addHandler(stdout);
+
 
     def cleanup():
         if ansmgr._cur:
@@ -62,16 +91,24 @@ def main (args):
 
         if f:
             f.close ()
-
-
+    
+    if not getattr(args, libdogs.P_WMAP):
+        logger.info("no config file given, setting default config file for webmap");
+        setattr(args, libdogs.P_WMAP, str(pkg_dir.join("nourc")));
 
     mp = configparser.ConfigParser (interpolation =
         configparser.ExtendedInterpolation ())
+    
+    logger.info("reading config file and initializing a webmap");
+    mp.read (getattr(args, libdogs.P_WMAP));
 
-    mp.read (args.wmap)
-
-    args.wmap = mp;
-
+    setattr(args, libdogs.P_WMAP, mp);
+    
+    if not args.database:
+        logger.info("no database file given, setting default database file for webmap");
+        args.database = str(pkg_dir.joinpath("noudb"));
+    
+    logger.debug("initializing answer manager");
     ansmgr = ansm.AnsMgr (
             qmap = mp['qmap'],
             database = args.database,
@@ -79,10 +116,12 @@ def main (args):
             pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
             )
     
+    logger.debug("initializing a dog to run task");
     dog = simple_dog.SimpleDog(libdogs.preprocess(args), ansmgr);
-
+    
+    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = dog.get_nav);
     try:
-        task = dog._InternalTask(args = args);
+        task = dog._InternalTask(cmd = None, args = args);
         dog.submit(task);
 
     except KeyboardInterrupt:
@@ -108,13 +147,13 @@ if __name__ == '__main__':
 
     parser.add_argument ('--tma', nargs = "+", help = 'Your target TMA for the chosen course', action = libdogs.AppendList, dest = libdogs.P_TMA);
 
-    parser.add_argument ('--config', default = 'dogrc', help = 'configuration file to use', dest = libdogs.P_WMAP);
+    parser.add_argument ('--config', help = 'configuration file to use', dest = libdogs.P_WMAP);
 
     parser.add_argument ('--debug', action = 'store_true', help = 'To enable debug mode')
 
     parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
 
-    parser.add_argument ('--database', '-db', default = 'olddb', help = 'The database to use')
+    parser.add_argument ('--database', '-db', help = 'The database to use')
 
     parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest = 'updatedb', default = True, help = 'Update the database in use')
 
@@ -124,7 +163,9 @@ if __name__ == '__main__':
     parser.add_argument ('--cookies', help = 'Website cookies');
 
     parser.add_argument ('--output', help = "output file format");
+    
+    pkg_path = sys.argv[0];
 
     args = parser.parse_args()
-
-    main (args);
+    
+    main(args, pkg_path);
