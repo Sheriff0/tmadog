@@ -27,7 +27,7 @@ SUB_MBR = 0;
 
 class SimpleDog:
 
-    def __init__ (self, usrs, amgr):
+    def __init__ (self, usrs, amgr, get_nav):
         self.arg_gens = scrm.QScrList();
         self.prep_argv = scrm.QScrList();
         self.prep_argc = 0;
@@ -37,10 +37,8 @@ class SimpleDog:
         self.amgr = amgr;
         self.usrs = usrs;
         self.nav = None;
+        self.get_nav = get_nav;
 
-    def get_nav(self, cli):
-        self.nav = libdogs.assign(cli);
-        return self.nav;
 
     def _alloc(self, task = None):
         self.tasktab.append(task);

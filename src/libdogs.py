@@ -325,6 +325,8 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
 
     global LCLICK
 
+    s = html
+
     html = lxml.html.fromstring (html = html, base_url = url)
 
     x = html.cssselect (selector)
@@ -344,7 +346,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
             break
 
     if c != idx:
-        logger.debug("can't find button.. not clicking..");
+        logger.debug("can't find button.. no clicking on page\n=======\nmessage\n======\n%s\n\n", s);
         raise DogTypeError ('No such button %s found' % (button))
     
     logger.debug("found button.. clicking..");
@@ -455,7 +457,7 @@ def need_cookies(nav, res):
     m = re.search(nav.webmap["events"]["on_cookie"], res.text, flags = re.I |
             re.S | re.M) or is_Challenge_Request(res);
     if m:
-        logger.debug("cookie needed\n=======\nmessage\n=======\n%s\n========",
+        logger.debug("cookie needed\n=======\nmessage\n=======\n%s\n========\n\n",
                 res.text[m.start():]);
     else:
         logger.debug("no cookie needed");
@@ -467,7 +469,7 @@ def complete(nav, res):
     m = re.search(nav.webmap["events"]["on_complete"], res.text, flags = re.I |
             re.S | re.M);
     if m:
-        logger.debug("quiz completed\n=======\nmessage\n=======\n%s\n========",
+        logger.debug("quiz completed\n=======\nmessage\n=======\n%s\n========\n\n",
                 res.text[m.start():]);
     else:
         logger.debug("quiz uncompleted");
@@ -484,10 +486,10 @@ def is_correct_ans(nav, res):
     if m:
         x = int (m.group ("mark"));
         if x:
-            logger.debug("bravo!! correct answer\n=======\nmessage\n=======\n%s\n========",
+            logger.debug("bravo!! correct answer\n=======\nmessage\n=======\n%s\n========\n\n",
                 res.text[m.start():]);
         else:
-            logger.debug("oops!! wrong answer\n=======\nmessage\n=======\n%s\n========",
+            logger.debug("oops!! wrong answer\n=======\nmessage\n=======\n%s\n========\n\n",
                 res.text[m.start():]);
 
         return x;
@@ -640,6 +642,52 @@ def lazy_login(nav, retry = 3, **kwargs):
 
 
 
+def goto_page(nav, pg, stp = None, retry = 3, **kwargs):
+    retry += 1;
+    
+    logger.info("goto_page(): preparing navigate to %s", pg);
+
+    lres = None;
+
+    while retry:
+        try:
+            lres = nav(pg)[:stp];
+            if isinstance(lres, requests.Response):
+                    lres.raise_for_status();
+            logger.info("goto_page(): sucessfully navigated to %s", pg);
+            nav.cache[pg] = lres;
+            return lres;
+        
+        except DogTypeError as err:
+            if lres and need_cookies(nav, lres):
+                st = cookie_hook(nav);
+                if not st:
+                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+            logger.info("goto_page(): navigation unsucessful for %s due to %s",
+                    pg, err);
+
+            retry -= 1;
+
+        except requests.HTTPError as err:
+            if lres and need_cookies(nav, lres):
+                st = cookie_hook(nav);
+                if not st:
+                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+
+            logger.info("goto_page(): navigation unsucessful for %s due to %s," +
+                    "retrying" if retry > 1 else "not retrying",
+                    pg, err);
+            retry -= 1;
+
+        except BaseException as err:
+            logger.info("goto_page(): navigation to %s unsucessful for %s due to %s, suspending",
+                    pg, err);
+
+            return status.Status(status.S_ERROR, "unknown err", (lres, err));
+
+    return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
+
+
 def create_nav(key):
     return navigation.Navigator (
             key[P_URL],
@@ -648,7 +696,7 @@ def create_nav(key):
             session = requests.Session ()
             );
 
-def discovercrs (usr, nav):
+def discovercrs (usr, nav, retry = 3):
     ## incase that isn't done already
     st = assign(usr, nav);
     if not st:
@@ -659,9 +707,18 @@ def discovercrs (usr, nav):
         logger.info("trying to discover courses for %s",
                     nav.keys[P_USR]);
 
-        to, tpage = nav ('qst_page')[:-1]
+        retry += 1
+
+        st = goto_page(nav, "qst_page", -1);
+
+        if not st:
+            yield st;
+            return;
+
+        to, tpage = st;
         idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
         path = nav.webmap ['qst_page']['path'].split (',')[-1]
+
 
         idx += 1
 
@@ -942,6 +999,33 @@ def transform_req (req, usr):
     return req;
 
 
+
+def can_retry_page(nav, qres):
+    if need_cookies(nav, qres):
+        st = cookie_hook(nav);
+
+        if not st:
+            return status.Status(status.S_ERROR, "no cookie in navigator",
+                    (qres.request, qres, st));
+        return status.Status(status.S_OK, "can retry",
+                qres);
+
+
+        st = lazy_login(nav);
+        if not st:
+            return status.Status(status.S_ERROR, "submit/login err",
+                    (qres.request, qres, st));
+
+        return status.Status(status.S_OK, "can retry",
+                qres);
+
+    else:
+        return status.Status(status.S_ERROR, "can't retry",
+                    (qres.request, qres));
+
+
+
+
 def can_retry(nav, qres):
     if need_cookies(nav, qres):
         st = cookie_hook(nav);
@@ -949,17 +1033,25 @@ def can_retry(nav, qres):
         if not st:
             return status.Status(status.S_ERROR, "no cookie in navigator",
                     (qres.request, qres, st));
+        return status.Status(status.S_OK, "can retry",
+                qres);
+
 
         st = lazy_login(nav);
         if not st:
             return status.Status(status.S_ERROR, "submit/login err",
                     (qres.request, qres, st));
 
+        return status.Status(status.S_OK, "can retry",
+                qres);
+
     elif complete(nav, qres):
         return status.Status(status.S_NULL, "no more question",
                 qres);
 
-    return True;
+    else:
+        return status.Status(status.S_ERROR, "can't retry",
+                    (qres.request, qres));
 
 
 
@@ -1089,13 +1181,13 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
                         }
                     );
         except DogTypeError as err:
-            st = can_retry(nav, qres);
+            st = can_retry(nav, res);
             if not st:
                 return st;
             rt -= 1;
 
         except requests.HTTPError as err:
-            st = can_retry(nav, qres);
+            st = can_retry(nav, res);
             if not st:
                 return st;
             rt -= 1;

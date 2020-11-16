@@ -79,13 +79,13 @@ Please input a cookie file (e.g from the browser)--> """));
         nonlocal dog;
         if dog.nav:
             nav = dog.nav;
-            return libdogs.lazy_nav_reconf(nav, cli);
+            dog.nav = libdogs.lazy_nav_reconf(nav, cli);
         else:
             nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
             nav = getcookie(nav);
             dog.nav = nav;
 
-        return nav;
+        return dog.nav;
 
     def cleanup():
         if ansmgr._cur:
@@ -137,7 +137,7 @@ Please input a cookie file (e.g from the browser)--> """));
     logger.debug("initializing a dog to run task");
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
 
-    dog = simple_dog.SimpleDog(libdogs.preprocess(args), ansmgr);
+    dog = simple_dog.SimpleDog(libdogs.preprocess(args), ansmgr, get_nav);
 
 
     
