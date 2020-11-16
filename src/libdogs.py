@@ -54,6 +54,11 @@ class AppendList(argparse.Action):
             getattr(namespace, self.dest).append(values)
 
 
+
+class DogCmdParser(argparse.ArgumentParser):
+    def convert_arg_line_to_args(self, arg_line):
+        return arg_line.split();
+
 def is_Challenge_Request(resp):
     return cloudscraper.CloudScraper.is_Firewall_Blocked(resp) or cloudscraper.CloudScraper.is_New_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_New_IUAM_Challenge(resp) or cloudscraper.CloudScraper.is_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_IUAM_Challenge(resp);
 
@@ -450,7 +455,7 @@ def need_cookies(nav, res):
     m = re.search(nav.webmap["events"]["on_cookie"], res.text, flags = re.I |
             re.S | re.M) or is_Challenge_Request(res);
     if m:
-        logger.debug("cookie needed\n=======message\n=======\n%s========",
+        logger.debug("cookie needed\n=======\nmessage\n=======\n%s\n========",
                 res.text[m.start():]);
     else:
         logger.debug("no cookie needed");
@@ -462,7 +467,7 @@ def complete(nav, res):
     m = re.search(nav.webmap["events"]["on_complete"], res.text, flags = re.I |
             re.S | re.M);
     if m:
-        logger.debug("quiz completed\n=======message\n=======\n%s========",
+        logger.debug("quiz completed\n=======\nmessage\n=======\n%s\n========",
                 res.text[m.start():]);
     else:
         logger.debug("quiz uncompleted");
@@ -479,10 +484,10 @@ def is_correct_ans(nav, res):
     if m:
         x = int (m.group ("mark"));
         if x:
-            logger.debug("bravo!! correct answer\n=======message\n=======\n%s========",
+            logger.debug("bravo!! correct answer\n=======\nmessage\n=======\n%s\n========",
                 res.text[m.start():]);
         else:
-            logger.debug("oops!! wrong answer\n=======message\n=======\n%s========",
+            logger.debug("oops!! wrong answer\n=======\nmessage\n=======\n%s\n========",
                 res.text[m.start():]);
 
         return x;
@@ -578,15 +583,12 @@ def rlogin(nav, retry = 3, **kwargs):
 
 def lazy_logout(nav, retry = 3, **kwargs):
     # lazy-easy
-    st = nav.cache.pop("profile_page", None);
-    st = nav.cache.pop("tma_page", None);
-    return nav;
+
+    return lazy_nav_reconf(nav, nav.keys);
 
 
 def lazy_login(nav, retry = 3, **kwargs):
-    st = nav.cache.pop("profile_page", None);
-    st = nav.cache.pop("tma_page", None);
-
+    nav = lazy_logout(nav);
     retry += 1;
     
     logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
@@ -733,7 +735,7 @@ def preprocess(args):
         y = crscodes [i]
 
         if re.match('all', y, re.I):
-            logger.info("preprocess(): no course specified for, entering discovery mode %s",
+            logger.info("preprocess(): no course specified for %s, entering course discovery mode",
                     usr[P_USR]);
 
             for crs in discovercrs (usr, nav_hook(usr)):
@@ -766,6 +768,11 @@ def get_key_tma(key):
 def get_key_webmap(key):
     return key[WEBMAP];
 
+def lazy_nav_reconf(nav, usr):
+    nv = navigation.Navigator(usr[P_URL], usr[P_WMAP], usr, session = nav.session, **nav.kwargs);
+    if nav.keys[P_URL] == usr[P_URL] and "home_page" in nav:
+        nv.cache["home_page"] = nav.cache["home_page"];
+    return nv;
 
 def reconfigure(nav, usr):
     nav.reconfigure(usr[P_URL], usr[P_WMAP], usr);
@@ -777,16 +784,17 @@ def unassign(nav):
 
 
 def assign(usr, nav = None):
-    if nav == None:
+    if not nav:
         nav = create_nav(usr);
         return lazy_login(nav);
     
-    elif get_key_usr(nav.keys) != get_key_usr(usr):
+    elif re.match(nav.keys[P_USR], usr[P_USR], re.I):
         # maybe we don't need this
         #unassign(nav);
-        return lazy_login(reconfigure(nav, usr));
-    else:
         return nav;
+    else:
+        nav.keys = usr;
+        return lazy_login(nav);
     
     
 
@@ -888,6 +896,8 @@ def submit(nav, sreq, retry = 3, **kwargs):
             res = nav.session.request (**sreq, **kwargs);
             res.raise_for_status ();
             
+            logger.info("lazy_login(): submit sucessful, checking result...");
+
             return is_correct_ans(nav, res);
             
         except requests.HTTPError as err:
@@ -1037,7 +1047,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                             err);
                     rt -= 1;
 
-                except BaseException as err:
+                except Exception as err:
                     logger.info("fetch_all(): fetch unsucessful for %s due to %s, suspending",
                             nav.keys[P_USR], err);
 
@@ -1123,16 +1133,18 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
     
     x = 0;
 
+    logger.info("entering answer validation mode...");
+
     for a in AnyheadList (f_type[F_PSEUDO_ANS], qst1 [nav.webmap["qmap"]["ans"]]):
 
         qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
         
-        x = submit(nav, preq, retry);
+        x = submit(nav, preq, retry, **kwargs);
         if x == 1:
             qst [nav.webmap["qmap"]["ans"]] = a;
             preq[F_QKEY] = qst;
-            x = submit(nav, preq, retry);
+            x = submit(nav, preq, retry, **kwargs);
 
             if x == 0:
                 if amgr:

@@ -26,19 +26,7 @@ import libdogs
 import simple_dog
 
 
-def getcookie(nav, args = None):
-    if not args:
-        fi = pathlib.Path(input("""
-Please input a cookie file (e.g from the browser)--> """));
 
-
-    else:
-        fi = args.cookies;
-
-    session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], repr(fi));
-    if session:
-        nav.session = session;
-    return nav;
 
 def main (args, pkg_name):
 
@@ -48,7 +36,7 @@ def main (args, pkg_name):
 
     logger = logging.getLogger('tmadog');
 
-    logger.setLevel(logging.NOTSET);
+    logger.setLevel(logging.DEBUG);
     # create file handler which logs even debug messages
     dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
     dfh.setLevel(logging.DEBUG);
@@ -68,6 +56,36 @@ def main (args, pkg_name):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
+
+    def getcookie(nav):
+
+        if not args.cookies:
+            fi = pathlib.Path(input("""
+    
+Please input a cookie file (e.g from the browser)--> """));
+
+
+        else:
+            fi = pathlib.Path(args.cookies);
+            args.cookies = None;
+
+        session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], str(fi));
+        if session:
+            nav.session = session;
+        return nav;
+    
+
+    def get_nav(cli):
+        nonlocal dog;
+        if dog.nav:
+            nav = dog.nav;
+            return libdogs.lazy_nav_reconf(nav, cli);
+        else:
+            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
+            nav = getcookie(nav);
+            dog.nav = nav;
+
+        return nav;
 
     def cleanup():
         if ansmgr._cur:
@@ -117,9 +135,12 @@ def main (args, pkg_name):
             )
     
     logger.debug("initializing a dog to run task");
+    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
+
     dog = simple_dog.SimpleDog(libdogs.preprocess(args), ansmgr);
+
+
     
-    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = dog.get_nav);
     try:
         task = dog._InternalTask(cmd = None, args = args);
         dog.submit(task);
@@ -137,7 +158,7 @@ def main (args, pkg_name):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser ();
+    parser = libdogs.DogCmdParser (fromfile_prefix_chars='@');
 
     parser.add_argument ('--matno', help = 'Your Matric Number', nargs = "+", action = libdogs.AppendList, dest = libdogs.P_USR);
 

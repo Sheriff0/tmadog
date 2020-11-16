@@ -39,7 +39,7 @@ class SimpleDog:
         self.nav = None;
 
     def get_nav(self, cli):
-        self.nav = libdogs.assign(cli, self.nav);
+        self.nav = libdogs.assign(cli);
         return self.nav;
 
     def _alloc(self, task = None):
