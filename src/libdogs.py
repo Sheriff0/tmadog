@@ -347,6 +347,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
 
     if c != idx:
         logger.debug("can't find button.. no clicking on page\n=======\nmessage\n======\n%s\n\n", s);
+
         raise DogTypeError ('No such button %s found' % (button))
     
     logger.debug("found button.. clicking..");
@@ -500,7 +501,7 @@ def is_correct_ans(nav, res):
 
 def logout(nav):
     try:
-        nav["logout_page"];
+        goto_page("logout_page");
         logger.info("logout(): logged user %s out", nav.keys[P_USR]);
         return nav;
 
@@ -521,7 +522,7 @@ def login(nav):
 
     try:
         # for compatibility with testing dogrc's
-        nav["tma_page"];
+        goto_page("tma_page");
         logger.info("login(): successfully logged in user %s", nav.keys[P_USR]);
         return nav;
 
@@ -642,7 +643,7 @@ def lazy_login(nav, retry = 3, **kwargs):
 
 
 
-def goto_page(nav, pg, stp = None, retry = 3, **kwargs):
+def goto_page(nav, pg, stp = None, retry = 3):
     retry += 1;
     
     logger.info("goto_page(): preparing navigate to %s", pg);
@@ -659,24 +660,22 @@ def goto_page(nav, pg, stp = None, retry = 3, **kwargs):
             return lres;
         
         except DogTypeError as err:
-            if lres and need_cookies(nav, lres):
-                st = cookie_hook(nav);
-                if not st:
-                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
-            logger.info("goto_page(): navigation unsucessful for %s due to %s",
+            if not can_retry_page(nav, lres):
+                return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
+
+            logger.info("goto_page(): navigation unsucessful for %s due to %s, "
+                    + "retrying..." if retry > 1 else "exiting...",
                     pg, err);
 
             retry -= 1;
 
         except requests.HTTPError as err:
-            if lres and need_cookies(nav, lres):
-                st = cookie_hook(nav);
-                if not st:
-                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+            if not can_retry_page(nav, lres):
+                return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
 
-            logger.info("goto_page(): navigation unsucessful for %s due to %s," +
-                    "retrying" if retry > 1 else "not retrying",
+            logger.info("goto_page(): navigation unsucessful for %s due to %s",
                     pg, err);
+
             retry -= 1;
 
         except BaseException as err:
@@ -958,7 +957,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
             return is_correct_ans(nav, res);
             
         except requests.HTTPError as err:
-            st = can_retry(nav, res);
+            st = can_retry_fetch(nav, res);
             if not st:
                 return st;
             logger.info("libdog.submit(): submit unsucessful for due to %s," +
@@ -1001,6 +1000,9 @@ def transform_req (req, usr):
 
 
 def can_retry_page(nav, qres):
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
     if need_cookies(nav, qres):
         st = cookie_hook(nav);
 
@@ -1010,14 +1012,6 @@ def can_retry_page(nav, qres):
         return status.Status(status.S_OK, "can retry",
                 qres);
 
-
-        st = lazy_login(nav);
-        if not st:
-            return status.Status(status.S_ERROR, "submit/login err",
-                    (qres.request, qres, st));
-
-        return status.Status(status.S_OK, "can retry",
-                qres);
 
     else:
         return status.Status(status.S_ERROR, "can't retry",
@@ -1026,7 +1020,7 @@ def can_retry_page(nav, qres):
 
 
 
-def can_retry(nav, qres):
+def can_retry_fetch(nav, qres):
     if need_cookies(nav, qres):
         st = cookie_hook(nav);
 
@@ -1037,7 +1031,7 @@ def can_retry(nav, qres):
                 qres);
 
 
-        st = lazy_login(nav);
+        st = login(st);
         if not st:
             return status.Status(status.S_ERROR, "submit/login err",
                     (qres.request, qres, st));
@@ -1058,7 +1052,13 @@ def can_retry(nav, qres):
 def fetch_all(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH;
 
-    to, fro = nav ('qst_page')[:-1];
+    g = goto_page(nav, 'qst_page', -1);
+
+    if not g:
+        yield g;
+        return;
+
+    to, fro = g;
 
     freq = transform_req(to, usr);
     
@@ -1116,7 +1116,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                     break;
                 
                 except DogTypeError as err:
-                    st = can_retry(nav, qres);
+                    st = can_retry_fetch(nav, qres);
                     if not st:
                         yield st;
                         done = True;
@@ -1128,7 +1128,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                     rt -= 1;
 
                 except requests.HTTPError as err:
-                    st = can_retry(nav, qres);
+                    st = can_retry_fetch(nav, qres);
                     if not st:
                         yield st;
                         done = True;
@@ -1181,13 +1181,13 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
                         }
                     );
         except DogTypeError as err:
-            st = can_retry(nav, res);
+            st = can_retry_fetch(nav, res);
             if not st:
                 return st;
             rt -= 1;
 
         except requests.HTTPError as err:
-            st = can_retry(nav, res);
+            st = can_retry_fetch(nav, res);
             if not st:
                 return st;
             rt -= 1;

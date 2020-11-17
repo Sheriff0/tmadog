@@ -26,6 +26,29 @@ import libdogs
 import simple_dog
 
 
+def check(pkg_name):
+    import uuid
+    import hashlib
+    import locale
+    import os
+    import sys
+        
+    pkg_dir = pathlib.Path(os.sep.join(str(pathlib.Path(pkg_name).resolve()).split(os.sep)[:-1]));
+    mac = bytes(str(uuid.getnode()), encoding = locale.getpreferredencoding());
+    hsh = hashlib.sha256(mac);
+
+    fi = pathlib.Path(pkg_dir.joinpath("dog_key.txt"));
+
+    if not fi.exists():
+        print("You don't have the required key to use this product.");
+        return False;
+
+    else:
+        with open(str(fi), "rb") as f:
+            byt = f.read();
+            return byt == hsh.digest();
+
+
 
 
 def main (args, pkg_name):
@@ -189,4 +212,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    main(args, pkg_path);
+    if time.time() < 1605691693.4966023:
+        main(args, pkg_path);
