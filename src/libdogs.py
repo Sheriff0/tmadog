@@ -184,6 +184,9 @@ class AnyheadList:
             except IndexError:
                 return
 
+            except KeyError: #NOTE: hacky and unsustainable
+                return;
+
             idx += 1
 
     def __next__ (self):
@@ -246,6 +249,33 @@ class AnyheadList:
 
             return self.dict_arr ['-' + str (idx)]
 
+
+def collapse_gen(*pargs):
+    if not pargs:
+        return;
+    for gen in pargs:
+        for it in gen:
+            yield it;
+
+def anyhead_gen(itr, v, idx = None):
+    back = [];
+    itr = iter(itr);
+
+    for i,it in enumerate(itr):
+        back.append(it);
+        if not idx:
+            if it == v:
+                idx = i;
+                break;
+        elif i == idx:
+            break;
+
+   
+
+    first = back.pop();
+
+    for it in collapse_gen([first], itr, back):
+        yield it;
 
 NO_TXTNODE_KEY = 0b0001
 NO_TXTNODE_VALUE = 0b0010
@@ -442,8 +472,19 @@ def cookie_hook(nav):
 def nav_hook(nav):
     return None;
 
+def unknown_err_handler_hook(err, cause):
+    res = input("%s occured while process %s. press s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, str(cause)));
+    if re.match(r's.*', res, re.I):
+        return status.Status(status.S_NULL, "skip action", cause);
+    elif re.match(r'c.*', res, re.I):
+        return status.Status(status.S_OK, "continue action", cause);
+    else:
+        return status.Status(status.S_NULL, "skip action", cause);
+
+
+
 def init_hooks(**kwargs):
-    global cookie_hook, nav_hook;
+    global cookie_hook, nav_hook, unknown_err_handler_hook;
 
     logger.debug("initializing requested hooks");
 
@@ -452,6 +493,9 @@ def init_hooks(**kwargs):
 
     if "nav_hook" in kwargs:
         nav_hook = kwargs.pop("nav_hook"); 
+
+    if "err_hook" in kwargs:
+        unknown_err_handler_hook = kwargs.pop("err_hook");
     logger.debug("done..");
 
 def need_cookies(nav, res):
@@ -501,11 +545,11 @@ def is_correct_ans(nav, res):
 
 def logout(nav):
     try:
-        goto_page("logout_page");
+        goto_page(nav, "logout_page");
         logger.info("logout(): logged user %s out", nav.keys[P_USR]);
         return nav;
 
-    except BaseException as err:
+    except BaseException as err: #NOTE replace this catch
         logger.info("logout(): unable to log user %s out due to unknown error %s",
                 nav.keys[P_USR], err);
         return status.Status(status.S_ERROR, "logout err", err);
@@ -522,11 +566,11 @@ def login(nav):
 
     try:
         # for compatibility with testing dogrc's
-        goto_page("tma_page");
+        goto_page(nav, "tma_page");
         logger.info("login(): successfully logged in user %s", nav.keys[P_USR]);
         return nav;
 
-    except BaseException as err:
+    except BaseException as err: #NOTE replace this catch
         logger.info("login(): can't log user %s in", nav.keys[P_USR]);
         return status.Status(status.S_ERROR, "login err", err);
 
@@ -633,17 +677,20 @@ def lazy_login(nav, retry = 3, **kwargs):
                     nav.keys[P_USR], err);
             retry -= 1;
 
-        except BaseException as err:
-            logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
-                    nav.keys[P_USR], err);
+        except requests.RequestException as err:
+            if unknown_err_handler_hook(err, sreq):
+                retry -= 1;
+            else:
+                logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
+                        nav.keys[P_USR], err);
 
-            return status.Status(status.S_ERROR, "unknown err", (lres, err));
+                return status.Status(status.S_ERROR, "unknown err", (lres, err));
 
     return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
 
 
 
-def goto_page(nav, pg, stp = None, retry = 3):
+def goto_page(nav, pg, stp = None, retry = 3, login = False):
     retry += 1;
     
     logger.info("goto_page(): preparing navigate to %s", pg);
@@ -660,7 +707,7 @@ def goto_page(nav, pg, stp = None, retry = 3):
             return lres;
         
         except DogTypeError as err:
-            if not can_retry_page(nav, lres):
+            if not can_retry_page(nav, lres, login):
                 return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
 
             logger.info("goto_page(): navigation unsucessful for %s due to %s, "
@@ -670,7 +717,7 @@ def goto_page(nav, pg, stp = None, retry = 3):
             retry -= 1;
 
         except requests.HTTPError as err:
-            if not can_retry_page(nav, lres):
+            if not can_retry_page(nav, lres, login):
                 return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
 
             logger.info("goto_page(): navigation unsucessful for %s due to %s",
@@ -678,11 +725,14 @@ def goto_page(nav, pg, stp = None, retry = 3):
 
             retry -= 1;
 
-        except BaseException as err:
-            logger.info("goto_page(): navigation to %s unsucessful for %s due to %s, suspending",
-                    pg, err);
+        except requests.RequestException as err:
+            if unknown_err_handler_hook(err, sreq):
+                retry -= 1;
+            else:
+                logger.info("goto_page(): navigation to %s unsucessful due to %s, suspending",
+                        pg, err);
 
-            return status.Status(status.S_ERROR, "unknown err", (lres, err));
+                return status.Status(status.S_ERROR, "unknown err", (lres, err));
 
     return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
 
@@ -697,6 +747,8 @@ def create_nav(key):
 
 def discovercrs (usr, nav, retry = 3):
     ## incase that isn't done already
+    global F_QFMT;
+
     st = assign(usr, nav);
     if not st:
         logger.info("discovery mode setup failed for %s.. skipping", usr[P_USR]);
@@ -708,7 +760,10 @@ def discovercrs (usr, nav, retry = 3):
 
         retry += 1
 
-        st = goto_page(nav, "qst_page", -1);
+        st = goto_page(nav, "qst_page", -1, login = True);
+
+        if not F_QFMT:
+            F_QFMT = st;
 
         if not st:
             yield st;
@@ -901,6 +956,7 @@ def session_from_cookies (url, cookie_file):
 
 
 fetch_t = dict;
+F_QFMT = None;
 F_QUESTION = "qst";
 F_SREQUEST = "request";
 F_FREQUEST = "request";
@@ -964,6 +1020,11 @@ def submit(nav, sreq, retry = 3, **kwargs):
                     "retrying" if rt > 1 else "not retrying",
                     err);
             rt -= 1;
+        except requests.RequestException as err:
+            if unknown_err_handler_hook(err, sreq):
+                rt -= 1;
+            else:
+                break;
 
     logger.info("lazy_login(): submit unsucessful, suspending");
     return status.Status(status.S_ERROR, "submit retries expended", (sreq, res));
@@ -999,7 +1060,7 @@ def transform_req (req, usr):
 
 
 
-def can_retry_page(nav, qres):
+def can_retry_page(nav, qres, logi = False):
     if not isinstance(qres, requests.Response):
         qres = nav.session.get(nav.keys[P_URL]);
 
@@ -1009,11 +1070,17 @@ def can_retry_page(nav, qres):
         if not st:
             return status.Status(status.S_ERROR, "no cookie in navigator",
                     (qres.request, qres, st));
+        if logi:
+            st = login(st);
         return status.Status(status.S_OK, "can retry",
                 qres);
 
-
     else:
+        if logi:
+            st = login(nav);
+            if st:
+                return status.Status(status.S_OK, "can retry", qres);
+
         return status.Status(status.S_ERROR, "can't retry",
                     (qres.request, qres));
 
@@ -1044,15 +1111,20 @@ def can_retry_fetch(nav, qres):
                 qres);
 
     else:
-        return status.Status(status.S_ERROR, "can't retry",
-                    (qres.request, qres));
+        st = login(nav);
+        if not st:
+            return status.Status(status.S_ERROR, "can't retry",
+                        (qres.request, qres));
 
-
+        return status.Status(status.S_OK, "can retry", qres);
 
 def fetch_all(nav, usr, retry = 3, **kwargs):
-    global F_LAST_FETCH;
+    global F_LAST_FETCH, F_QFMT;
+ 
+    if not F_QFMT:
+        F_QFMT = goto_page(nav, 'qst_page', -1, login = True);
 
-    g = goto_page(nav, 'qst_page', -1);
+    g = F_QFMT; 
 
     if not g:
         yield g;
@@ -1139,13 +1211,16 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                             err);
                     rt -= 1;
 
-                except Exception as err:
-                    logger.info("fetch_all(): fetch unsucessful for %s due to %s, suspending",
-                            nav.keys[P_USR], err);
+                except requests.RequestException as err:
+                    if unknown_err_handler_hook(err, sreq):
+                        rt -= 1;
+                    else:
+                        logger.info("fetch_all(): fetch unsucessful for %s due to %s, suspending",
+                                nav.keys[P_USR], err);
 
-                    yield status.Status(status.S_ERROR, "unknown err", (qres, err));
-                    done = True;
-                    break;
+                        yield status.Status(status.S_ERROR, "unknown err", (qres, err));
+                        done = True;
+                        break;
 
 
 
@@ -1192,6 +1267,11 @@ def fetch_one(nav, usr, retry = 3, **kwargs):
                 return st;
             rt -= 1;
 
+        except requests.RequestException as err:
+            if unknown_err_handler_hook(err, sreq):
+                rt -= 1;
+            else:
+                return status.Status(status.S_NULL, "can't confirm brute force safety", qres);
 
 def brute_safe(nav, usr, qst):
     qst1 = fetch_one(nav, usr);
@@ -1227,7 +1307,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
 
     logger.info("entering answer validation mode...");
 
-    for a in AnyheadList (f_type[F_PSEUDO_ANS], qst1 [nav.webmap["qmap"]["ans"]]):
+    for a in anyhead_gen(f_type[F_PSEUDO_ANS], qst1 [nav.webmap["qmap"]["ans"]]):
 
         qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
