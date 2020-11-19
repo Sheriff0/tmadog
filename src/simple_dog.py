@@ -12,7 +12,6 @@ import pdb
 import json
 import cloudscraper
 import cookie_parse
-import dogs
 import os
 import sys
 

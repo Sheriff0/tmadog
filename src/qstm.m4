@@ -1,5 +1,4 @@
 import re
-import dogs
 import requests
 import math
 import copy

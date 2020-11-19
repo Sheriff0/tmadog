@@ -17,11 +17,9 @@ ifdef(
 `LIBPREFIX',
 `dnl
 import strip(LIBPREFIX)`'dbm
-import strip(LIBPREFIX)`'dogs
 ',
 `dnl
 import dbm
-import dogs
 'dnl
 )dnl
 

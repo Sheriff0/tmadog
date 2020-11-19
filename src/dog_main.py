@@ -16,7 +16,6 @@ import copy
 import json
 import cloudscraper
 import cookie_parse
-import dogs
 import qstwriter
 import pathlib
 import os
@@ -24,6 +23,7 @@ import os
 import logging
 import libdogs
 import simple_dog
+import status
 
 
 def check(pkg_name):
@@ -44,9 +44,9 @@ def check(pkg_name):
         return False;
 
     else:
-        with open(str(fi), "rb") as f:
+        with open(str(fi), "r") as f:
             byt = f.read();
-            return byt == hsh.digest();
+            return byt == hsh.hexdigest();
 
 
 def mkstat(dog, fi):
@@ -56,7 +56,7 @@ def mkstat(dog, fi):
         for st in simple_dog.dog_submit_stat(dog):
             arg = st[simple_dog.STAT_ARG];
             crsreg.setdefault(arg[libdogs.P_CRSCODE].lower(), set());
-            crsreg[arg[libdogs.P_CRSCODE].lower()].add(arg[P_USR].upper());
+            crsreg[arg[libdogs.P_CRSCODE].lower()].add(arg[libdogs.P_USR].upper());
 
             line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
@@ -236,5 +236,5 @@ if __name__ == '__main__':
     pkg_path = sys.argv[0];
 
     args = parser.parse_args()
-    
+
     main(args, pkg_path);

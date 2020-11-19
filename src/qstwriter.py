@@ -202,8 +202,8 @@ def fromJSONs(qstr, qmap, outfunc = None):
         return fromlist(qsts, qmap, outfunc)
 
 
-def fromlist(qsts, qmap, outfunc = None, crsreg = None): #NOTE fit something similare to related functions
-    return QstWriter(qsts, qmap, outfunc, crsreg).write();
+def fromlist(qsts, qmap, outfunc = None):
+    return QstWriter(qsts, qmap, outfunc).write();
 
 def writetxt(outpat = "{c}.txt", crsreg = None):
     def write(qiter):

@@ -719,7 +719,7 @@ def goto_page(nav, pg, stp = None, retry = 3, login = False):
             retry -= 1;
 
         except requests.RequestException as err:
-            if unknown_err_handler_hook(err, sreq):
+            if unknown_err_handler_hook(err, lres):
                 retry -= 1;
             else:
                 logger.info("goto_page(): navigation to %s unsucessful due to %s, suspending",
@@ -1014,7 +1014,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
             else:
                 break;
 
-    logger.info("lazy_login(): submit unsucessful, suspending");
+    logger.info("libdogs.submit(): submit unsucessful, suspending");
     return status.Status(status.S_ERROR, "submit retries expended", (sreq, res));
 
 
@@ -1074,6 +1074,8 @@ def can_retry_page(nav, qres, logi = False):
 
 
 
+def login_needed(nav, qres):
+    return not re.search(nav.keys[P_USR], qres.text, re.I);
 
 def can_retry_fetch(nav, qres):
     if need_cookies(nav, qres):
@@ -1097,6 +1099,15 @@ def can_retry_fetch(nav, qres):
     elif complete(nav, qres):
         return status.Status(status.S_NULL, "no more question",
                 qres);
+    
+#    elif login_needed(nav, qres):
+#        st = login(nav);
+#        if not st:
+#            return status.Status(status.S_ERROR, "submit/login err",
+#                    (qres.request, qres, st));
+#
+#        return status.Status(status.S_OK, "can retry",
+#                qres);
 
     else:
         return status.Status(status.S_ERROR, "can't retry",

@@ -9,11 +9,7 @@ SHELL := $(shell which bash)
 MAIN_DEP = ansm.m4 \
 	   cookie_parse.m4 \
 	   dbm.m4 \
-	   dogrc.m4 \
-	   dogs.m4 \
-	   hack.m4 \
 	   iff.m4 \
-	   main.m4 \
 	   mkconfig.m4 \
 	   navigation.m4 \
 	   qstm.m4 \
