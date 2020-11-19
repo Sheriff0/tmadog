@@ -57,7 +57,7 @@ class AppendList(argparse.Action):
 
 class DogCmdParser(argparse.ArgumentParser):
     def convert_arg_line_to_args(self, arg_line):
-        return arg_line.split();
+        return arg_line.split() if not re.match(r'^\s*#.*', arg_line) else [];
 
 def is_Challenge_Request(resp):
     return cloudscraper.CloudScraper.is_Firewall_Blocked(resp) or cloudscraper.CloudScraper.is_New_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_New_IUAM_Challenge(resp) or cloudscraper.CloudScraper.is_Captcha_Challenge(resp) or cloudscraper.CloudScraper.is_IUAM_Challenge(resp);
@@ -306,14 +306,8 @@ def fill_form (
     tform = html.cssselect (selector)
 
     if not len (tform):
-        logger.critical(
-                "No such form with css selector %s in page\n====\nhtml\n====\n%s\n==============", 
-                selector,
-                s,
-                );
         raise DogTypeError ('No form found')
     else:
-        logger.debug("found form with selector %s", selector);
         tform = tform[idx]
 
     targs = {}
@@ -334,7 +328,6 @@ def fill_form (
 
     ifields.update (data)
     
-    logger.debug("filling form");
     for k in ifields:
 
         if ifields[k] is None and not k in data:
@@ -376,11 +369,8 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
             break
 
     if c != idx:
-        logger.debug("can't find button.. no clicking on page\n=======\nmessage\n======\n%s\n\n", s);
-
         raise DogTypeError ('No such button %s found' % (button))
     
-    logger.debug("found button.. clicking..");
     t = m.tag
 
     if t in ('form', 'FORM'):
@@ -558,11 +548,15 @@ def logout(nav):
 def login(nav):
     # to make sure we are safe to login. it shouldn't be problematic at all
     # times.
-    if "profile_page" in nav or "tma_page" in nav:
-        st = logout(nav);
+    #if "profile_page" in nav or "tma_page" in nav:
+    #    st = logout(nav);
 
-        if not st:
-            return st;
+    #    if not st:
+    #        return st;
+    
+    #NOTE a desperate hack to save bandwidth. might be removed.
+    nav.cache.pop("profile_page", None);
+    nav.cache.pop("tma_page", None);
 
     try:
         # for compatibility with testing dogrc's
@@ -635,7 +629,6 @@ def lazy_logout(nav, retry = 3, **kwargs):
 
 
 def lazy_login(nav, retry = 3, **kwargs):
-    nav = lazy_logout(nav);
     retry += 1;
     
     logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
@@ -732,9 +725,9 @@ def goto_page(nav, pg, stp = None, retry = 3, login = False):
                 logger.info("goto_page(): navigation to %s unsucessful due to %s, suspending",
                         pg, err);
 
-                return status.Status(status.S_ERROR, "unknown err", (lres, err));
+                return status.Status(status.S_ERROR, "unknown err while navigating to %s" % (pg,), (lres, err));
 
-    return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
+    return status.Status(status.S_ERROR, "maximum retries exceeded for navigation to %s" % (pg,), lres);
 
 
 def create_nav(key):
@@ -920,18 +913,13 @@ def session_from_cookies (url, cookie_file):
     else:
         cookie_str = cookie_file;
     
-    try:
-        cookt = cookie_parse.bake_cookies (cookie_str, url);
-
-    except BaseException as err:
-        logger.info("cookie parsing error %s", err);
-        return status.Status(status.S_ERROR, "cookie error", err);
+    cookt = cookie_parse.bake_cookies (cookie_str, url);
 
     if not cookt:
         logger.info("no cookies found... really hungry");
         return status.Status(status.S_ERROR, "no cookies", cookt);
     
-    logger.info("got cookie created by %s", cookt [0]['User-Agent']);
+    logger.info("got cookies created by %s", cookt [0]['User-Agent']);
     session = requests.Session ()
     session.headers = requests.structures.OrderedDict(
             (
@@ -1008,7 +996,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
             res = nav.session.request (**sreq, **kwargs);
             res.raise_for_status ();
             
-            logger.info("lazy_login(): submit sucessful, checking result...");
+            logger.info("libdogs.submit(): submit sucessful, checking result...");
 
             return is_correct_ans(nav, res);
             
@@ -1111,12 +1099,9 @@ def can_retry_fetch(nav, qres):
                 qres);
 
     else:
-        st = login(nav);
-        if not st:
-            return status.Status(status.S_ERROR, "can't retry",
+        return status.Status(status.S_ERROR, "can't retry",
                         (qres.request, qres));
 
-        return status.Status(status.S_OK, "can retry", qres);
 
 def fetch_all(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH, F_QFMT;

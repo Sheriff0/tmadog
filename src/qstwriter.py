@@ -1,5 +1,6 @@
 import json
 import pathlib
+import re
 
 #A custom copy of NOUN question page header
 header = """<html>
@@ -201,10 +202,10 @@ def fromJSONs(qstr, qmap, outfunc = None):
         return fromlist(qsts, qmap, outfunc)
 
 
-def fromlist(qsts, qmap, outfunc = None):
-    return QstWriter(qsts, qmap, outfunc).write();
+def fromlist(qsts, qmap, outfunc = None, crsreg = None): #NOTE fit something similare to related functions
+    return QstWriter(qsts, qmap, outfunc, crsreg).write();
 
-def writetxt(outpat = "{c}.txt"):
+def writetxt(outpat = "{c}.txt", crsreg = None):
     def write(qiter):
         for crs, qpage in qiter:
             st = "";
@@ -219,12 +220,18 @@ def writetxt(outpat = "{c}.txt"):
                     st += "\n"
                     qn+=1;
 
-            with open(outpat.format(c = crs), "a") as fp:
-                fp.write(st);
+            if re.search(r'{matno}', outpat) and crsreg:
+                for matno in crsreg[crs.lower()]:
+                    with open(outpat.format(crscode = crs, c = crs, matno = matno), "a") as fp:
+                        fp.write(st);
+
+            else:
+                with open(outpat.format(c = crs), "a") as fp:
+                    fp.write(st);
 
     return write;
 
-def writehtml(outpat = "{c}.html"):
+def writehtml(outpat = "{crscode}.html", crsreg = None):
     def write(qiter):
         for crs, qpage in qiter:
             st = "";
@@ -239,15 +246,21 @@ def writehtml(outpat = "{c}.html"):
                     st += "\n"
                     qn+=1;
 
-            with open(outpat.format(c = crs), "a") as fp:
-                fp.write(st);
+            if re.search(r'{matno}', outpat) and crsreg:
+                for matno in crsreg[crs.lower()]:
+                    with open(outpat.format(crscode = crs, c = crs, matno = matno), "a") as fp:
+                        fp.write(st);
+            
+            else:
+                with open(outpat.format(crscode = crs, c = crs), "a") as fp:
+                    fp.write(st);
 
     return write;
 
-def writeqst(outpat = "{c}.txt"):
+def writeqst(outpat = "{crscode}.txt", crsreg = None):
     if outpat.endswith((".txt", ".TXT")):
-        return writetxt(outpat);
+        return writetxt(outpat, crsreg);
     elif outpat.endswith((".html", ".HTMl")):
-        return writehtml(outpat);
+        return writehtml(outpat, crsreg);
     else:
-        return writetxt(outpat);
+        return writetxt(outpat, crsreg);

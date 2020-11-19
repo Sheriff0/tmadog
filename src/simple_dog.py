@@ -20,19 +20,30 @@ import status
 import tasker
 import libdogs
 
+STAT_ARG = 0;
+STAT_ST = 1;
+
 ## group leader
 SUB_LDR = 1;
 ## group member
 SUB_MBR = 0;
 
+
+def dog_submit_stat(dog):
+    for ta in dog.tasktab:
+        if not hasattr(ta, "magic") or ta.magic != SUB_MBR:
+            continue;
+
+        yield [ta.args, ta.status];
+
 class SimpleDog:
 
     def __init__ (self, usrs, amgr, get_nav):
-        self.arg_gens = scrm.QScrList();
-        self.prep_argv = scrm.QScrList();
+        self.arg_gens = [];
+        self.prep_argv = [];
         self.prep_argc = 0;
         self.status = status.Status();
-        self.tasktab = scrm.QScrList();
+        self.tasktab = [];
         self.tasktab_size = 0;
         self.amgr = amgr;
         self.usrs = usrs;

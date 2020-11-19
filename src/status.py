@@ -1,8 +1,8 @@
 S_NULL = 0;
-S_ERROR = 0b0001;
+S_OK = 0b0001;
 S_INT = 0b0010;
-S_OK = 0b0100;
-S_FATAL = 0b0101;
+S_ERROR = 0b0100;
+S_FATAL = 0b1000;
 S_MASK = 0b1111;
 
 class UnknownStatus(BaseException):

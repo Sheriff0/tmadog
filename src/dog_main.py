@@ -49,7 +49,23 @@ def check(pkg_name):
             return byt == hsh.digest();
 
 
+def mkstat(dog, fi):
+    crsreg = {};
+    
+    with open(fi, "w") as fp:
+        for st in simple_dog.dog_submit_stat(dog):
+            arg = st[simple_dog.STAT_ARG];
+            crsreg.setdefault(arg[libdogs.P_CRSCODE].lower(), set());
+            crsreg[arg[libdogs.P_CRSCODE].lower()].add(arg[P_USR].upper());
 
+            line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
+            line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
+
+            line += "# %s %s\n\n" % (st[simple_dog.STAT_ST].msg, str(st[simple_dog.STAT_ST].cause));
+            
+            fp.write(line);
+
+    return crsreg;
 
 def main (args, pkg_name):
 
@@ -115,10 +131,12 @@ Please input a cookie file (e.g from the browser)--> """));
             ansmgr.close ()
 
         f = open (args.qstdump, 'w') if args.debug else None
+        
+        crsreg = mkstat(dog, args.stats);
 
         if args.updatedb:
             dbm.update_hacktab (args.database, ansmgr.iter_cache (),
-                    ansmgr.qmap, fp = f)
+                    ansmgr.qmap, fp = f);
         if args.debug or args.output:
             arr = []
             for qst in ansmgr.iter_cache ():
@@ -128,14 +146,19 @@ Please input a cookie file (e.g from the browser)--> """));
                 json.dump (arr, f)
 
             if args.output:
-                qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output));
+                qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
 
         if f:
             f.close ()
     
+    if not getattr(args, "stats"):
+        logger.info("no stat file given, setting default stat file");
+        setattr(args, "stats", str(pkg_dir.joinpath("dog.stat")));
+        
+
     if not getattr(args, libdogs.P_WMAP):
         logger.info("no config file given, setting default config file for webmap");
-        setattr(args, libdogs.P_WMAP, str(pkg_dir.join("nourc")));
+        setattr(args, libdogs.P_WMAP, str(pkg_dir.joinpath("nourc")));
 
     mp = configparser.ConfigParser (interpolation =
         configparser.ExtendedInterpolation ())
@@ -208,9 +231,10 @@ if __name__ == '__main__':
 
     parser.add_argument ('--output', help = "output file format");
     
+    parser.add_argument ('--stats', '--summary', help = 'where to write a summary of a run to', dest = "stats");
+
     pkg_path = sys.argv[0];
 
     args = parser.parse_args()
     
-    if time.time() < 1605691693.4966023:
-        main(args, pkg_path);
+    main(args, pkg_path);
