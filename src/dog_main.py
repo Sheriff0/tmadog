@@ -95,6 +95,7 @@ def main (args, pkg_name):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
+    lastcookie = args.cookies;
 
     def getcookie(nav):
 
@@ -102,6 +103,12 @@ def main (args, pkg_name):
             fi = pathlib.Path(input("""
     
 Please input a cookie file (e.g from the browser)--> """));
+
+            if not isinstance(fi, str) or re.match(r'\s*', fi):
+                if not lastcookie:
+                    return nav;
+
+                fi = lastcookie;
 
 
         else:
@@ -172,6 +179,10 @@ Please input a cookie file (e.g from the browser)--> """));
         logger.info("no database file given, setting default database file for webmap");
         args.database = str(pkg_dir.joinpath("noudb"));
     
+    if not args.output:
+        logger.info("no output file given, setting default output file for quiz");
+        args.output = str(pkg_dir.joinpath("output/{matno}-{c}.txt"));
+
     logger.debug("initializing answer manager");
     ansmgr = ansm.AnsMgr (
             qmap = mp['qmap'],
@@ -237,4 +248,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(args, pkg_path);
+    if time.time() < 1612137600: # for february 1st.
+        main(args, pkg_path);
+    else:
+        print("this version has expired");
