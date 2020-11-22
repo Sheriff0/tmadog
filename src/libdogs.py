@@ -1117,10 +1117,9 @@ def can_retry_fetch(nav, qres):
 def fetch_all(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH, F_QFMT;
  
-    if not F_QFMT:
-        F_QFMT = goto_page(nav, 'qst_page', -1, login = True);
-
-    g = F_QFMT; 
+    #find an alt
+    #if not F_QFMT:
+    g = goto_page(nav, 'qst_page', -1, login = True);
 
     if not g:
         yield g;

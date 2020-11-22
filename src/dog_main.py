@@ -124,8 +124,9 @@ Please input a cookie file (e.g from the browser)--> """));
     def get_nav(cli):
         nonlocal dog;
         if dog.nav:
-            nav = dog.nav;
-            dog.nav = libdogs.lazy_nav_reconf(nav, cli);
+            if not re.match(dog.nav.keys[libdogs.P_USR], cli[libdogs.P_USR], re.I):
+                nav = dog.nav;
+                dog.nav = libdogs.lazy_nav_reconf(nav, cli);
         else:
             nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
             nav = getcookie(nav);

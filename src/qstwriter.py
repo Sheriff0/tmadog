@@ -222,12 +222,18 @@ def writetxt(outpat = "{c}.txt", crsreg = None):
 
             if re.search(r'{matno}', outpat) and crsreg:
                 for matno in crsreg[crs.lower()]:
-                    with open(outpat.format(crscode = crs, c = crs, matno = matno), "a") as fp:
-                        fp.write(st);
+                   fn = outpat.format(crscode = crs, c = crs, matno =
+                       matno);
+                   
+                   fp = open(fn, "a" if fn.exists() else "w");
+                   fp.write(st);
+                   fp.close();
 
             else:
-                with open(outpat.format(c = crs), "a") as fp:
-                    fp.write(st);
+                fn = outpat.format(c = crs);
+                fp = open(fn, "a" if fn.exists() else "w");
+                fp.write(st);
+                fp.close();
 
     return write;
 
@@ -248,12 +254,18 @@ def writehtml(outpat = "{crscode}.html", crsreg = None):
 
             if re.search(r'{matno}', outpat) and crsreg:
                 for matno in crsreg[crs.lower()]:
-                    with open(outpat.format(crscode = crs, c = crs, matno = matno), "a") as fp:
-                        fp.write(st);
-            
+                   fn = outpat.format(crscode = crs, c = crs, matno =
+                       matno);
+                   
+                   fp = open(fn, "a" if fn.exists() else "w");
+                   fp.write(st);
+                   fp.close();
+
             else:
-                with open(outpat.format(crscode = crs, c = crs), "a") as fp:
-                    fp.write(st);
+                fn = outpat.format(c = crs);
+                fp = open(fn, "a" if fn.exists() else "w");
+                fp.write(st);
+                fp.close();
 
     return write;
 
