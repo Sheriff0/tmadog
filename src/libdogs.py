@@ -14,7 +14,7 @@ import cloudscraper
 import cookie_parse
 import os
 import sys
-import builtins 
+import builtins
 import pathlib
 import requests_html
 import re
@@ -40,6 +40,9 @@ P_WMAP = 'wmap'
 P_COOKIES = 'cookies'
 P_SESSION = 'session'
 
+CACHE_PAGE_CACHE = "";
+CACHE_OVERWRITE = True;
+CACHE_CACHE_FIRST = False;
 
 class AppendList(argparse.Action):
     def __init__(self,*posargs,**kwargs):
@@ -270,7 +273,7 @@ def anyhead_gen(itr, v, idx = None):
         elif i == idx:
             break;
 
-   
+
 
     first = back.pop();
 
@@ -327,7 +330,7 @@ def fill_form (
     ifields = FDict (lxml.html.tostring (tform, with_tail = False, encoding = 'unicode'), tform.inputs)
 
     ifields.update (data)
-    
+
     for k in ifields:
 
         if ifields[k] is None and not k in data:
@@ -370,7 +373,7 @@ def click (html, url, button, selector = 'a, form', idx = 0, **kwargs):
 
     if c != idx:
         raise DogTypeError ('No such button %s found' % (button))
-    
+
     t = m.tag
 
     if t in ('form', 'FORM'):
@@ -482,7 +485,7 @@ def init_hooks(**kwargs):
         cookie_hook = kwargs.pop("cookie_hook");
 
     if "nav_hook" in kwargs:
-        nav_hook = kwargs.pop("nav_hook"); 
+        nav_hook = kwargs.pop("nav_hook");
 
     if "err_hook" in kwargs:
         unknown_err_handler_hook = kwargs.pop("err_hook");
@@ -553,7 +556,7 @@ def login(nav):
 
     #    if not st:
     #        return st;
-    
+
     #NOTE a desperate hack to save bandwidth. might be removed.
     nav.cache.pop("profile_page", None);
     nav.cache.pop("tma_page", None);
@@ -580,7 +583,7 @@ def rlogout(nav, retry = 3, **kwargs):
             nav.cache["logout_page"] = lres;
             # passed here is always sucess - no clean way to confirm a sucessful
             # logout as no page depends on its page
-            return nav; 
+            return nav;
 
         except BaseException as err:
             if need_cookies(nav, lres):
@@ -601,7 +604,7 @@ def rlogin(nav, retry = 3, **kwargs):
             return st;
 
     retry += 1;
-    
+
     lreq, fro = nav("profile_page")[:-1];
 
     while retry:
@@ -630,7 +633,7 @@ def lazy_logout(nav, retry = 3, **kwargs):
 
 def lazy_login(nav, retry = 3, **kwargs):
     retry += 1;
-    
+
     logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
     lreq, fro = nav("tma_page")[:-1];
     referer = fro.url;
@@ -648,7 +651,7 @@ def lazy_login(nav, retry = 3, **kwargs):
             logger.info("lazy_login(): sucessfully logged-in %s", nav.keys[P_USR]);
             nav.cache["tma_page"] = lres;
             return nav;
-        
+
         except DogTypeError as err:
             if need_cookies(nav, lres):
                 st = cookie_hook(nav);
@@ -685,7 +688,7 @@ def lazy_login(nav, retry = 3, **kwargs):
 
 def goto_page(nav, pg, stp = None, retry = 3, login = False):
     retry += 1;
-    
+
     logger.info("goto_page(): preparing navigate to %s", pg);
 
     lres = None;
@@ -696,9 +699,8 @@ def goto_page(nav, pg, stp = None, retry = 3, login = False):
             if isinstance(lres, requests.Response):
                     lres.raise_for_status();
             logger.info("goto_page(): sucessfully navigated to %s", pg);
-            nav.cache[pg] = lres;
             return lres;
-        
+
         except DogTypeError as err:
             if not can_retry_page(nav, lres, login):
                 return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
@@ -739,14 +741,26 @@ def create_nav(key):
             );
 
 def discovercrs (usr, nav, retry = 3):
-    ## incase that isn't done already
+    crs = None;
+
+    # only one loop is used - the first where one or more courses was found.
+    # no checks for duplicate courses yet, like a hack to repeat a submission on
+    # mostly, cookies expiring.
+
+    #for crs in discover_by_crslist(usr, nav, retry):
+    #    yield crs;
+
+    if not crs:
+        yield from discover_by_quizlist(usr, nav, retry);
+
+def discover_by_quizlist(usr, nav, retry = 3):
     global F_QFMT;
 
     st = assign(usr, nav);
     if not st:
         logger.info("discovery mode setup failed for %s.. skipping", usr[P_USR]);
         yield st;
-    
+
     else:
         logger.info("trying to discover courses for %s",
                     nav.keys[P_USR]);
@@ -794,6 +808,26 @@ def discovercrs (usr, nav, retry = 3):
 
             idx += 1
 
+def discover_by_crslist(usr, nav, retry = 3):
+
+    st = assign(usr, nav);
+    if not st:
+        logger.info("discovery mode setup failed for %s.. skipping", usr[P_USR]);
+        yield st;
+
+    else:
+        logger.info("trying to discover courses for %s",
+                    nav.keys[P_USR]);
+
+        st = goto_page(nav, "quiz_list", login = True, retry = retry);
+
+        for m in re.finditer(r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', st.text, re.I):
+
+            logger.info("found %s", m.group(0));
+            yield m.group (0)
+
+
+
 def is_arg_valid(cmdl, arg):
     # a usr being in the group of users is the only concrete proof of validity
     if (P_USR in cmdl.__dict__ and P_USR in arg):
@@ -813,7 +847,7 @@ def is_net_valid_arg(cmdl, arg):
     # this is the only place where the result lives.
     return is_arg_valid(cmdl, arg) and arg[P_CRSCODE];
 
-def preprocess(args):
+def preprocess(args, excl_crs = []):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
 
     args = args.__dict__;
@@ -843,6 +877,15 @@ def preprocess(args):
                     usr[P_USR]);
 
             for crs in discovercrs (usr, nav_hook(usr)):
+                mt = None;
+                for x_crs in excl_crs:
+                    mt = re.match(x_crs,  crs, re.I);
+                    if mt:
+                        break;
+                
+                if mt:
+                    continue;
+
                 usr[P_CRSCODE] = crs;
                 yield usr.copy ();
                 if not crs:
@@ -891,7 +934,7 @@ def assign(usr, nav = None):
     if not nav:
         nav = create_nav(usr);
         return lazy_login(nav);
-    
+
     elif re.match(nav.keys[P_USR], usr[P_USR], re.I):
         # maybe we don't need this
         #unassign(nav);
@@ -899,8 +942,8 @@ def assign(usr, nav = None):
     else:
         nav.keys = usr;
         return lazy_login(nav);
-    
-    
+
+
 
 
 def session_from_cookies (url, cookie_file):
@@ -912,13 +955,13 @@ def session_from_cookies (url, cookie_file):
 
     else:
         cookie_str = cookie_file;
-    
+
     cookt = cookie_parse.bake_cookies (cookie_str, url);
 
     if not cookt:
         logger.info("no cookies found... really hungry");
         return status.Status(status.S_ERROR, "no cookies", cookt);
-    
+
     logger.info("got cookies created by %s", cookt [0]['User-Agent']);
     session = requests.Session ()
     session.headers = requests.structures.OrderedDict(
@@ -995,17 +1038,17 @@ def submit(nav, sreq, retry = 3, **kwargs):
         try:
             res = nav.session.request (**sreq, **kwargs);
             res.raise_for_status ();
-            
+
             logger.info("libdogs.submit(): submit sucessful, checking result...");
 
             return is_correct_ans(nav, res);
-            
+
         except requests.HTTPError as err:
             st = can_retry_fetch(nav, res);
             if not st:
                 return st;
             logger.info("libdog.submit(): submit unsucessful for due to %s," +
-                    "retrying" if rt > 1 else "not retrying",
+                    "retrying" if rt > 1 and st else "not retrying",
                     err);
             rt -= 1;
         except requests.RequestException as err:
@@ -1060,10 +1103,14 @@ def can_retry_page(nav, qres, logi = False):
                     (qres.request, qres, st));
         if logi:
             st = login(st);
+            if not st:
+                return status.Status(status.S_ERROR, "login err",
+                        (qres.request, qres, st));
         return status.Status(status.S_OK, "can retry",
                 qres);
 
     else:
+        # let us gamble with the situation
         if logi:
             st = login(nav);
             if st:
@@ -1090,7 +1137,7 @@ def can_retry_fetch(nav, qres):
 
         st = login(st);
         if not st:
-            return status.Status(status.S_ERROR, "submit/login err",
+            return status.Status(status.S_ERROR, "login err",
                     (qres.request, qres, st));
 
         return status.Status(status.S_OK, "can retry",
@@ -1099,7 +1146,7 @@ def can_retry_fetch(nav, qres):
     elif complete(nav, qres):
         return status.Status(status.S_NULL, "no more question",
                 qres);
-    
+
 #    elif login_needed(nav, qres):
 #        st = login(nav);
 #        if not st:
@@ -1110,16 +1157,29 @@ def can_retry_fetch(nav, qres):
 #                qres);
 
     else:
+        # let us gamble with the situation
+        st = login(nav);
+        if st:
+            return status.Status(status.S_OK, "can retry", qres);
+
         return status.Status(status.S_ERROR, "can't retry",
                         (qres.request, qres));
 
 
 def fetch_all(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH, F_QFMT;
- 
+
     #find an alt
     #if not F_QFMT:
-    g = goto_page(nav, 'qst_page', -1, login = True);
+    if CACHE_CACHE_FIRST:
+        g = cache_get("qst_page", -1);
+
+        if not g:
+            g = goto_page(nav, 'qst_page', -1, login = True);
+            cache_put(g, "qst_page", -1);
+
+    else:
+        g = goto_page(nav, 'qst_page', -1, login = True);
 
     if not g:
         yield g;
@@ -1128,13 +1188,13 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
     to, fro = g;
 
     freq = transform_req(to, usr);
-    
+
     referer = fro.url;
-    
+
     logger.info("fetch_all(): preparing to fetch all questions.");
 
     pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
-    
+
     result = fetch_t();
 
     result[F_PSEUDO_ANS] = pseudos.copy();
@@ -1151,7 +1211,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
             while rt:
                 try:
                     qres = nav.session.request(**freq , **kwargs)
-                    
+
                     qres.raise_for_status ();
 
                     result[F_SREQUEST] = fill_form (
@@ -1166,7 +1226,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                     result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
 
                     logger.info(
-                            "fetch_all(): successful fetched question %s for %s in %s", 
+                            "fetch_all(): successful fetched question %s for %s in %s",
                             result[F_QKEY][nav.webmap["qmap"]["qn"]],
                             usr[P_USR],
                             usr[P_CRSCODE]
@@ -1181,7 +1241,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
 
                     yield copy.deepcopy(result);
                     break;
-                
+
                 except DogTypeError as err:
                     st = can_retry_fetch(nav, qres);
                     if not st:
@@ -1190,7 +1250,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                         break;
 
                     logger.info("fetch_all(): fetch unsucessful for due to %s," +
-                            "retrying" if rt > 1 else "not retrying",
+                            "retrying" if rt > 1 and st else "not retrying",
                             err);
                     rt -= 1;
 
@@ -1202,7 +1262,7 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
                         break;
 
                     logger.info("fetch_all(): fetch unsucessful for due to %s," +
-                            "retrying" if rt > 1 else "not retrying",
+                            "retrying" if rt > 1 and st else "not retrying",
                             err);
                     rt -= 1;
 
@@ -1222,14 +1282,14 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
 
 def fetch_one(nav, usr, retry = 3, **kwargs):
     global F_LAST_FETCH;
-    
+
     if not F_LAST_FETCH:
         f_type = next(fetch_all(nav, usr));
         if f_type and F_QUESTION in f_type:
             return f_type[F_QUESTION];
         else:
             return f_type;
-    else: 
+    else:
         freq = F_LAST_FETCH[F_FREQUEST];
 
     kwargs.setdefault (
@@ -1279,25 +1339,25 @@ def brute_safe(nav, usr, qst):
 
                 str(qst1[F_QKEY][nav.webmap["qmap"]["qn"]])
                 );
-    
+
     return False;
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
-        
+
     qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY], amgr);
-    
+
     preq = f_type[F_SREQUEST];
 
     kwargs.setdefault (
             'headers',
             mkheader (
-                f_type[F_SREQUEST]['url'], 
+                f_type[F_SREQUEST]['url'],
                 f_type.get(F_REFERER, "")
                 ),
             )
 
     qst1 = mask (qst, usr[P_USR], kwargs.pop("mask", "Nou123456789"));
-    
+
     x = 0;
 
     logger.info("entering answer validation mode...");
@@ -1306,7 +1366,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
 
         qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
-        
+
         x = submit(nav, preq, retry, **kwargs);
         if x == 1:
             qst [nav.webmap["qmap"]["ans"]] = a;
@@ -1317,7 +1377,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
                 if amgr:
                     amgr.check(qst, x);
                 return status.Status(status.S_FATAL, "detected answer is problematic", (preq, qst));
-           
+
             elif x == 1:
                 if amgr:
                     amgr.check(qst, x);
@@ -1327,7 +1387,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
 
         elif not brute_safe(nav, usr, qst):
             return status.Status(status.S_FATAL, "unable to brute for the answers from the server", qst);
-        
+
 
 
 def answer_strict(qst, amgr):
@@ -1373,3 +1433,70 @@ def ch_crscode(qst, usr, crscode = ""):
         out [k] = v
 
     return out;
+
+def cache_put(data, page, sl = None):
+    if not CACHE_PAGE_CACHE or not isinstance(CACHE_PAGE_CACHE, (str,
+        pathlib.Path)) or not isinstance(data[1], requests.Response):
+        return None;
+
+    cdir = pathlib.Path(CACHE_PAGE_CACHE);
+    cdir.mkdir(parents = True, exist_ok = True);
+    target = cdir.joinpath(page + (".html" if sl == None else "%s.json" % (sl,)));
+
+    if sl == None:
+        if not target.exists() or CACHE_OVERWRITE:
+            target.write_bytes(data.content);
+
+    else:
+        fro_page = cdir.joinpath(page + "%s.html" % (sl,));
+
+        if not target.exists() or not fro_page.exists() or CACHE_OVERWRITE:
+            cont = {
+                    "to": data[0],
+                    };
+
+            fro = {};
+            fro["content"] = str(fro_page);
+            fro["url"] = data[1].url;
+            cont["fro"] = fro;
+
+            target.write_text(json.dumps(cont, default = dict, indent = 4));
+            fro_page.write_text(data[1].text);
+
+    return True;
+
+def cache_get(page, sl = None):
+    if not CACHE_PAGE_CACHE or not isinstance(CACHE_PAGE_CACHE, (str,
+        pathlib.Path)):
+        return None;
+
+    cdir = pathlib.Path(CACHE_PAGE_CACHE);
+    cdir.mkdir(parents = True, exist_ok = True);
+    target = cdir.joinpath(page + (".html" if sl == None else "%s.json" % (sl,)));
+
+    if not target.exists():
+        return None;
+
+    res = requests.Response();
+    res.status_code = 200;
+    res.reason = "OK";
+
+    if sl == None:
+        res.content = target.read_bytes();
+        res.text = res.content.decode();
+        res.request = requests.Request();
+        return res;
+
+    else:
+        data = json.loads(target.read_text());
+        if "to" not in data or ("fro" not in data or "url" not in data["fro"]):
+            return None;
+
+        res.url = data["fro"]["url"];
+
+        if "content" in data["fro"] and data["fro"]["content"].startswith(page):
+            fro_page = cdir.joinpath(data["fro"]["content"]);
+            if fro_page.exists():
+                res.content = fro_page.read_bytes();
+                res.text = res.content.decode();
+        return [data["to"], res];

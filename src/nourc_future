@@ -43,6 +43,12 @@ indices = 0
 volatile = logout_page
 requires = profile_page
 
+[quiz_list]
+path = 2020/2 Slips
+indices = 0
+requires = profile_page
+volatile = logout_page
+
 [profile_page]
 path = ${login_page:keys}
 indices = 0

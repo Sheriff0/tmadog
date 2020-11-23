@@ -179,10 +179,16 @@ Please input a cookie file (e.g from the browser)--> """));
     if not args.database:
         logger.info("no database file given, setting default database file for webmap");
         args.database = str(pkg_dir.joinpath("noudb"));
-    
+   
+    if not args.cache:
+        logger.info("no cache dir given, setting default cache directory for quiz");
+        args.cache = str(pkg_dir.joinpath("dog_cache"));
+
     if not args.output:
         logger.info("no output file given, setting default output file for quiz");
         args.output = str(pkg_dir.joinpath("output/{matno}-{c}.txt"));
+
+    pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
 
     logger.debug("initializing answer manager");
     ansmgr = ansm.AnsMgr (
@@ -195,10 +201,19 @@ Please input a cookie file (e.g from the browser)--> """));
     logger.debug("initializing a dog to run task");
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
 
-    dog = simple_dog.SimpleDog(libdogs.preprocess(args), ansmgr, get_nav);
+    libdogs.CACHE_PAGE_CACHE = args.cache;
+    libdogs.CACHE_CACHE_FIRST = args.cache_first;
+    libdogs.CACHE_OVERWRITE = args.overwrite;
+    dog = simple_dog.SimpleDog(
+            libdogs.preprocess(
+                args,
+                args.exclude if args.exclude else ["GST"], # NOTE defaults like
+                # this should be in config
+                ),
+            ansmgr, 
+            get_nav
+            );
 
-
-    
     try:
         task = dog._InternalTask(cmd = None, args = args);
         dog.submit(task);
@@ -244,6 +259,17 @@ if __name__ == '__main__':
     parser.add_argument ('--output', help = "output file format");
     
     parser.add_argument ('--stats', '--summary', help = 'where to write a summary of a run to', dest = "stats");
+
+    parser.add_argument ('--page-cache', help = 'where to write cached pages',
+            dest = "cache");
+
+    parser.add_argument("--overwrite", action = "store_true", help = "always update cached pages");
+
+    parser.add_argument("--cache-first", action = "store_true",
+            help = "check cached pages before any remote request for the page - not all cached pages will be used.");
+
+    parser.add_argument("--exclude", action = libdogs.AppendList, help =
+            "course codes to exclude e.g for NOUN students GST", nargs = "+");
 
     pkg_path = sys.argv[0];
 
