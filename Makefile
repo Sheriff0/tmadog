@@ -32,7 +32,7 @@ enterprise: $(addprefix $(OUTPUT)/ent_,$(MAIN_DEP:.m4=.py)) ;
 user: $(addprefix $(OUTPUT)/usr_,$(MAIN_DEP:.m4=.py));
 
 raw_py:
-	cp -v $(SRC)/*.py $(OUTPUT)/
+	cp -v $(SRC)/{dog_main,libdogs,preproccesor,qstwriter,simple_dog,status,submit,tasker}.py $(OUTPUT)/
 
 $(OUTPUT)/%.py: $(SRC)/%.m4
 	m4 $(M4FLAGS)\

@@ -884,6 +884,7 @@ def preprocess(args, excl_crs = []):
                         break;
                 
                 if mt:
+                    logger.info("skipping %s" % (crs,));
                     continue;
 
                 usr[P_CRSCODE] = crs;
