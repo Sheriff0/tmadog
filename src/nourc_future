@@ -6,6 +6,7 @@ xstore = trextri
 on_qst_submit = mark\W+for\W+question
 on_complete = You\W+have\W+already\W+complete
 on_cookie = Checking\W+your\W+browser
+on_login_needed = login\W+first
 
 [kmap]
 usr = [Matric Number]

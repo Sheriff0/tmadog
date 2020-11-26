@@ -7,7 +7,17 @@ if __name__ == '__main__':
     import os
     import urllib.parse
     import sys
-    
+    import argparse
+   
+    pkg_name = pathlib.Path(sys.argv[0]);
+
+    parser = argparse.ArgumentParser ();
+
+    parser.add_argument ('--dest', help = "where to install the package",
+            default = "dog_main", type = str);
+
+    args = parser.parse_args();
+
     print("fetch files...")
 
     url = urllib.parse.urlparse("https://sheriff0.github.io/dogger/dogger.tar.xz");
@@ -28,12 +38,26 @@ if __name__ == '__main__':
     
     fp.close();
 
-    pkg_name = pathlib.Path(sys.argv[0]);
+    dest = pathlib.Path(args.dest);
 
     shutil.unpack_archive(str(ar), str(tdir));
 
     if compileall.compile_dir(str(tdir), force = True, legacy = True):
-        shutil.copytree(str(tdir), str(pkg_name.parent), ignore = shutil.ignore_patterns("*py", "*" + p.suffix), dirs_exist_ok = True);
-        print("everything good");
+        if dest.exists():
+            if dest.is_dir():
+                shutil.rmtree(str(dest));
+            else:
+                dest.unlink();
+
+        try:
+            shutil.copytree(str(tdir), str(dest), copy_function = shutil.copy, ignore = shutil.ignore_patterns("*py", "*" + p.suffix));
+
+        except shutil.Error as err:
+            pass;
+
+        shutil.move(str(dest.joinpath("dog_main.pyc")),
+                str(dest.joinpath("__main__.pyc")));
+
+        print("\neverywhere good!!!", "\nYou can now run \"%s\"" % (str(dest),));
     
     shutil.rmtree(str(tdir));

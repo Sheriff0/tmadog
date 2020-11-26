@@ -217,7 +217,9 @@ class SimpleDog:
             st = libdogs.brute_submit(arg, nav, ftype, self.amgr);
             if not st:
                 break;
-
+        
+        if not isinstance(st, status.Status):
+            st = status.Status(cause = st);
         return st;
 
     def nop(self):

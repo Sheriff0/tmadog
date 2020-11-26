@@ -750,8 +750,7 @@ def discovercrs (usr, nav, retry = 3):
     #for crs in discover_by_crslist(usr, nav, retry):
     #    yield crs;
 
-    if not crs:
-        yield from discover_by_quizlist(usr, nav, retry);
+    yield from discover_by_quizlist(usr, nav, retry);
 
 def discover_by_quizlist(usr, nav, retry = 3):
     global F_QFMT;
@@ -1110,8 +1109,7 @@ def can_retry_page(nav, qres, logi = False):
         return status.Status(status.S_OK, "can retry",
                 qres);
 
-    else:
-        # let us gamble with the situation
+    elif login_needed(nav, qres):
         if logi:
             st = login(nav);
             if st:
@@ -1119,11 +1117,14 @@ def can_retry_page(nav, qres, logi = False):
 
         return status.Status(status.S_ERROR, "can't retry",
                     (qres.request, qres));
+    else:
+        return status.Status(status.S_ERROR, "can't retry",
+                    (qres.request, qres));
 
 
 
 def login_needed(nav, qres):
-    return not re.search(nav.keys[P_USR], qres.text, re.I);
+    return re.search(nav.webmap["events"]["on_login_needed"].strip(), qres.text, re.I);
 
 def can_retry_fetch(nav, qres):
     if need_cookies(nav, qres):
@@ -1148,21 +1149,16 @@ def can_retry_fetch(nav, qres):
         return status.Status(status.S_NULL, "no more question",
                 qres);
 
-#    elif login_needed(nav, qres):
-#        st = login(nav);
-#        if not st:
-#            return status.Status(status.S_ERROR, "submit/login err",
-#                    (qres.request, qres, st));
-#
-#        return status.Status(status.S_OK, "can retry",
-#                qres);
+    elif login_needed(nav, qres):
+        st = login(nav);
+        if not st:
+            return status.Status(status.S_ERROR, "submit/login err",
+                    (qres.request, qres, st));
+
+        return status.Status(status.S_OK, "can retry",
+                qres);
 
     else:
-        # let us gamble with the situation
-        st = login(nav);
-        if st:
-            return status.Status(status.S_OK, "can retry", qres);
-
         return status.Status(status.S_ERROR, "can't retry",
                         (qres.request, qres));
 

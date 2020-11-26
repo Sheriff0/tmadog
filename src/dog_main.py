@@ -71,7 +71,7 @@ def main (args, pkg_name):
 
     pkg_name = pathlib.Path(pkg_name);
 
-    pkg_dir = pathlib.Path(os.sep.join(str(pkg_name.resolve()).split(os.sep)[:-1]));
+    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
     logger = logging.getLogger('tmadog');
 
