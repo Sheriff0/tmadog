@@ -549,17 +549,6 @@ def logout(nav):
 
 
 def login(nav):
-    # to make sure we are safe to login. it shouldn't be problematic at all
-    # times.
-    #if "profile_page" in nav or "tma_page" in nav:
-    #    st = logout(nav);
-
-    #    if not st:
-    #        return st;
-
-    #NOTE a desperate hack to save bandwidth. might be removed.
-    nav.cache.pop("profile_page", None);
-    nav.cache.pop("tma_page", None);
 
     try:
         # for compatibility with testing dogrc's
@@ -796,6 +785,10 @@ def discover_by_quizlist(usr, nav, retry = 3):
             if m:
                 logger.info("found %s", m.group(0));
                 yield m.group (0)
+            
+            else:
+                # a workaround against NOUN's buggy site
+                yield m;
 
             try:
                 rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
@@ -825,6 +818,54 @@ def discover_by_crslist(usr, nav, retry = 3):
             logger.info("found %s", m.group(0));
             yield m.group (0)
 
+
+
+
+def get_valid_qreq(usr, nav):
+    global F_QFMT;
+
+    st = goto_page(nav, "qst_page", -1, login = True);
+
+    if not st:
+        return st;
+
+    to, tpage = st;
+    idx = int (nav.webmap ['qst_page']['indices'].split (',')[-1])
+    path = nav.webmap ['qst_page']['path'].split (',')[-1]
+
+
+    idx += 1
+
+    while True: #crscode discovery
+        dt = 'data' if to ['method'] in ('POST', 'post') else 'params'
+
+        has_mat = False;
+        has_crs = False;
+        has_tma = False;
+        for k in to.get (dt, {}).values ():
+            if not has_crs:
+                has_crs = re.search (r'(?P<cs>[A-Za-z]{3})\d{3}(?!\d+)', k);
+
+            if not has_tma:
+                has_tma = re.search (r'(?P<cs>tma)[1-3]', k, re.I);
+
+            if not has_mat:
+                has_mat = re.search (r'(?P<cs>nou)\d{9}', k, re.I);
+
+            if has_mat and has_crs and has_tma:
+                return (to, tpage);
+
+        try:
+            rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
+                usr [P_URL]))
+
+            to = next (rec)
+        except TypeError:
+            break
+
+        idx += 1
+
+    return None;
 
 
 def is_arg_valid(cmdl, arg):
@@ -859,11 +900,13 @@ def preprocess(args, excl_crs = []):
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
-    usr = {};
-    usr [P_WMAP] = wmap;
+    templ = {};
+    templ[P_WMAP] = wmap;
+    
+    i = 0;
 
     for i in range (argc):
-
+        usr = copy.deepcopy(templ);
         usr[P_USR] = matnos [i]
         usr[P_PWD] = pwds [i]
         usr[P_TMA] = tmas [i]
@@ -875,24 +918,25 @@ def preprocess(args, excl_crs = []):
             logger.info("preprocess(): no course specified for %s, entering course discovery mode",
                     usr[P_USR]);
 
-            for crs in discovercrs (usr, nav_hook(usr)):
-                mt = None;
-                for x_crs in excl_crs:
-                    mt = re.match(x_crs,  crs, re.I);
+            for crs in discover_by_quizlist (usr, nav_hook(usr)):
+                if crs:
+                    mt = None;
+                    for x_crs in excl_crs:
+                        mt = re.match(x_crs,  crs, re.I);
+                        if mt:
+                            break;
+                    
                     if mt:
-                        break;
-                
-                if mt:
-                    logger.info("skipping %s" % (crs,));
-                    continue;
+                        logger.info("skipping %s" % (crs,));
+                        continue;
 
                 usr[P_CRSCODE] = crs;
-                yield usr.copy ();
-                if not crs:
+                yield copy.deepcopy(usr);
+                if not crs and isinstance(crs, status.Status):
                     break;
         else:
             usr[P_CRSCODE] = y;
-            yield usr.copy ();
+            yield copy.deepcopy(usr);
 
 
 ## this for now, is case-insensitive
@@ -933,15 +977,14 @@ def unassign(nav):
 def assign(usr, nav = None):
     if not nav:
         nav = create_nav(usr);
-        return lazy_login(nav);
+        return nav;
 
     elif re.match(nav.keys[P_USR], usr[P_USR], re.I):
         # maybe we don't need this
         #unassign(nav);
         return nav;
     else:
-        nav.keys = usr;
-        return lazy_login(nav);
+        return lazy_nav_reconf(nav, usr);
 
 
 
@@ -1102,21 +1145,26 @@ def can_retry_page(nav, qres, logi = False):
             return status.Status(status.S_ERROR, "no cookie in navigator",
                     (qres.request, qres, st));
         if logi:
-            st = login(st);
-            if not st:
-                return status.Status(status.S_ERROR, "login err",
+            st = lazy_logout(st);
+            st = lazy_login(st);
+            if st:
+                return status.Status(status.S_OK, "can retry",
+                        qres);
+
+        return status.Status(status.S_ERROR, "login err",
                         (qres.request, qres, st));
-        return status.Status(status.S_OK, "can retry",
-                qres);
 
     elif login_needed(nav, qres):
         if logi:
-            st = login(nav);
+            st = lazy_logout(nav);
+            st = lazy_login(st);
             if st:
-                return status.Status(status.S_OK, "can retry", qres);
+                return status.Status(status.S_OK, "can retry",
+                        qres);
 
-        return status.Status(status.S_ERROR, "can't retry",
-                    (qres.request, qres));
+        return status.Status(status.S_ERROR, "login err",
+                        (qres.request, qres, st));
+
     else:
         return status.Status(status.S_ERROR, "can't retry",
                     (qres.request, qres));
@@ -1137,7 +1185,8 @@ def can_retry_fetch(nav, qres):
                 qres);
 
 
-        st = login(st);
+        st = lazy_logout(st); 
+        st = lazy_login(st);
         if not st:
             return status.Status(status.S_ERROR, "login err",
                     (qres.request, qres, st));
@@ -1150,7 +1199,8 @@ def can_retry_fetch(nav, qres):
                 qres);
 
     elif login_needed(nav, qres):
-        st = login(nav);
+        st = lazy_logout(nav)
+        st = lazy_login(st);
         if not st:
             return status.Status(status.S_ERROR, "submit/login err",
                     (qres.request, qres, st));
@@ -1172,14 +1222,15 @@ def fetch_all(nav, usr, retry = 3, **kwargs):
         g = cache_get("qst_page", -1);
 
         if not g:
-            g = goto_page(nav, 'qst_page', -1, login = True);
-            cache_put(g, "qst_page", -1);
+            g = get_valid_qreq(usr, nav);
+            if g:
+                cache_put(g, "qst_page", -1);
 
     else:
-        g = goto_page(nav, 'qst_page', -1, login = True);
+        g = get_valid_qreq(usr, nav);
 
     if not g:
-        yield g;
+        yield status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
         return;
 
     to, fro = g;

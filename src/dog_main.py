@@ -207,7 +207,7 @@ Please input a cookie file (e.g from the browser)--> """));
     dog = simple_dog.SimpleDog(
             libdogs.preprocess(
                 args,
-                args.exclude if args.exclude else ["GST"], # NOTE defaults like
+                args.exclude if args.exclude else [], # NOTE defaults like
                 # this should be in config
                 ),
             ansmgr, 
