@@ -32,7 +32,7 @@ def check(pkg_name):
     import locale
     import os
     import sys
-        
+
     pkg_dir = pathlib.Path(os.sep.join(str(pathlib.Path(pkg_name).resolve()).split(os.sep)[:-1]));
     mac = bytes(str(uuid.getnode()), encoding = locale.getpreferredencoding());
     hsh = hashlib.sha256(mac);
@@ -51,7 +51,7 @@ def check(pkg_name):
 
 def mkstat(dog, fi):
     crsreg = {};
-    
+
     with open(fi, "w") as fp:
         for st in simple_dog.dog_submit_stat(dog):
             arg = st[simple_dog.STAT_ARG];
@@ -62,7 +62,7 @@ def mkstat(dog, fi):
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
 
             line += "# %s %s\n\n" % (st[simple_dog.STAT_ST].msg, str(st[simple_dog.STAT_ST].cause));
-            
+
             fp.write(line);
 
     return crsreg;
@@ -101,7 +101,7 @@ def main (args, pkg_name):
 
         if not args.cookies:
             fi = pathlib.Path(input("""
-    
+
 Please input a cookie file (e.g from the browser)--> """));
 
             if not isinstance(fi, str) or re.match(r'\s*', fi):
@@ -119,7 +119,7 @@ Please input a cookie file (e.g from the browser)--> """));
         if session:
             nav.session = session;
         return nav;
-    
+
 
     def get_nav(cli):
         nonlocal dog;
@@ -139,7 +139,7 @@ Please input a cookie file (e.g from the browser)--> """));
             ansmgr.close ()
 
         f = open (args.qstdump, 'w') if args.debug else None
-        
+
         crsreg = mkstat(dog, args.stats);
 
         if args.updatedb:
@@ -149,7 +149,7 @@ Please input a cookie file (e.g from the browser)--> """));
             arr = []
             for qst in ansmgr.iter_cache ():
                arr.append (qst)
-            
+
             if args.debug:
                 json.dump (arr, f)
 
@@ -158,11 +158,11 @@ Please input a cookie file (e.g from the browser)--> """));
 
         if f:
             f.close ()
-    
+
     if not getattr(args, "stats"):
         logger.info("no stat file given, setting default stat file");
         setattr(args, "stats", str(pkg_dir.joinpath("dog.stat")));
-        
+
 
     if not getattr(args, libdogs.P_WMAP):
         logger.info("no config file given, setting default config file for webmap");
@@ -170,16 +170,16 @@ Please input a cookie file (e.g from the browser)--> """));
 
     mp = configparser.ConfigParser (interpolation =
         configparser.ExtendedInterpolation ())
-    
+
     logger.info("reading config file and initializing a webmap");
     mp.read (getattr(args, libdogs.P_WMAP));
 
     setattr(args, libdogs.P_WMAP, mp);
-    
+
     if not args.database:
         logger.info("no database file given, setting default database file for webmap");
         args.database = str(pkg_dir.joinpath("noudb"));
-   
+
     if not args.cache:
         logger.info("no cache dir given, setting default cache directory for quiz");
         args.cache = str(pkg_dir.joinpath("dog_cache"));
@@ -197,7 +197,7 @@ Please input a cookie file (e.g from the browser)--> """));
             mode = ansm.ANS_MODE_NORM,
             pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
             )
-    
+
     logger.debug("initializing a dog to run task");
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
 
@@ -210,7 +210,7 @@ Please input a cookie file (e.g from the browser)--> """));
                 args.exclude if args.exclude else [], # NOTE defaults like
                 # this should be in config
                 ),
-            ansmgr, 
+            ansmgr,
             get_nav
             );
 
@@ -224,7 +224,7 @@ Please input a cookie file (e.g from the browser)--> """));
     except BaseException as err:
         cleanup();
         raise err;
-    
+
 
     return cleanup();
 
@@ -257,7 +257,7 @@ if __name__ == '__main__':
     parser.add_argument ('--cookies', help = 'Website cookies');
 
     parser.add_argument ('--output', help = "output file format");
-    
+
     parser.add_argument ('--stats', '--summary', help = 'where to write a summary of a run to', dest = "stats");
 
     parser.add_argument ('--page-cache', help = 'where to write cached pages',

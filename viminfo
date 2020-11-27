@@ -11,19 +11,29 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/excl
+~MSle0/disc
 
 # Last Substitute Search Pattern:
-~MSle0&\s\+$
+~MSle0~&\s\+$
 
 # Last Substitute String:
 $
 
 # Command Line History (newest to oldest):
 :qall
-|2,0,1606447135,,"qall"
+|2,0,1606483190,,"qall"
+:q
+|2,0,1606483169,,"q"
+:tags
+|2,0,1606482572,,"tags"
 :w
-|2,0,1606447125,,"w"
+|2,0,1606482256,,"w"
+:wall
+|2,0,1606480242,,"wall"
+:tabdo %s/\s\+$//e
+|2,0,1606480231,,"tabdo %s/\\s\\+$//e"
+:tabdo %s/\s\+$//
+|2,0,1606480217,,"tabdo %s/\\s\\+$//"
 :sh
 |2,0,1606446357,,"sh"
 :split src/qstwriter.py
@@ -56,8 +66,6 @@ $
 |2,0,1606310438,,"py3 import pathlib"
 :py3 help(shutil.copy2)
 |2,0,1606305966,,"py3 help(shutil.copy2)"
-:q
-|2,0,1606305960,,"q"
 :py3 help(shutil.copytree)
 |2,0,1606305711,,"py3 help(shutil.copytree)"
 :py3 import shutil
@@ -424,6 +432,10 @@ $
 |2,0,1605479637,,"!less mybuild/debug.log"
 
 # Search String History (newest to oldest):
+? \s\+$
+|2,1,1606480231,,"\\s\\+$"
+??disc
+|2,1,1606480105,63,"disc"
 ?/excl
 |2,1,1606447113,47,"excl"
 ?/fetch_a
@@ -436,8 +448,6 @@ $
 |2,1,1606424154,47,"disc"
 ?/lazy_lo
 |2,1,1606423958,47,"lazy_lo"
-??disc
-|2,1,1606423823,63,"disc"
 ?/fro\>
 |2,1,1606423671,47,"fro\\>"
 ??goto
@@ -464,8 +474,6 @@ $
 |2,1,1606164336,47,"fet"
 ??dis
 |2,1,1606153601,63,"dis"
-? \s\+$
-|2,1,1606149120,,"\\s\\+$"
 ?/brute_su
 |2,1,1606141397,47,"brute_su"
 ? NAV\ze\i\+
@@ -808,36 +816,39 @@ $
 # Debug Line History (newest to oldest):
 
 # Registers:
-""0	CHAR	0
+"0	CHAR	0
 	crs.lower()
-|3,1,0,0,1,0,1606446317,"crs.lower()"
-"1	LINE	0
-	        yield st;
-|3,0,1,1,1,0,1606445337,"        yield st;"
+|3,0,0,0,1,0,1606446317,"crs.lower()"
+""1	LINE	0
+	
+|3,1,1,1,1,0,1606482147,""
 "2	LINE	0
-	
-|3,0,2,1,1,0,1606445257,""
+	    i = 0;
+|3,0,2,1,1,0,1606482145,"    i = 0;"
 "3	LINE	0
-	
-|3,0,3,1,1,0,1606445201,""
+	            
+	            else:
+	                # a workaround against NOUN's buggy site
+	                yield m;
+|3,0,3,1,4,0,1606480162,"            ","            else:","                # a workaround against NOUN's buggy site","                yield m;"
 "4	LINE	0
-	        if has_mat and has_crs and has_tma:
-|3,0,4,1,1,0,1606445200,"        if has_mat and has_crs and has_tma:"
+	        yield st;
+|3,0,4,1,1,0,1606445337,"        yield st;"
 "5	LINE	0
-	                break;
-|3,0,5,1,1,0,1606445185,"                break;"
+	
+|3,0,5,1,1,0,1606445257,""
 "6	LINE	0
-	            yield (to, tpage);
-|3,0,6,1,1,0,1606445179,"            yield (to, tpage);"
+	
+|3,0,6,1,1,0,1606445201,""
 "7	LINE	0
-	                pass;
-|3,0,7,1,1,0,1606445074,"                pass;"
+	        if has_mat and has_crs and has_tma:
+|3,0,7,1,1,0,1606445200,"        if has_mat and has_crs and has_tma:"
 "8	LINE	0
-	                pass;
-|3,0,8,1,1,0,1606445061,"                pass;"
+	                break;
+|3,0,8,1,1,0,1606445185,"                break;"
 "9	LINE	0
-	                pass;
-|3,0,9,1,1,0,1606445014,"                pass;"
+	            yield (to, tpage);
+|3,0,9,1,1,0,1606445179,"            yield (to, tpage);"
 "a@	CHAR	0
 	(r'(?P<cs>nou)\d{9}',
 |3,2,10,0,1,0,1606444963,"(r'(?P<cs>nou)\\d{9}',"
@@ -864,60 +875,62 @@ $
 !PREFIX_ONLY	NUM	3
 
 # File marks:
-'0  210  50  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,48,210,50,1606447136,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'1  1221  4  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,49,1221,4,1606446752,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'2  223  48  /storage/sdcard0/2020/dogger/src/qstwriter.py
-|4,50,223,48,1606446565,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
-'3  1238  33  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,51,1238,33,1606445545,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'4  935  30  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,52,935,30,1606443807,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'5  922  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,53,922,20,1606443455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'6  931  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,54,931,20,1606443435,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'7  873  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
-|4,55,873,20,1606442905,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
-'8  875  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
-|4,56,875,20,1606442704,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
-'9  800  0  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
-|4,57,800,0,1606432422,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
+'0  260  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,48,260,0,1606483191,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'1  210  50  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,49,210,50,1606447136,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'2  1218  4  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,50,1218,4,1606446752,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'3  223  48  /storage/sdcard0/2020/dogger/src/qstwriter.py
+|4,51,223,48,1606446565,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
+'4  1235  33  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,52,1235,33,1606445545,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'5  932  30  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,53,932,30,1606443807,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'6  919  20  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,54,919,20,1606443455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'7  928  20  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,55,928,20,1606443435,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'8  873  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
+|4,56,873,20,1606442905,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
+'9  875  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
+|4,57,875,20,1606442704,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
 
 # Jumplist (newest first):
+-'  260  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,39,260,0,1606483191,"/storage/sdcard0/2020/dogger/src/dog_main.py"
 -'  210  50  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,39,210,50,1606447136,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+|4,39,210,50,1606480078,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+-'  213  0  /storage/sdcard0/2020/dogger/src/simple_dog.py
+|4,39,213,0,1606480077,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
+-'  1121  4  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1121,4,1606480077,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  79  0  /storage/sdcard0/2020/dogger/src/dog.py
+|4,39,79,0,1606480077,"/storage/sdcard0/2020/dogger/src/dog.py"
+-'  92  0  /storage/sdcard0/2020/dogger/src/tasker.py
+|4,39,92,0,1606480077,"/storage/sdcard0/2020/dogger/src/tasker.py"
+-'  15  48  /storage/sdcard0/2020/dogger/src/status.py
+|4,39,15,48,1606480077,"/storage/sdcard0/2020/dogger/src/status.py"
+-'  31  22  /storage/sdcard0/2020/dogger/src/main.m4
+|4,39,31,22,1606480077,"/storage/sdcard0/2020/dogger/src/main.m4"
+-'  150  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,150,0,1606480076,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  36  0  /storage/sdcard0/2020/dogger/src/qstm.m4
+|4,39,36,0,1606480076,"/storage/sdcard0/2020/dogger/src/qstm.m4"
+-'  237  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
+|4,39,237,0,1606480076,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
+-'  633  0  /storage/sdcard0/2020/dogger/src/iff.m4
+|4,39,633,0,1606480076,"/storage/sdcard0/2020/dogger/src/iff.m4"
+-'  111  23  /storage/sdcard0/2020/dogger/src/scrm.m4
+|4,39,111,23,1606480076,"/storage/sdcard0/2020/dogger/src/scrm.m4"
+-'  1  0  /storage/sdcard0/2020/dogger/src/scrm.m4
+|4,39,1,0,1606480076,"/storage/sdcard0/2020/dogger/src/scrm.m4"
 -'  177  0  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,177,0,1606447113,"/storage/sdcard0/2020/dogger/src/dog_main.py"
--'  213  0  /storage/sdcard0/2020/dogger/src/simple_dog.py
-|4,39,213,0,1606447090,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
--'  1124  4  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1124,4,1606447090,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  79  0  /storage/sdcard0/2020/dogger/src/dog.py
-|4,39,79,0,1606447090,"/storage/sdcard0/2020/dogger/src/dog.py"
--'  92  0  /storage/sdcard0/2020/dogger/src/tasker.py
-|4,39,92,0,1606447090,"/storage/sdcard0/2020/dogger/src/tasker.py"
--'  15  48  /storage/sdcard0/2020/dogger/src/status.py
-|4,39,15,48,1606447090,"/storage/sdcard0/2020/dogger/src/status.py"
--'  31  22  /storage/sdcard0/2020/dogger/src/main.m4
-|4,39,31,22,1606447090,"/storage/sdcard0/2020/dogger/src/main.m4"
--'  150  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,150,0,1606447090,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  36  0  /storage/sdcard0/2020/dogger/src/qstm.m4
-|4,39,36,0,1606447090,"/storage/sdcard0/2020/dogger/src/qstm.m4"
--'  237  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
-|4,39,237,0,1606447090,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
--'  633  0  /storage/sdcard0/2020/dogger/src/iff.m4
-|4,39,633,0,1606447090,"/storage/sdcard0/2020/dogger/src/iff.m4"
--'  111  23  /storage/sdcard0/2020/dogger/src/scrm.m4
-|4,39,111,23,1606447090,"/storage/sdcard0/2020/dogger/src/scrm.m4"
--'  1  0  /storage/sdcard0/2020/dogger/src/scrm.m4
-|4,39,1,0,1606447089,"/storage/sdcard0/2020/dogger/src/scrm.m4"
--'  1221  4  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1221,4,1606446752,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  925  35  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,925,35,1606446741,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1218  4  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1218,4,1606446752,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  922  35  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,922,35,1606446741,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  60  0  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,60,0,1606446727,"/storage/sdcard0/2020/dogger/src/dog_main.py"
 -'  223  48  /storage/sdcard0/2020/dogger/src/qstwriter.py
@@ -926,32 +939,32 @@ $
 |4,39,1,0,1606446276,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
 -'  20  0  /storage/sdcard0/2020/dogger/src/setups/update.py
 |4,39,20,0,1606446264,"/storage/sdcard0/2020/dogger/src/setups/update.py"
--'  1238  33  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1238,33,1606446005,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1235  33  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1235,33,1606446005,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  133  12  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,133,12,1606446005,"/storage/sdcard0/2020/dogger/src/dog_main.py"
--'  830  16  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,830,16,1606445351,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1225  46  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1225,46,1606445324,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  824  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,824,0,1606445308,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  854  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,854,0,1606445062,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1121  25  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1121,25,1606445002,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  851  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,851,0,1606444943,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  935  30  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,935,30,1606443884,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1172  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1172,0,1606443882,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  922  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,922,20,1606443683,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  931  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,931,20,1606443445,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  921  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,921,20,1606443346,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  826  16  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,826,16,1606445351,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1222  46  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1222,46,1606445324,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  820  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,820,0,1606445308,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  850  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,850,0,1606445062,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1118  25  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1118,25,1606445002,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  847  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,847,0,1606444943,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  932  30  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,932,30,1606443884,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1169  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1169,0,1606443882,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  919  20  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,919,20,1606443683,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  928  20  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,928,20,1606443445,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  918  20  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,918,20,1606443346,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  873  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
 |4,39,873,20,1606442905,"/media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py"
 -'  875  20  /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
@@ -1006,32 +1019,32 @@ $
 |4,39,758,4,1606424186,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  671  0  /storage/sdcard0/2020/dogger/src/libdogs.py
 |4,39,671,0,1606424154,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1198  13  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1198,13,1606423966,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1197  13  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1197,13,1606423966,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1184  13  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1184,13,1606423965,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1183  13  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1183,13,1606423964,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1155  17  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1155,17,1606423964,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1154  17  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1154,17,1606423963,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1144  17  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1144,17,1606423962,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1143  17  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1143,17,1606423962,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  981  8  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,981,8,1606423961,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1186  4  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1186,4,1606423823,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1479  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1479,0,1606423716,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1235  14  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1235,14,1606423675,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1231  8  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1231,8,1606423672,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1195  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1195,13,1606423966,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1194  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1194,13,1606423966,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1181  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1181,13,1606423965,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1180  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1180,13,1606423964,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1152  17  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1152,17,1606423964,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1151  17  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1151,17,1606423963,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1141  17  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1141,17,1606423962,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1140  17  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1140,17,1606423962,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  978  8  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,978,8,1606423961,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1183  4  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1183,4,1606423823,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1476  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1476,0,1606423716,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1232  14  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1232,14,1606423675,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1228  8  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1228,8,1606423672,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  690  17  /storage/sdcard0/2020/dogger/src/libdogs.py
 |4,39,690,17,1606423671,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  695  60  /storage/sdcard0/2020/dogger/src/libdogs.py
@@ -1044,152 +1057,166 @@ $
 |4,39,707,25,1606423461,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  716  29  /storage/sdcard0/2020/dogger/src/libdogs.py
 |4,39,716,29,1606423460,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  810  13  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,810,13,1606423458,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1220  16  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1220,16,1606423457,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1224  12  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1224,12,1606423455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  1353  8  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,1353,8,1606423455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  790  0  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,790,0,1606423345,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  806  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,806,13,1606423458,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1217  16  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1217,16,1606423457,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1221  12  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1221,12,1606423455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1350  8  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1350,8,1606423455,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  788  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,788,0,1606423345,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  57  12  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,57,12,1606423049,"/storage/sdcard0/2020/dogger/src/dog_main.py"
--'  904  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,904,20,1606405309,"/storage/sdcard0/2020/dogger/src/libdogs.py"
--'  907  20  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,39,907,20,1606405301,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 
 # History of marks within files (newest to oldest):
 
 > /storage/sdcard0/2020/dogger/src/scrm.m4
-	*	1606447090	0
+	*	1606480076	0
 	"	111	23
 
 > /storage/sdcard0/2020/dogger/src/iff.m4
-	*	1606447090	0
+	*	1606480076	0
 	"	633	0
 
 > /storage/sdcard0/2020/dogger/src/qstwriter.py
-	*	1606447090	0
-	"	223	48
+	*	1606480643	0
+	"	259	0
 	^	223	49
-	.	224	0
+	.	126	0
 	+	224	0
 	+	223	0
 	+	224	0
+	+	126	0
 
 > /storage/sdcard0/2020/dogger/src/qstm.m4
-	*	1606447090	0
+	*	1606480076	0
 	"	36	0
 
 > /storage/sdcard0/2020/dogger/src/libdogs.py
-	*	1606447091	0
-	"	1221	4
-	^	939	36
-	.	939	35
-	+	935	30
+	*	1606483177	0
+	"	895	21
+	^	890	22
+	.	890	21
+	+	932	30
+	+	819	0
+	+	820	17
 	+	823	0
-	+	824	17
-	+	827	0
-	+	824	27
-	+	827	0
-	+	829	0
-	+	858	0
-	+	843	8
-	+	842	10
-	+	843	18
-	+	842	18
-	+	844	11
-	+	843	11
-	+	842	22
-	+	843	0
-	+	844	23
-	+	846	26
-	+	847	76
-	+	854	20
-	+	855	45
-	+	857	21
-	+	858	0
-	+	857	0
-	+	858	0
-	+	858	18
-	+	850	37
+	+	820	27
+	+	823	0
+	+	825	0
 	+	854	0
-	+	853	64
-	+	850	64
-	+	858	0
-	+	856	21
-	+	858	0
-	+	868	15
-	+	827	0
-	+	1225	47
-	+	830	16
-	+	1225	41
-	+	1226	16
-	+	1227	0
-	+	1230	36
-	+	1233	73
-	+	934	39
-	+	939	35
-	x	851	0
+	+	839	8
+	+	838	10
+	+	839	18
+	+	838	18
+	+	840	11
+	+	839	11
+	+	838	22
+	+	839	0
+	+	840	23
+	+	842	26
+	+	843	76
+	+	850	20
+	+	851	45
+	+	853	21
+	+	854	0
+	+	853	0
+	+	854	0
+	+	854	18
+	+	846	37
+	+	850	0
+	+	849	64
+	+	846	64
+	+	854	0
+	+	852	21
+	+	854	0
+	+	864	15
+	+	823	0
+	+	1222	47
+	+	826	16
+	+	1222	41
+	+	1223	16
+	+	1224	0
+	+	1227	36
+	+	1230	73
+	+	931	39
+	+	936	35
+	+	788	0
+	+	1185	0
+	+	905	0
+	+	889	20
+	+	891	0
+	+	890	21
+	x	847	0
 
 > /storage/sdcard0/2020/dogger/src/main.m4
-	*	1606447090	0
-	"	31	22
+	*	1606480077	0
+	"	292	0
+	.	220	0
+	+	220	0
 
 > /storage/sdcard0/2020/dogger/src/status.py
-	*	1606447090	0
+	*	1606480077	0
 	"	15	48
 
 > /storage/sdcard0/2020/dogger/src/tasker.py
-	*	1606447090	0
-	"	92	0
+	*	1606480077	0
+	"	46	0
+	.	28	0
+	+	28	0
 
 > /storage/sdcard0/2020/dogger/src/dog.py
-	*	1606447090	0
-	"	79	0
+	*	1606480077	0
+	"	570	0
+	.	92	0
+	+	92	0
 
 > /storage/sdcard0/2020/dogger/src/simple_dog.py
-	*	1606447090	0
-	"	213	0
+	*	1606480077	0
+	"	220	0
+	.	90	0
+	+	90	0
 
 > /storage/sdcard0/2020/dogger/src/dog_main.py
-	*	1606447125	0
-	"	210	50
+	*	1606483180	0
+	"	260	0
 	^	210	51
-	.	210	51
+	.	35	0
 	+	210	51
+	+	35	0
 
 > /storage/sdcard0/2020/dogger/src/setups/update.py
-	*	1606447090	0
-	"	20	0
+	*	1606483174	0
+	"	63	0
+	.	11	0
+	+	11	0
 
 > /storage/sdcard0/2020/play/python/auxiliary_module.py
-	*	1606447090	0
+	*	1606480077	0
 	"	15	52
 
 > /storage/sdcard0/2020/play/python/log.py
-	*	1606447090	0
+	*	1606483172	0
 	"	12	27
 
 > /storage/sdcard0/2020/chrome/webdriver/base/logging.h
-	*	1606447091	0
+	*	1606483169	0
 	"	594	23
 
 > /storage/sdcard0/2020/dogger/src/nav.py
-	*	1606447091	0
-	"	148	0
+	*	1606482579	0
+	"	135	0
 
 > /storage/sdcard0/2020/dogger/selenium/selenium-python-2.3/build/text/api.txt
-	*	1606447091	0
+	*	1606483165	0
 	"	405	12
 
 > /storage/sdcard0/2020/dogger/selenium/selenium-python-2.3/build/text/index.txt
-	*	1606447091	0
-	"	33	44
+	*	1606483107	0
+	"	31	35
 
 > /storage/sdcard0/2020/dogger/doc/3
-	*	1606447091	0
+	*	1606483167	0
 	"	1195	9

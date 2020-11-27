@@ -8,7 +8,7 @@ if __name__ == '__main__':
     import urllib.parse
     import sys
     import argparse
-   
+
     pkg_name = pathlib.Path(sys.argv[0]);
 
     parser = argparse.ArgumentParser ();
@@ -25,9 +25,9 @@ if __name__ == '__main__':
     pkg = requests.get(url.geturl()); # get pkg from url
 
     pkg.raise_for_status();
-    
+
     tdir = pathlib.Path(tempfile.mkdtemp());
-   
+
     p = pathlib.Path(url.path);
 
     ar = tdir.joinpath(p.stem + p.suffix);
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     fp = open(str(ar), "wb");
 
     fp.write(pkg.content);
-    
+
     fp.close();
 
     dest = pathlib.Path(args.dest);
@@ -59,5 +59,5 @@ if __name__ == '__main__':
                 str(dest.joinpath("__main__.pyc")));
 
         print("\neverywhere good!!!", "\nYou can now run \"%s\"" % (str(dest),));
-    
+
     shutil.rmtree(str(tdir));

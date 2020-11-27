@@ -2,7 +2,6 @@ import math
 import re
 import requests
 import navigation
-import qstm
 import ansm
 import dbm
 import lxml
@@ -87,7 +86,7 @@ class SimpleDog:
             if i == idx:
                 return idx;
             i+=1;
-        
+
         return None;
 
     def getarg_by_attr(self, attr, val):
@@ -105,19 +104,19 @@ class SimpleDog:
                     return self.prep_argc - 1;
                 except ValueError:
                     pass
-        
+
             return None;
 
     def submit(self, task):
         if not hasattr(task, "magic") or (task.magic != SUB_MBR or task.magic != SUB_LDR):
             task = self._InternalTask(cmd = self.submit_pre_exec, args = task.args,
                    magic = SUB_LDR);
-        
+
         ## to keep kick-start schedule pre-execution
         return self.submit_pre_exec(task);
 
     def submit_pre_exec(self, task):
-        """pre-executor for the submit command. 
+        """pre-executor for the submit command.
         pre-execution
         =============
             pre-execution is executing a task before puting it into the
@@ -140,7 +139,7 @@ class SimpleDog:
         else:
             self.status = status.Status(status.S_ERROR, task);
             return self.status;
-        
+
         if not mbr:
             # do create and do all members recursively if necessary
             if ldr.nxt:
@@ -202,7 +201,7 @@ class SimpleDog:
             self.status = st;
 
         return self.status;
-    
+
     def submit_main(self, arg):
 
         nav = self.get_nav(arg);
@@ -217,7 +216,7 @@ class SimpleDog:
             st = libdogs.brute_submit(arg, nav, ftype, self.amgr);
             if not st:
                 break;
-        
+
         if not isinstance(st, status.Status):
             st = status.Status(cause = st);
         return st;

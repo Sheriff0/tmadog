@@ -123,7 +123,7 @@ body="""
   <li><input type='checkbox' checked> {ans} </li>
 </ul>
 </li>
-  
+
 </ol>
 
         """;
@@ -138,7 +138,7 @@ class QstWriter:
         self.qmap = qmap;
         self.qlist = list(qlist);
         self.outfunc = outfunc;
-    
+
     def __repr__(self):
         st = "";
         for crs, qpage in self:
@@ -146,9 +146,9 @@ class QstWriter:
             st += "%s\n%s\n%s\n\n" % (line,crs,line);
             for q,a in qpage:
                 st += "%s\n\t%s\n\n" % (q,a);
-        
+
         return st;
-    
+
     def __str__(self):
         return repr(self);
 
@@ -160,7 +160,7 @@ class QstWriter:
                 self.qlist = slist;
                 break
             crscode = lqlist[0][self.qmap["crscode"]];
-            
+
             pcount = 0;
             qpage = [];
             for pi, q in enumerate(lqlist.copy()):
@@ -224,7 +224,7 @@ def writetxt(outpat = "{c}.txt", crsreg = None):
                 for matno in crsreg[crs.lower()]:
                    fn = pathlib.Path(outpat.format(crscode = crs, c = crs, matno =
                        matno));
-                   
+
                    fp = open(str(fn), "a" if fn.exists() else "w");
                    fp.write(st);
                    fp.close();
@@ -256,7 +256,7 @@ def writehtml(outpat = "{crscode}.html", crsreg = None):
                 for matno in crsreg[crs.lower()]:
                    fn = pathlib.Path(outpat.format(crscode = crs, c = crs, matno =
                        matno));
-                   
+
                    fp = open(str(fn), "a" if fn.exists() else "w");
                    fp.write(st);
                    fp.close();

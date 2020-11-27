@@ -89,7 +89,7 @@ class Dog:
                     self.run(task);
 
                     self.pc += 1;
-    
+
     def run(self, task):
         return self.getcmd(task)(task);
 
@@ -100,16 +100,16 @@ class Dog:
             return task.cmd;
         elif isinstance(task, DTask):
             return getattr(self, tasker.gettvalue(task));
-        
 
-    
+
+
     def end(self):
         """ends the dog - the thread (if any) that called start returns from it."""
         self.started = False;
 
     def get_tasks():
         pass;
-    
+
     def jmp(self, task):
         ## emulate a processor jump using simple indirection rather than prepend the tasklist
         ## NOTE make thread-safe.
@@ -145,7 +145,7 @@ class Dog:
             # once the current task returns which will point to lr
 
             self.pc = self.tasktab_size - 3
-    
+
     def update_index(self):
         pass;
 
@@ -174,7 +174,7 @@ class Dog:
 
         else:
             return self._alloc(task);
-    
+
     def _alloc(self, task = None):
         if not isinstance(task, (DTask, self._InternalTask)):
             return None;
@@ -211,12 +211,12 @@ class Dog:
         self.cmdline = scrm.QScrList();
         ## no more need for this as one navigator is shared
         ##self.navtab = scrm.QScrList ();
-        
+
         ##instead do
         self.nav = None;
 
         self.setup_cmdline(cmdline);
-        
+
         ## create navigator first if possible
         #self.setup_nav();
 
@@ -225,11 +225,11 @@ class Dog:
         self.send_task(initial_t);
 
         self.started = False;
-    
+
     def release_nav(self, nav = None):
         if not nav:
             nav = self.nav;
-        return libdogs.unassign(nav); 
+        return libdogs.unassign(nav);
 
     def get_nav(self, cli):
         if not self.prep_argv[0].one_nav:
@@ -243,7 +243,7 @@ class Dog:
                 ## when no navigator is passed, libdogs.assign creates one and assign to the given cli.
                 self.nav = libdogs.assign(cli);
 
-            
+
         if not self.nav:
             status = status.Status(status.S_ERROR, "can't create navigator",
                     self.nav);
@@ -263,7 +263,7 @@ class Dog:
         while arg == None:
             arg = self.getarg_by_attr("url");
         ## create navigator
-        
+
         try:
             self.nav = navigation.Navigator (
                     self.prep_argv[arg]["url"],
@@ -287,7 +287,7 @@ class Dog:
 
 
     def setup_cmdline(self, cmdline, psr = None, preproc = None):
-        
+
         try:
             if not psr:
                 psr = parser;
@@ -305,7 +305,7 @@ class Dog:
                         args,
                         )
                     );
-            
+
             self.status = status.Status(status.S_OK, "cmdline parsed successfully")
             return args;
 
@@ -313,10 +313,10 @@ class Dog:
             status = status.Status("cmdline error", status.S_ERROR,
                     CmdlineErr(err,cmdline psr, preproc));
             return self.status;
-        
+
         except BaseException as err:
             status = status.Status("Unknown Err", status.S_ERROR,
-                    CmdlineErr(err,cmdline,psr,preproc)); 
+                    CmdlineErr(err,cmdline,psr,preproc));
             self.status = status;
 
             return self.status;
@@ -341,7 +341,7 @@ class Dog:
 
                 yield arg;
 
-        
+
 
     def getarg_by_index(self, idx = 0):
         if not idx >= self.prep_argc:
@@ -360,7 +360,7 @@ class Dog:
                     if i == idx:
                         return idx;
                     i+=1;
-        
+
         return None;
 
     def getarg_by_attr(self, attr, val):
@@ -380,7 +380,7 @@ class Dog:
                             return self.prep_argc - 1;
                         except ValueError:
                             pass
-            
+
             return None;
 
     def idle(self):
@@ -399,7 +399,7 @@ class Dog:
             parser.add_argument ('--crscode', help = 'Your target course',
                     action = libdogs.AppendList, dest = libdogs.P_CRSCODE);
 
-            parser.add_argument ('--tma', 
+            parser.add_argument ('--tma',
                     help = 'Your target TMA for the chosen
                     course', action = libdogs.AppendList, dest = libdogs.P_TMA);
 
@@ -424,7 +424,7 @@ class Dog:
 
                 grp_leader = self._InternalTask(cmd = self.submit_pre_exec, args = args,
                        magic = GRP);
-                
+
                 ## to keep kick-start schedule pre-execution
                 self.submit_pre_exec(grp_leader);
 
@@ -435,7 +435,7 @@ class Dog:
                 ## group member
                 MBR = 0;
                 ## do task created by me
-                if not hasattr(ta, "magic"): 
+                if not hasattr(ta, "magic"):
                     return None;
                 if ta.magic == LDR:
                     pass
@@ -449,7 +449,7 @@ class Dog:
             pass;
 
     def submit_pre_exec(self, task):
-        """pre-executor for the submit command. 
+        """pre-executor for the submit command.
         pre-execution
         =============
             pre-execution is executing a task before puting it into the
@@ -467,7 +467,7 @@ class Dog:
         if not isinstance(task, DTask):
             self.status = status.Status(status.S_ERROR);
             return self.status;
-        
+
         ldr = None;
         mbr = None;
 
@@ -477,7 +477,7 @@ class Dog:
         elif task.magic == MBR:
             ldr = task.group;
             mbr = task;
-        
+
         if not mbr:
             self._alloc(ldr);
             # do create and do all members recursively
@@ -542,7 +542,7 @@ class Dog:
             mbr.status = st;
             self.status = st;
             return st;
-    
+
     def submit_main(self, arg):
 
         nav = self.get_nav(arg);
@@ -567,7 +567,7 @@ class Dog:
             can be called functions that dump the tasklist.
         """
         pass;
-    
+
     class _InternalTask(DTask):
         """ instances of this can find themselves in tha tasktab.
             It is meant for use internally by method that want a task object that is ligther, laxer, and more

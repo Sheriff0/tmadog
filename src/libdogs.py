@@ -2,7 +2,6 @@ import math
 import re
 import requests
 import navigation
-import qstm
 import ansm
 import dbm
 import lxml
@@ -785,10 +784,6 @@ def discover_by_quizlist(usr, nav, retry = 3):
             if m:
                 logger.info("found %s", m.group(0));
                 yield m.group (0)
-            
-            else:
-                # a workaround against NOUN's buggy site
-                yield m;
 
             try:
                 rec = iter (navigation.Recipe (path, str (idx), usr, tpage,
@@ -889,6 +884,9 @@ def is_net_valid_arg(cmdl, arg):
 
 def preprocess(args, excl_crs = []):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
+    
+    if not excl_crs:
+        excl_crs = [];
 
     args = args.__dict__;
     matnos = LastList (args [P_USR]);
@@ -902,8 +900,6 @@ def preprocess(args, excl_crs = []):
     argc = max (len (crscodes), len (tmas), len (matnos))
     templ = {};
     templ[P_WMAP] = wmap;
-    
-    i = 0;
 
     for i in range (argc):
         usr = copy.deepcopy(templ);
@@ -925,7 +921,7 @@ def preprocess(args, excl_crs = []):
                         mt = re.match(x_crs,  crs, re.I);
                         if mt:
                             break;
-                    
+
                     if mt:
                         logger.info("skipping %s" % (crs,));
                         continue;
@@ -1185,7 +1181,7 @@ def can_retry_fetch(nav, qres):
                 qres);
 
 
-        st = lazy_logout(st); 
+        st = lazy_logout(st);
         st = lazy_login(st);
         if not st:
             return status.Status(status.S_ERROR, "login err",

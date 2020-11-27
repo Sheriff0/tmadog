@@ -217,7 +217,7 @@ def main (stdscr, args):
             arr = []
             for qst in ansmgr.iter_cache ():
                arr.append (qst)
-            
+
             if args.debug:
                 json.dump (arr, f)
 
@@ -289,7 +289,7 @@ def main (stdscr, args):
     except BaseException as err:
         cleanup();
         raise err;
-    
+
 
     return cleanup();
 

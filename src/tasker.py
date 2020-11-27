@@ -25,7 +25,7 @@ TS_TERM = 0b100000;
 ## can't  be set the setter function can create a hidden task that will
 ## eventually set the navigator when the neccasary argument are given (usually
 ## by blocking the dog runtime while waiting). This task shouldn't, normally, be shown to
-## users. 
+## users.
 
 TDISP_PUBLIC = 0;
 TDISP_HIDDEN = 1;
@@ -43,7 +43,7 @@ def gettid(task, st):
                 if isinstance(st, type(a)):
                     cidx = i;
                     break;
-            
+
             if cidx == None:
                 return None;
 
