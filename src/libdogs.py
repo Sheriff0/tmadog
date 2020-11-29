@@ -1457,6 +1457,10 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
 def brute_safe(nav, usr, qst):
     global F_NEXT;
 
+    if F_NEXT:
+        F_NEXT.pop(str(usr[P_USR]) + str(usr[P_CRSCODE]) +
+                str(usr[P_TMA]), None);
+
     fe = fetch_one(nav, usr, quiet = True);
 
     if isinstance(fe, status.Status) and re.search(r'no\s+more\s+question',
