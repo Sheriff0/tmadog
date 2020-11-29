@@ -220,7 +220,7 @@ def writetxt(outpat = "{c}.txt", crsreg = None):
                     st += "\n"
                     qn+=1;
 
-            if re.search(r'{matno}', outpat) and crsreg:
+            if re.search(r'{matno}', outpat) and crsreg and crs.lower() in crsreg:
                 for matno in crsreg[crs.lower()]:
                    fn = pathlib.Path(outpat.format(crscode = crs, c = crs, matno =
                        matno));
@@ -230,7 +230,7 @@ def writetxt(outpat = "{c}.txt", crsreg = None):
                    fp.close();
 
             else:
-                fn = pathlib.Path(outpat.format(c = crs));
+                fn = pathlib.Path(outpat.format(c = crs, matno = ""));
                 fp = open(str(fn), "a" if fn.exists() else "w");
                 fp.write(st);
                 fp.close();
@@ -252,7 +252,7 @@ def writehtml(outpat = "{crscode}.html", crsreg = None):
                     st += "\n"
                     qn+=1;
 
-            if re.search(r'{matno}', outpat) and crsreg:
+            if re.search(r'{matno}', outpat) and crsreg and crs.lower() in crsreg:
                 for matno in crsreg[crs.lower()]:
                    fn = pathlib.Path(outpat.format(crscode = crs, c = crs, matno =
                        matno));
@@ -262,7 +262,7 @@ def writehtml(outpat = "{crscode}.html", crsreg = None):
                    fp.close();
 
             else:
-                fn = pathlib.Path(outpat.format(c = crs));
+                fn = pathlib.Path(outpat.format(c = crs, matno = ""));
                 fp = open(str(fn), "a" if fn.exists() else "w");
                 fp.write(st);
                 fp.close();

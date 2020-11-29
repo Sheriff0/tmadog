@@ -16,7 +16,6 @@ M4_DEPS = ansm.m4 \
 
 PY_DEPS = dog_main.py \
 	  libdogs.py \
-	  preproccesor.py \
 	  qstwriter.py \
 	  simple_dog.py \
 	  status.py \

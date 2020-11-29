@@ -61,7 +61,7 @@ def mkstat(dog, fi):
             line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
 
-            line += "# %s %s\n\n" % (st[simple_dog.STAT_ST].msg, str(st[simple_dog.STAT_ST].cause));
+            line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
 
             fp.write(line);
 
@@ -135,8 +135,6 @@ Please input a cookie file (e.g from the browser)--> """));
         return dog.nav;
 
     def cleanup():
-        if ansmgr._cur:
-            ansmgr.close ()
 
         f = open (args.qstdump, 'w') if args.debug else None
 
@@ -158,6 +156,9 @@ Please input a cookie file (e.g from the browser)--> """));
 
         if f:
             f.close ()
+
+        if ansmgr._cur:
+            ansmgr.close ()
 
     if not getattr(args, "stats"):
         logger.info("no stat file given, setting default stat file");
@@ -233,13 +234,19 @@ if __name__ == '__main__':
 
     parser = libdogs.DogCmdParser (fromfile_prefix_chars='@');
 
-    parser.add_argument ('--matno', help = 'Your Matric Number', nargs = "+", action = libdogs.AppendList, dest = libdogs.P_USR);
+    parser.add_argument ('--matno', help = 'Your Matric Number', nargs = "+",
+            action = libdogs.AppendList, dest = libdogs.P_USR, required = True);
 
-    parser.add_argument ('--pwd', help = 'Your password', nargs = "+", action = libdogs.AppendList, dest = libdogs.P_PWD);
+    parser.add_argument ('--pwd', help = 'Your password', nargs = "+", action =
+            libdogs.AppendList, dest = libdogs.P_PWD, required = True);
 
-    parser.add_argument ('--crscode', help = 'Your target course', nargs = "+", action = libdogs.AppendList, dest = libdogs.P_CRSCODE);
+    parser.add_argument ('--crscode', help = 'Your target course', nargs = "+",
+            action = libdogs.AppendList, dest = libdogs.P_CRSCODE, required =
+            True);
 
-    parser.add_argument ('--tma', nargs = "+", help = 'Your target TMA for the chosen course', action = libdogs.AppendList, dest = libdogs.P_TMA);
+    parser.add_argument ('--tma', nargs = "+", help = 'Your target TMA for the chosen course',
+            action = libdogs.AppendList, dest = libdogs.P_TMA, type = int,
+            required = True);
 
     parser.add_argument ('--config', help = 'configuration file to use', dest = libdogs.P_WMAP);
 
