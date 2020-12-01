@@ -16,28 +16,40 @@ if __name__ == '__main__':
     parser.add_argument ('--dest', help = "where to install the package",
             default = "dog_main", type = str);
 
+    parser.add_argument ('--url', help = "where to get the package", type = str,
+            default = "https://sheriff0.github.io/dogger/dogger.tar.xz");
+
     args = parser.parse_args();
 
     print("fetch files...")
+    
+    if args.url.startswith(("http", "HTTP")):
+        url = urllib.parse.urlparse(args.url);
 
-    url = urllib.parse.urlparse("https://sheriff0.github.io/dogger/dogger.tar.xz");
+        pkg = requests.get(url.geturl()); # get pkg from url
 
-    pkg = requests.get(url.geturl()); # get pkg from url
+        pkg.raise_for_status();
 
-    pkg.raise_for_status();
+
+        p = pathlib.Path(url.path);
+
+        ar = tdir.joinpath(p.stem + p.suffix);
+
+        fp = open(str(ar), "wb");
+
+        fp.write(pkg.content);
+
+        fp.close();
+    
+    else:
+        ar = pathlib.Path(args.url);
+        p = pathlib.Path(args.url);
+        if not ar.exists():
+            print("no such file %s" % (str(ar),));
+            sys.exit(1);
+
 
     tdir = pathlib.Path(tempfile.mkdtemp());
-
-    p = pathlib.Path(url.path);
-
-    ar = tdir.joinpath(p.stem + p.suffix);
-
-    fp = open(str(ar), "wb");
-
-    fp.write(pkg.content);
-
-    fp.close();
-
     dest = pathlib.Path(args.dest);
 
     shutil.unpack_archive(str(ar), str(tdir));

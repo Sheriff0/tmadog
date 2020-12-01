@@ -27,6 +27,7 @@ import argparse
 
 import status
 import logging
+import chardet
 
 logger = logging.getLogger('tmadog.libdog');
 
@@ -822,8 +823,8 @@ def discover_by_crslist(usr, nav, retry = 3):
 
 
 
-def get_valid_qreq(usr, nav):
-    st = goto_page(nav, "qst_page", -1, login = True, quiet = True);
+def get_valid_qreq(usr, nav, quiet = True):
+    st = goto_page(nav, "qst_page", -1, login = True, quiet = quiet);
 
     if not st:
         return st;
@@ -987,14 +988,29 @@ def assign(usr, nav = None):
         return lazy_nav_reconf(nav, usr);
 
 
+def read_file_text(fi):
+    fi = pathlib.Path(fi);
+    if not fi.exists():
+        return None;
 
+    fbin = fi.read_bytes();
+
+    enc = chardet.detect(fbin);
+
+    if not enc:
+        logger.info("cannot read file!!!");
+        return status.Status(status.S_ERROR, "no text", (enc,));
+    
+    return fbin.decode(encoding = enc["encoding"]);
 
 def session_from_cookies (url, cookie_file):
     fi = pathlib.Path(cookie_file);
     if fi.exists():
-        with open (cookie_file) as f:
-            logger.info("reading cookie file...");
-            cookie_str = f.read ();
+        logger.info("reading cookie file %s" % (cookie_file,));
+        cookie_str = read_file_text(cookie_file);
+        if not cookie_str:
+            return cookie_str;
+        
 
     else:
         cookie_str = cookie_file;
@@ -1226,12 +1242,12 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
         g = cache_get("qst_page", -1);
 
         if not g:
-            g = get_valid_qreq(usr, nav);
+            g = get_valid_qreq(usr, nav, quiet = quiet);
             if g:
                 cache_put(g, "qst_page", -1);
 
     else:
-        g = get_valid_qreq(usr, nav);
+        g = get_valid_qreq(usr, nav, quiet = quiet);
 
     if not g:
         yield status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
@@ -1244,7 +1260,8 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
     referer = fro.url;
 
     if not quiet:
-        logger.info("fetch_all(): preparing to fetch all questions.");
+        logger.info("fetch_all(): preparing to fetch all %s questions for %s" %
+                (usr[P_CRSCODE], usr[P_USR]));
 
     pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
 
@@ -1345,12 +1362,12 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
         g = cache_get("qst_page", -1);
 
         if not g:
-            g = get_valid_qreq(usr, nav);
+            g = get_valid_qreq(usr, nav, quiet = quiet);
             if g:
                 cache_put(g, "qst_page", -1);
 
     else:
-        g = get_valid_qreq(usr, nav);
+        g = get_valid_qreq(usr, nav, quiet = quiet);
 
     if not g:
         return status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
@@ -1363,7 +1380,8 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
     referer = fro.url;
 
     if not quiet:
-        logger.info("fetch_one(): preparing to fetch all questions.");
+        logger.info("fetch_one(): preparing to fetch all %s questions for %s" %
+                (usr[P_CRSCODE], usr[P_USR]));
 
     pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
 
@@ -1602,12 +1620,12 @@ def cache_get(page, sl = None):
 
     if sl == None:
         res.content = target.read_bytes();
-        res.text = res.content.decode();
+        res.text = read_file_text(target);
         res.request = requests.Request();
         return res;
 
     else:
-        data = json.loads(target.read_text());
+        data = json.loads(read_file_text(target));
         if "to" not in data or ("fro" not in data or "url" not in data["fro"]):
             return None;
 
@@ -1617,5 +1635,5 @@ def cache_get(page, sl = None):
             fro_page = cdir.joinpath(data["fro"]["content"]);
             if fro_page.exists():
                 res.content = fro_page.read_bytes();
-                res.text = res.content.decode();
+                res.text = read_file_text(fro_page);
         return [data["to"], res];

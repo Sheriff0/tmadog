@@ -56,7 +56,7 @@ def mkstat(dog, fi):
     sta = "";
     not_ok = 0;
     ok_str = "# Submitted quizes:";
-    not_ok_str = "Quizes not submitted:";
+    not_ok_str = "# Quizes not submitted:";
     with open(fi, "w") as fp:
         for st in simple_dog.dog_submit_stat(dog):
             arg = st[simple_dog.STAT_ARG];
@@ -193,7 +193,8 @@ Please input a cookie file (e.g from the browser)--> """));
         configparser.ExtendedInterpolation ())
 
     logger.info("reading config file and initializing a webmap");
-    mp.read (getattr(args, libdogs.P_WMAP));
+    mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+    mp.read_string (mstr);
 
     setattr(args, libdogs.P_WMAP, mp);
 
