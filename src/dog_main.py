@@ -51,7 +51,12 @@ def check(pkg_name):
 
 def mkstat(dog, fi):
     crsreg = {};
-
+    col_max = 4;
+    ok = 0;
+    sta = "";
+    not_ok = 0;
+    ok_str = "# Submitted quizes:";
+    not_ok_str = "Quizes not submitted:";
     with open(fi, "w") as fp:
         for st in simple_dog.dog_submit_stat(dog):
             arg = st[simple_dog.STAT_ARG];
@@ -60,10 +65,25 @@ def mkstat(dog, fi):
 
             line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
-
+            
             line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
+            sta += line;
 
-            fp.write(line);
+            if st[simple_dog.STAT_ST].code >= status.S_INT:
+                not_ok_str += "\n#\t%s" % (arg[libdogs.P_CRSCODE],) if (not_ok % col_max) == 0 else "  %s" % (arg[libdogs.P_CRSCODE],);
+                not_ok_str += "(%s,%s)" % (arg[libdogs.P_USR], arg[libdogs.P_TMA]) ;
+                not_ok += 1;
+
+            else:
+                ok_str += "\n#\t%s" % (arg[libdogs.P_CRSCODE],) if (ok % col_max) == 0 else "  %s" % (arg[libdogs.P_CRSCODE],);
+                ok_str += "(%s,%s)" % (arg[libdogs.P_USR], arg[libdogs.P_TMA]) ;
+                ok += 1;
+
+        ok_str += "\n\n#total submitted: %s\n\n" % (ok,);
+        not_ok_str += "\n\n#total not submitted: %s\n\n" % (not_ok,);
+        fp.write(ok_str);
+        fp.write(not_ok_str);
+        fp.write(sta);
 
     return crsreg;
 

@@ -467,7 +467,7 @@ def nav_hook(nav):
     return None;
 
 def unknown_err_handler_hook(err, cause):
-    res = input("%s occured while process %s. press s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, str(cause)));
+    res = input("%s occured while running. press s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, ));
     if re.match(r's.*', res, re.I):
         return status.Status(status.S_NULL, "skip action", cause);
     elif re.match(r'c.*', res, re.I):
@@ -664,7 +664,7 @@ def lazy_login(nav, retry = 3, **kwargs):
             retry -= 1;
 
         except requests.RequestException as err:
-            if unknown_err_handler_hook(err, sreq):
+            if unknown_err_handler_hook(err, lreq):
                 retry -= 1;
             else:
                 logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
@@ -1256,11 +1256,6 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
     done = False;
 
     while not done:
-        if F_NEXT:
-            rx = F_NEXT.pop(str(usr[P_USR]) + str(usr[P_CRSCODE]) +
-                    str(usr[P_TMA]), None);
-            if rx:
-                yield copy.deepcopy(rx);
 
         kwargs.setdefault (
                 'headers',
@@ -1329,7 +1324,7 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
                 rt -= 1;
 
             except requests.RequestException as err:
-                if unknown_err_handler_hook(err, sreq):
+                if unknown_err_handler_hook(err, freq):
                     rt -= 1;
                 else:
                     if not quiet:
@@ -1376,12 +1371,6 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
 
     result[F_PSEUDO_ANS] = pseudos.copy();
     result[F_QMAP] = nav.webmap["qmap"];
-
-    if F_NEXT:
-        rx = F_NEXT.pop(str(usr[P_USR]) + str(usr[P_CRSCODE]) +
-                str(usr[P_TMA]), None);
-        if rx:
-            return copy.deepcopy(rx);
 
     kwargs.setdefault (
             'headers',
@@ -1445,7 +1434,7 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
             rt -= 1;
 
         except requests.RequestException as err:
-            if unknown_err_handler_hook(err, sreq):
+            if unknown_err_handler_hook(err, freq):
                 rt -= 1;
             else:
                 if not quiet:
@@ -1457,10 +1446,6 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
 def brute_safe(nav, usr, qst):
     global F_NEXT;
 
-    if F_NEXT:
-        F_NEXT.pop(str(usr[P_USR]) + str(usr[P_CRSCODE]) +
-                str(usr[P_TMA]), None);
-
     fe = fetch_one(nav, usr, quiet = True);
 
     if isinstance(fe, status.Status) and re.search(r'no\s+more\s+question',
@@ -1468,7 +1453,6 @@ def brute_safe(nav, usr, qst):
         return True;
 
     elif fe:
-        F_NEXT[str(usr[P_USR]) + str(usr[P_CRSCODE]) + str(usr[P_TMA])] = fe;
         return re.match(
                 str(qst[nav.webmap["qmap"]["qn"]]),
 

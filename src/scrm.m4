@@ -1,4 +1,3 @@
-import curses
 import math
 import copy
 import pdb
