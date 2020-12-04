@@ -29,6 +29,8 @@ import status
 import logging
 import chardet
 
+copy = copy.copy if sys.implementation.version.minor < 7 else copy.deepcopy 
+
 logger = logging.getLogger('tmadog.libdog');
 
 P_PWD = "pwd";
@@ -903,11 +905,10 @@ def preprocess(args, excl_crs = []):
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
-    templ = {};
-    templ[P_WMAP] = wmap;
 
     for i in range (argc):
-        usr = copy.deepcopy(templ);
+        usr = {};
+        usr[P_WMAP] = wmap;
         usr[P_USR] = matnos [i]
         usr[P_PWD] = pwds [i]
         usr[P_TMA] = tmas [i]
@@ -932,12 +933,12 @@ def preprocess(args, excl_crs = []):
                         continue;
 
                 usr[P_CRSCODE] = crs;
-                yield copy.deepcopy(usr);
+                yield copy(usr);
                 if not crs and isinstance(crs, status.Status):
                     break;
         else:
             usr[P_CRSCODE] = y;
-            yield copy.deepcopy(usr);
+            yield copy(usr);
 
 
 ## this for now, is case-insensitive
@@ -1083,7 +1084,7 @@ def mask (qst, mpat, mvalue):
 
 
 def answer_lax(qst, amgr):
-    x = copy.deepcopy (qst);
+    x = copy (qst);
 
     qst = amgr.answer (qst);
 
@@ -1128,7 +1129,7 @@ def submit(nav, sreq, retry = 3, **kwargs):
 
 def transform_req (req, usr):
     global F_QKEY;
-    req = copy.deepcopy(req);
+    req = copy(req);
     tma = str (usr[P_TMA]);
     matno = usr[P_USR];
     crscode = usr[P_CRSCODE];
@@ -1308,10 +1309,10 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
                 referer = qres.url;
                 result[F_REFERER] = referer;
                 F_LAST_FETCH = fetch_t();
-                F_LAST_FETCH[F_FREQUEST] = copy.deepcopy(freq);
+                F_LAST_FETCH[F_FREQUEST] = copy(freq);
                 F_LAST_FETCH[F_REFERER] = referer;
 
-                yield copy.deepcopy(result);
+                yield copy(result);
                 break;
 
             except DogTypeError as err:
@@ -1424,10 +1425,10 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
             referer = qres.url;
             result[F_REFERER] = referer;
             F_LAST_FETCH = fetch_t();
-            F_LAST_FETCH[F_FREQUEST] = copy.deepcopy(freq);
+            F_LAST_FETCH[F_FREQUEST] = copy(freq);
             F_LAST_FETCH[F_REFERER] = referer;
 
-            return copy.deepcopy(result);
+            return copy(result);
 
         except DogTypeError as err:
             st = can_retry_fetch(nav, qres);
@@ -1529,7 +1530,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
 
 def answer_strict(qst, amgr):
     try:
-        x = copy.deepcopy (qst);
+        x = copy (qst);
 
         x = amgr.answer (x);
 

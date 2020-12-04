@@ -23,6 +23,8 @@ if __name__ == '__main__':
 
     print("fetch files...")
     
+    tdir = pathlib.Path(tempfile.mkdtemp());
+
     if args.url.startswith(("http", "HTTP")):
         url = urllib.parse.urlparse(args.url);
 
@@ -49,7 +51,6 @@ if __name__ == '__main__':
             sys.exit(1);
 
 
-    tdir = pathlib.Path(tempfile.mkdtemp());
     dest = pathlib.Path(args.dest);
 
     shutil.unpack_archive(str(ar), str(tdir));

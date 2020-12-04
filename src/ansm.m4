@@ -13,6 +13,7 @@ from pathlib import PurePath
 from urllib import parse
 import configparser
 import copy
+import libdogs
 ifdef(
 `LIBPREFIX',
 `dnl
@@ -308,7 +309,7 @@ ifdef(
 
     def update (self, qst):
 
-        qst = copy.deepcopy (qst)
+        qst = libdogs.copy (qst)
 
         y = self._cache.get (qst [self.qmap ["qid"]], None)
 
@@ -511,7 +512,7 @@ ifdef(
         if not hasattr (self, "opts"):
             self.opts = [ "opt" + chr (97 + a) for a in range (len (self.pseudos))]
 
-        w = copy.deepcopy (qst)
+        w = libdogs.copy (qst)
 
         w.update (
                 {

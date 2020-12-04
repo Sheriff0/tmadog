@@ -1,5 +1,6 @@
 import status
 import copy
+import libdogs
 
 ## task states
 ## the runner is on it
@@ -61,7 +62,7 @@ class Task:
         if not tdir or (hasattr(tdir, "__setitem__") and hasattr(tdir, "__getitem__") and hasattr(tdir, "__contains__")):
             raise TypeError("Invalid Task directory");
 
-        Task.tid_tab = copy.deepcopy(tdir);
+        Task.tid_tab = libdogs.copy(tdir);
 
     def __init__ (self, tid = 0, args = None, status = None, group = None, nxt =
             None, state = TS_RUNNABLE,
