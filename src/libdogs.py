@@ -470,14 +470,14 @@ def nav_hook(nav):
     return None;
 
 def unknown_err_handler_hook(err, cause):
-    res = input("%s occured while running. press s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, ));
+    res = input("\n\n%s occured while running.\npress s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, ));
+
     if re.match(r's.*', res, re.I):
         return status.Status(status.S_NULL, "skip action", cause);
     elif re.match(r'c.*', res, re.I):
         return status.Status(status.S_OK, "continue action", cause);
     else:
-        return status.Status(status.S_NULL, "skip action", cause);
-
+        raise KeyboardInterrupt();
 
 
 def init_hooks(**kwargs):

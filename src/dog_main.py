@@ -26,6 +26,8 @@ import simple_dog
 import status
 
 
+VERSION = 1.00;
+
 def check(pkg_name):
     import uuid
     import hashlib
@@ -195,6 +197,8 @@ Please input a cookie file (e.g from the browser)--> """));
                    math.trunc(diff),
                     )
                 );
+
+    logger.info("Welcome to tmadog version %s\n" % (VERSION,));
 
     if not getattr(args, "stats"):
         logger.info("no stat file given, setting default stat file");
