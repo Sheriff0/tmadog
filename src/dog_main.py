@@ -155,6 +155,7 @@ Please input a cookie file (e.g from the browser)--> """));
         return dog.nav;
 
     def cleanup():
+        nonlocal stime;
 
         f = open (args.qstdump, 'w') if args.debug else None
 
@@ -179,6 +180,21 @@ Please input a cookie file (e.g from the browser)--> """));
 
         if ansmgr._cur:
             ansmgr.close ()
+
+        
+        etime = time.time();
+        diff = etime - stime;
+        hr,diff = divmod(diff, 60*60);
+        mn,diff = divmod(diff, 60);
+        
+
+        print("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
+                (
+                   math.trunc(hr),
+                   math.trunc(mn),
+                   math.trunc(diff),
+                    )
+                );
 
     if not getattr(args, "stats"):
         logger.info("no stat file given, setting default stat file");
@@ -207,7 +223,7 @@ Please input a cookie file (e.g from the browser)--> """));
         args.cache = str(pkg_dir.joinpath("dog_cache"));
 
     if not args.output:
-        logger.info("no output file given, setting default output file for quiz");
+        logger.info("no output directory given, setting default output file for quiz");
         args.output = str(pkg_dir.joinpath("output/{matno}-{c}.txt"));
 
     pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
@@ -238,7 +254,10 @@ Please input a cookie file (e.g from the browser)--> """));
 
     try:
         task = dog._InternalTask(cmd = None, args = args);
+        stime = time.time();
+
         dog.submit(task);
+        cleanup();
 
     except KeyboardInterrupt:
         cleanup();
@@ -246,9 +265,8 @@ Please input a cookie file (e.g from the browser)--> """));
     except BaseException as err:
         cleanup();
         raise err;
+    
 
-
-    return cleanup();
 
 
 if __name__ == '__main__':

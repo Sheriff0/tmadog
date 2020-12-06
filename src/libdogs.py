@@ -679,55 +679,107 @@ def lazy_login(nav, retry = 3, **kwargs):
 
 
 
-def goto_page(nav, pg, stp = None, retry = 3, login = False, quiet = False):
+def goto_page(nav, pg, stp = None, retry = 3, login = False):
     retry += 1;
     
-    if quiet == False:
-        logger.info("goto_page(): preparing navigate to %s", pg);
+    logger.debug("goto_page(): preparing navigate to %s", pg);
 
     lres = None;
 
     while retry:
         try:
             lres = nav(pg)[:stp];
-            if isinstance(lres, requests.Response):
-                    lres.raise_for_status();
-            if quiet == False:
-                logger.info("goto_page(): sucessfully navigated to %s", pg);
+
+            logger.debug("goto_page(): sucessfully navigated to %s", pg);
             return lres;
 
-        except DogTypeError as err:
-            if not can_retry_page(nav, lres, login):
-                return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
+        except Exception as err:
+            logger.debug("goto_page(): navigation unsucessful for %s due to %s, " , pg, err);
 
-            if quiet == False:
-                logger.info("goto_page(): navigation unsucessful for %s due to %s, "
-                        + "retrying..." if retry > 1 else "exiting...",
-                        pg, err);
+            if isinstance(err, (DogTypeError, requests.HTTPError)):
 
-            retry -= 1;
+                if not can_retry_page(nav, lres, login):
+                    logger.debug("exiting...");
+                    return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
 
-        except requests.HTTPError as err:
-            if not can_retry_page(nav, lres, login):
-                return status.Status(status.S_ERROR, "can't goto %s" % (pg,), lres);
+                logger.debug("retrying..." if retry > 1 else "exiting...");
 
-            if quiet == False:
-                logger.info("goto_page(): navigation unsucessful for %s due to %s",
-                        pg, err);
-
-            retry -= 1;
-
-        except requests.RequestException as err:
-            if unknown_err_handler_hook(err, lres):
                 retry -= 1;
-            else:
-                if quiet == False:
-                    logger.info("goto_page(): navigation to %s unsucessful due to %s, suspending",
-                            pg, err);
 
-                return status.Status(status.S_ERROR, "unknown err while navigating to %s" % (pg,), (lres, err));
+            elif isinstance(err, (requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError)):
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            elif isinstance(err, requests.RequestException):
+                if not unknown_err_handler_hook(err, lres):
+                    logger.debug("halting...");
+                    return status.Status(status.S_ERROR, "unknown err while navigating to %s" % (pg,), (lres, err));
+
+
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            else:
+                raise err;
+
 
     return status.Status(status.S_ERROR, "maximum retries exceeded for navigation to %s" % (pg,), lres);
+
+
+
+def goto_page2(nav, req, retry = 3, login = False, **kwargs):
+    retry += 1;
+    
+    logger.debug("goto_page2(): preparing to send to server");
+
+    lres = None;
+
+    while retry:
+        try:
+            lres = nav.session.request(**req, **kwargs);
+            lres.raise_for_status();
+
+            logger.debug("goto_page2(): sucessfully sent to server");
+            return lres;
+
+        except Exception as err:
+            logger.debug("goto_page2(): sending unsucessful due to %s" , err);
+
+            if isinstance(err, (DogTypeError, requests.HTTPError)):
+
+                if not can_retry_page(nav, lres, login):
+                    logger.debug("exiting...");
+                    return status.Status(status.S_ERROR, "can't send to server", lres);
+
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            elif isinstance(err, (requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError)):
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            elif isinstance(err, requests.RequestException):
+                if not unknown_err_handler_hook(err, lres):
+                    logger.debug("halting...");
+                    return status.Status(status.S_ERROR, "unknown err while sending to server", (lres, err));
+
+
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            else:
+                raise err;
+
+
+    return status.Status(status.S_ERROR, "maximum retries exceeded for sending to server", lres);
+
 
 
 def create_nav(key):
@@ -825,8 +877,8 @@ def discover_by_crslist(usr, nav, retry = 3):
 
 
 
-def get_valid_qreq(usr, nav, quiet = True):
-    st = goto_page(nav, "qst_page", -1, login = True, quiet = quiet);
+def get_valid_qreq(usr, nav):
+    st = goto_page(nav, "qst_page", -1, login = True);
 
     if not st:
         return st;
@@ -1097,34 +1149,18 @@ def answer_lax(qst, amgr):
         logger.info("answer_lax(): no answer found in local cache");
         return x;
 
-def submit(nav, sreq, retry = 3, **kwargs):
-    x = 0;
-    rt = retry + 1;
-    while rt:
-        try:
-            res = nav.session.request (**sreq, **kwargs);
-            res.raise_for_status ();
+def submit(nav, sreq, **kwargs):
+    res = goto_page2(nav = nav, req = sreq, **kwargs);
 
-            logger.info("libdogs.submit(): submit sucessful, checking result...");
+    logger.info("libdog.submit(): preparing to submit quiz");
 
-            return is_correct_ans(nav, res);
+    if not res:
+        logger.info("libdog.submit(): submit unsucessful");
+        return res;
 
-        except requests.HTTPError as err:
-            st = can_retry_fetch(nav, res);
-            if not st:
-                return st;
-            logger.info("libdog.submit(): submit unsucessful for due to %s," +
-                    "retrying" if rt > 1 and st else "not retrying",
-                    err);
-            rt -= 1;
-        except requests.RequestException as err:
-            if unknown_err_handler_hook(err, sreq):
-                rt -= 1;
-            else:
-                break;
+    logger.info("libdogs.submit(): submit sucessful, checking result...");
 
-    logger.info("libdogs.submit(): submit unsucessful, suspending");
-    return status.Status(status.S_ERROR, "submit retries expended", (sreq, res));
+    return is_correct_ans(nav, res);
 
 
 def transform_req (req, usr):
@@ -1234,7 +1270,7 @@ def can_retry_fetch(nav, qres):
                         (qres.request, qres));
 
 
-def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
+def fetch_all(nav, usr, **kwargs):
     global F_LAST_FETCH, F_QFMT, F_NEXT;
 
     #find an alt
@@ -1243,12 +1279,12 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
         g = cache_get("qst_page", -1);
 
         if not g:
-            g = get_valid_qreq(usr, nav, quiet = quiet);
+            g = get_valid_qreq(usr, nav);
             if g:
                 cache_put(g, "qst_page", -1);
 
     else:
-        g = get_valid_qreq(usr, nav, quiet = quiet);
+        g = get_valid_qreq(usr, nav);
 
     if not g:
         yield status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
@@ -1260,9 +1296,8 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
 
     referer = fro.url;
 
-    if not quiet:
-        logger.info("fetch_all(): preparing to fetch all %s questions for %s" %
-                (usr[P_CRSCODE], usr[P_USR]));
+    logger.info("fetch_all(): preparing to fetch all %s questions for %s" %
+            (usr[P_CRSCODE], usr[P_USR]));
 
     pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
 
@@ -1278,130 +1313,13 @@ def fetch_all(nav, usr, retry = 3, quiet = False, **kwargs):
         kwargs.setdefault (
                 'headers',
                 mkheader (freq['url'], referer)
-                )
-        rt = retry + 1;
-        while rt:
-            try:
-                qres = nav.session.request(**freq , **kwargs)
+                );
+        qres = goto_page2(nav, freq , **kwargs);
+        if not qres:
+            logger.info("fetch_all(): fetch unsucessful");
+            return qres;
 
-                qres.raise_for_status ();
-
-                result[F_SREQUEST] = fill_form (
-                        qres.text,
-                        qres.url,
-                        flags = FILL_FLG_EXTRAS,
-                        data = {
-                            nav.webmap["qmap"]['ans']: None
-                            }
-                        )
-
-                result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
-
-                if not quiet:
-                    logger.info(
-                            "fetch_all(): successful fetched question %s for %s in %s",
-                            result[F_QKEY][nav.webmap["qmap"]["qn"]],
-                            usr[P_USR],
-                            usr[P_CRSCODE]
-                            );
-
-
-                referer = qres.url;
-                result[F_REFERER] = referer;
-                F_LAST_FETCH = fetch_t();
-                F_LAST_FETCH[F_FREQUEST] = copy(freq);
-                F_LAST_FETCH[F_REFERER] = referer;
-
-                yield copy(result);
-                break;
-
-            except DogTypeError as err:
-                st = can_retry_fetch(nav, qres);
-                if not st:
-                    yield st;
-                    done = True;
-                    break;
-                
-                if not quiet:
-                    logger.info("fetch_all(): fetch unsucessful for due to %s," +
-                            "retrying" if rt > 1 and st else "not retrying",
-                            err);
-                rt -= 1;
-
-            except requests.HTTPError as err:
-                st = can_retry_fetch(nav, qres);
-                if not st:
-                    yield st;
-                    done = True;
-                    break;
-                
-                if not quiet:
-                    logger.info("fetch_all(): fetch unsucessful for due to %s," +
-                            "retrying" if rt > 1 and st else "not retrying",
-                            err);
-                rt -= 1;
-
-            except requests.RequestException as err:
-                if unknown_err_handler_hook(err, freq):
-                    rt -= 1;
-                else:
-                    if not quiet:
-                        logger.info("fetch_all(): fetch unsucessful for %s due to %s, suspending",
-                                nav.keys[P_USR], err);
-
-                    yield status.Status(status.S_ERROR, "unknown err", (qres, err));
-                    done = True;
-                    break;
-
-
-def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
-    global F_LAST_FETCH, F_QFMT, F_NEXT;
-
-    #find an alt
-    #if not F_QFMT:
-    if CACHE_CACHE_FIRST:
-        g = cache_get("qst_page", -1);
-
-        if not g:
-            g = get_valid_qreq(usr, nav, quiet = quiet);
-            if g:
-                cache_put(g, "qst_page", -1);
-
-    else:
-        g = get_valid_qreq(usr, nav, quiet = quiet);
-
-    if not g:
-        return status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
-        return;
-
-    to, fro = g;
-
-    freq = transform_req(to, usr);
-
-    referer = fro.url;
-
-    if not quiet:
-        logger.info("fetch_one(): preparing to fetch all %s questions for %s" %
-                (usr[P_CRSCODE], usr[P_USR]));
-
-    pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
-
-    result = fetch_t();
-
-    result[F_PSEUDO_ANS] = pseudos.copy();
-    result[F_QMAP] = nav.webmap["qmap"];
-
-    kwargs.setdefault (
-            'headers',
-            mkheader (freq['url'], referer)
-            )
-    rt = retry + 1;
-    while rt:
         try:
-            qres = nav.session.request(**freq , **kwargs)
-
-            qres.raise_for_status ();
-
             result[F_SREQUEST] = fill_form (
                     qres.text,
                     qres.url,
@@ -1413,13 +1331,12 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
 
             result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
 
-            if not quiet:
-                logger.info(
-                        "fetch_one(): successful fetched question %s for %s in %s",
-                        result[F_QKEY][nav.webmap["qmap"]["qn"]],
-                        usr[P_USR],
-                        usr[P_CRSCODE]
-                        );
+            logger.info(
+                    "fetch_all(): successful fetched question %s for %s in %s",
+                    result[F_QKEY][nav.webmap["qmap"]["qn"]],
+                    usr[P_USR],
+                    usr[P_CRSCODE]
+                    );
 
 
             referer = qres.url;
@@ -1428,44 +1345,96 @@ def fetch_one(nav, usr, retry = 3, quiet = False, **kwargs):
             F_LAST_FETCH[F_FREQUEST] = copy(freq);
             F_LAST_FETCH[F_REFERER] = referer;
 
-            return copy(result);
+            yield copy(result);
+
+        except DogTypeError as err:
+            logger.info("fetch_all(): fetch unsucessful");
+
+            st = can_retry_fetch(nav, qres);
+            if not st:
+                if st.code == status.S_NULL:
+                    logger.info("nothing to fetch");
+                done = True;
+                yield st;
+            
+
+
+
+def fetch_allq(nav, usr, **kwargs):
+    global F_LAST_FETCH, F_QFMT, F_NEXT;
+
+    #find an alt
+    #if not F_QFMT:
+    if CACHE_CACHE_FIRST:
+        g = cache_get("qst_page", -1);
+
+        if not g:
+            g = get_valid_qreq(usr, nav);
+            if g:
+                cache_put(g, "qst_page", -1);
+
+    else:
+        g = get_valid_qreq(usr, nav);
+
+    if not g:
+        yield status.Status(status.S_ERROR, "cannot proceed with the fetch", cause = g);
+        return;
+
+    to, fro = g;
+
+    freq = transform_req(to, usr);
+
+    referer = fro.url;
+
+    pseudos = nav.webmap["qmap"]['pseudo_ans'].split (',');
+
+    result = fetch_t();
+
+    result[F_PSEUDO_ANS] = pseudos.copy();
+    result[F_QMAP] = nav.webmap["qmap"];
+
+    done = False;
+
+    while not done:
+
+        kwargs['headers'] = mkheader (freq['url'], referer);
+
+        qres = goto_page2(nav, freq , **kwargs);
+        if not qres:
+            return qres;
+
+        try:
+            result[F_SREQUEST] = fill_form (
+                    qres.text,
+                    qres.url,
+                    flags = FILL_FLG_EXTRAS,
+                    data = {
+                        nav.webmap["qmap"]['ans']: None
+                        }
+                    )
+
+            result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
+
+
+            referer = qres.url;
+            result[F_REFERER] = referer;
+            F_LAST_FETCH = fetch_t();
+            F_LAST_FETCH[F_FREQUEST] = copy(freq);
+            F_LAST_FETCH[F_REFERER] = referer;
+
+            yield copy(result);
 
         except DogTypeError as err:
             st = can_retry_fetch(nav, qres);
             if not st:
-                return st;
-            
-            if not quiet:
-                logger.info("fetch_one(): fetch unsucessful for due to %s," +
-                        "retrying" if rt > 1 and st else "not retrying",
-                        err);
-            rt -= 1;
+                done = True;
+                yield st;
 
-        except requests.HTTPError as err:
-            st = can_retry_fetch(nav, qres);
-            if not st:
-                return st;
-            
-            if not quiet:
-                logger.info("fetch_one(): fetch unsucessful for due to %s," +
-                        "retrying" if rt > 1 and st else "not retrying",
-                        err);
-            rt -= 1;
-
-        except requests.RequestException as err:
-            if unknown_err_handler_hook(err, freq):
-                rt -= 1;
-            else:
-                if not quiet:
-                    logger.info("fetch_one(): fetch unsucessful for %s due to %s, suspending",
-                            nav.keys[P_USR], err);
-
-                return status.Status(status.S_ERROR, "unknown err", (qres, err));
 
 def brute_safe(nav, usr, qst):
     global F_NEXT;
 
-    fe = fetch_one(nav, usr, quiet = True);
+    fe = next(iter(fetch_allq(nav, usr)));
 
     if isinstance(fe, status.Status) and re.search(r'no\s+more\s+question',
             fe.msg, re.I):
@@ -1479,6 +1448,7 @@ def brute_safe(nav, usr, qst):
                 );
 
     return False;
+
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
 
@@ -1505,11 +1475,11 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
         qst1 [nav.webmap["qmap"]["ans"]] = a;
         preq[F_QKEY] = qst1;
 
-        x = submit(nav, preq, retry, **kwargs);
+        x = submit(nav, preq, **kwargs);
         if x == 1:
             qst [nav.webmap["qmap"]["ans"]] = a;
             preq[F_QKEY] = qst;
-            x = submit(nav, preq, retry, **kwargs);
+            x = submit(nav, preq, **kwargs);
 
             if x == 0:
                 if amgr:
