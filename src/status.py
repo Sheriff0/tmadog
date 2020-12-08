@@ -11,7 +11,7 @@ class UnknownStatus(BaseException):
 
 
 class Status:
-    def __init__(self, code = S_NULL, msg = None, cause = None):
+    def __init__(self, code = S_NULL, msg = "", cause = None):
         if code != S_NULL and not (code & S_MASK):
             raise UnknownStatus(code);
         self.code = code;

@@ -28,6 +28,11 @@ SUB_MBR = 0;
 
 
 def dog_submit_stat(dog):
+    for ta in libdogs.LOGIN_BLACKLIST:
+        st = ta.pop(libdogs.P_CRSCODE);
+        ta[libdogs.P_CRSCODE] = "nil";
+        yield [ta, st];
+
     for ta in dog.tasktab:
         if not hasattr(ta, "magic") or ta.magic != SUB_MBR:
             continue;
@@ -116,6 +121,7 @@ class SimpleDog:
         return self.submit_pre_exec(task);
 
     def submit_pre_exec(self, task):
+        #NOTE: remove this... no more pre-execs
         """pre-executor for the submit command.
         pre-execution
         =============
@@ -169,7 +175,8 @@ class SimpleDog:
                         continue;
 
                     mbr = self._InternalTask(magic = SUB_MBR, group = ldr, cmd =
-                                self.nop, args = arg);
+                                self.nop, args = arg, status = status.Status());
+                    self._alloc(mbr);
                     # start submiting
                     st = self.submit_main(arg);
                     if st.code == status.S_FATAL:
@@ -184,7 +191,6 @@ class SimpleDog:
                     self.status = st;
                     prev.nxt = mbr;
                     prev = mbr;
-                    self._alloc(mbr);
 
         else:
             # do the member only

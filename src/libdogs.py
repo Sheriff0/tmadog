@@ -28,6 +28,7 @@ import argparse
 import status
 import logging
 import chardet
+import urllib3
 
 copy = copy.copy if sys.implementation.version.minor < 7 else copy.deepcopy 
 
@@ -624,20 +625,25 @@ def lazy_logout(nav, retry = 3, **kwargs):
     return lazy_nav_reconf(nav, nav.keys);
 
 
+
 def lazy_login(nav, retry = 3, **kwargs):
+
     retry += 1;
 
     logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
-    lreq, fro = nav("tma_page")[:-1];
-    referer = fro.url;
 
-    kwargs.setdefault (
-            'headers',
-            mkheader (lreq['url'], referer)
-            )
+    lres = False;
 
     while retry:
         try:
+            lreq, fro = nav("tma_page")[:-1];
+            referer = fro.url;
+
+            kwargs.setdefault (
+                    'headers',
+                    mkheader (lreq['url'], referer)
+                    )
+
             lres = nav.session.request(**lreq , **kwargs)
             lres.raise_for_status();
             ## will raise if not logged-in
@@ -645,37 +651,42 @@ def lazy_login(nav, retry = 3, **kwargs):
             nav.cache["tma_page"] = lres;
             return nav;
 
-        except DogTypeError as err:
-            if need_cookies(nav, lres):
-                st = cookie_hook(nav);
-                if not st:
-                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+        except (DogTypeError, requests.HTTPError) as err:
             logger.info("lazy_login(): loggin unsucessful for %s due to %s",
                     nav.keys[P_USR], err);
 
-            retry -= 1;
+            if lres == False:
+                return status.Status(status.S_ERROR, "cant' login %s" % (nav.keys[P_USR],), nav);
 
-        except requests.HTTPError as err:
-            if need_cookies(nav, lres):
+            elif need_cookies(nav, lres):
                 st = cookie_hook(nav);
                 if not st:
-                    return status.Status(status.S_ERROR, "no cookies in navigator", lres);
+                    return status.Status(status.S_ERROR, "can't login, no cookies in navigator", lres);
 
-            logger.info("lazy_login(): loggin unsucessful for %s due to %s," +
-                    "retrying" if retry > 1 else "not retrying",
-                    nav.keys[P_USR], err);
+            logger.info("retrying" if retry > 1 else "not retrying");
+
             retry -= 1;
 
+
         except requests.RequestException as err:
-            if unknown_err_handler_hook(err, lreq):
+            if isinstance(err, (
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout
+                )) and not isinstance(err.args[0], urllib3.exceptions.MaxRetryError):
+                logger.debug("retrying..." if retry > 1 else "exiting...");
+
+                retry -= 1;
+
+            elif unknown_err_handler_hook(err, lreq):
                 retry -= 1;
             else:
                 logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
                         nav.keys[P_USR], err);
 
-                return status.Status(status.S_ERROR, "unknown err", (lres, err));
+                return status.Status(status.S_ERROR, "can't login, unknown err", (lres, err));
 
-    return status.Status(status.S_ERROR, "maximum retries exceeded", lres);
+    return status.Status(status.S_ERROR, "can't login, maximum retries exceeded", lres);
 
 
 
@@ -706,13 +717,16 @@ def goto_page(nav, pg, stp = None, retry = 3, login = False):
 
                 retry -= 1;
 
-            elif isinstance(err, (requests.exceptions.ChunkedEncodingError,
-                requests.exceptions.ConnectionError)):
+            elif isinstance(err, (
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout
+                )) and not isinstance(err.args[0], urllib3.exceptions.MaxRetryError):
                 logger.debug("retrying..." if retry > 1 else "exiting...");
 
                 retry -= 1;
 
-            elif isinstance(err, requests.RequestException):
+            elif isinstance(err, requests.exceptions.RequestException):
                 if not unknown_err_handler_hook(err, lres):
                     logger.debug("halting...");
                     return status.Status(status.S_ERROR, "unknown err while navigating to %s" % (pg,), (lres, err));
@@ -758,13 +772,16 @@ def goto_page2(nav, req, retry = 3, login = False, **kwargs):
 
                 retry -= 1;
 
-            elif isinstance(err, (requests.exceptions.ChunkedEncodingError,
-                requests.exceptions.ConnectionError)):
+            elif isinstance(err, (
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout
+                )) and not isinstance(err.args[0], urllib3.exceptions.MaxRetryError):
                 logger.debug("retrying..." if retry > 1 else "exiting...");
 
                 retry -= 1;
 
-            elif isinstance(err, requests.RequestException):
+            elif isinstance(err, requests.exceptions.RequestException):
                 if not unknown_err_handler_hook(err, lres):
                     logger.debug("halting...");
                     return status.Status(status.S_ERROR, "unknown err while sending to server", (lres, err));
@@ -817,9 +834,6 @@ def discover_by_quizlist(usr, nav, retry = 3):
         retry += 1
 
         st = goto_page(nav, "qst_page", -1, login = True);
-
-        if not F_QFMT:
-            F_QFMT = st;
 
         if not st:
             yield st;
@@ -941,8 +955,11 @@ def is_net_valid_arg(cmdl, arg):
     # this is the only place where the result lives.
     return is_arg_valid(cmdl, arg) and arg[P_CRSCODE];
 
+LOGIN_BLACKLIST = [];
+
 def preprocess(args, excl_crs = []):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
+    global LOGIN_BLACKLIST;
     
     if not excl_crs:
         excl_crs = [];
@@ -985,9 +1002,11 @@ def preprocess(args, excl_crs = []):
                         continue;
 
                 usr[P_CRSCODE] = crs;
-                yield copy(usr);
-                if not crs and isinstance(crs, status.Status):
+                yy = copy(usr);
+                if isinstance(crs, status.Status):
+                    LOGIN_BLACKLIST.append(yy);
                     break;
+                yield yy;
         else:
             usr[P_CRSCODE] = y;
             yield copy(usr);
@@ -1150,7 +1169,7 @@ def answer_lax(qst, amgr):
         return x;
 
 def submit(nav, sreq, **kwargs):
-    res = goto_page2(nav = nav, req = sreq, **kwargs);
+    res = goto_page2(nav = nav, req = sreq, login = True, **kwargs);
 
     logger.info("libdog.submit(): preparing to submit quiz");
 
@@ -1314,10 +1333,11 @@ def fetch_all(nav, usr, **kwargs):
                 'headers',
                 mkheader (freq['url'], referer)
                 );
-        qres = goto_page2(nav, freq , **kwargs);
+        qres = goto_page2(nav, freq ,login = True,  **kwargs);
         if not qres:
             logger.info("fetch_all(): fetch unsucessful");
-            return qres;
+            yield qres;
+            return;
 
         try:
             result[F_SREQUEST] = fill_form (
@@ -1399,9 +1419,10 @@ def fetch_allq(nav, usr, **kwargs):
 
         kwargs['headers'] = mkheader (freq['url'], referer);
 
-        qres = goto_page2(nav, freq , **kwargs);
+        qres = goto_page2(nav, freq ,login = True,  **kwargs);
         if not qres:
-            return qres;
+            yield qres;
+            return;
 
         try:
             result[F_SREQUEST] = fill_form (
