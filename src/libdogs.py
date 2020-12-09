@@ -1128,6 +1128,7 @@ F_PSEUDO_ANS = "pseudos"
 F_QMAP = "qmap";
 F_LAST_FETCH = None;
 F_NEXT = fetch_t();
+F_ENCODING = "encoding";
 
 def copycase (repl):
     srepl = str(repl);
@@ -1351,6 +1352,8 @@ def fetch_all(nav, usr, **kwargs):
 
             result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
 
+            result[F_ENCODING] = qres.encoding;
+
             logger.info(
                     "fetch_all(): successful fetched question %s for %s in %s",
                     result[F_QKEY][nav.webmap["qmap"]["qn"]],
@@ -1435,6 +1438,7 @@ def fetch_allq(nav, usr, **kwargs):
                     )
 
             result[F_QKEY] = result[F_SREQUEST].pop(F_QKEY);
+            result[F_ENCODING] = qres.encoding;
 
 
             referer = qres.url;
@@ -1471,7 +1475,7 @@ def brute_safe(nav, usr, qst):
     return False;
 
 
-def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
+def brute_submit(usr, nav, f_type, amgr = None, retry = 3, fp = None, **kwargs):
 
     qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY], amgr);
 
@@ -1508,8 +1512,25 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, **kwargs):
                 return status.Status(status.S_FATAL, "detected answer is problematic", (preq, qst));
 
             elif x == 1:
+                if fp and fp.writable():
+                    fp.reconfigure(encoding = f_type[F_ENCODING]);
+                    fp.write("%s. %s\n\n" % (qst[nav.webmap["qmap"]["qn"]],
+                            qst[nav.webmap["qmap"]["qdescr"]]));
+                    
+                    for i1, a1 in enumerate(f_type[F_PSEUDO_ANS]):
+                        opt = b'opt';
+                        opt += bytes([65 + i1]);
+                        fp.write("\t");
+
+                        if a == a1:
+                            fp.write("--->> %s\n\n" %
+                                    (qst[nav.webmap["qmap"][opt.decode().lower()]],));
+                        else:
+                            fp.write("      %s\n\n" % (qst[nav.webmap["qmap"][opt.decode().lower()]],));
+
                 if amgr:
                     amgr.check(qst, x);
+
                 return status.Status(status.S_OK, "success", qst);
             else:
                 return x;

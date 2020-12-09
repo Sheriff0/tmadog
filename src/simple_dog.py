@@ -17,6 +17,7 @@ import sys
 import status
 import tasker
 import libdogs
+import pathlib
 
 STAT_ARG = 0;
 STAT_ST = 1;
@@ -41,7 +42,7 @@ def dog_submit_stat(dog):
 
 class SimpleDog:
 
-    def __init__ (self, usrs, amgr, get_nav):
+    def __init__ (self, usrs, amgr, get_nav, outfile = None):
         self.arg_gens = [];
         self.prep_argv = [];
         self.prep_argc = 0;
@@ -52,6 +53,7 @@ class SimpleDog:
         self.usrs = usrs;
         self.nav = None;
         self.get_nav = get_nav;
+        self.outfile = outfile;
 
 
     def _alloc(self, task = None):
@@ -214,17 +216,37 @@ class SimpleDog:
         if not nav:
             return nav;###handle
 
+        if self.outfile:
+            fn = pathlib.Path(self.outfile.format(
+                crscode = arg[libdogs.P_CRSCODE],
+                c = arg[libdogs.P_CRSCODE],
+                matno = arg[libdogs.P_USR],
+                tmano = arg[libdogs.P_TMA]
+                ));
+
+            fp = open(str(fn), "a" if fn.exists() else "w");
+
+            line = "%s" % ("=" * len(arg[libdogs.P_CRSCODE]),);
+            fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
+
+        else:
+            fp = None;
+
         for ftype in libdogs.fetch_all(nav, arg):
             if not ftype:
                 st = ftype;
                 break;
 
-            st = libdogs.brute_submit(arg, nav, ftype, self.amgr);
+            st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp);
+            
+
             if not st:
                 break;
 
         if not isinstance(st, status.Status):
             st = status.Status(cause = st);
+        if fp:
+            fp.close();
         return st;
 
     def nop(self):

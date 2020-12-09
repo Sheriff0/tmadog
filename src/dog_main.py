@@ -166,16 +166,16 @@ Please input a cookie file (e.g from the browser)--> """));
         if args.updatedb:
             dbm.update_hacktab (args.database, ansmgr.iter_cache (),
                     ansmgr.qmap, fp = f);
-        if args.debug or args.output:
-            arr = []
-            for qst in ansmgr.iter_cache ():
-               arr.append (qst)
+        #if args.debug or args.output:
+        #    arr = []
+        #    for qst in ansmgr.iter_cache ():
+        #       arr.append (qst)
 
-            if args.debug:
-                json.dump (arr, f)
+        #    if args.debug:
+        #        json.dump (arr, f)
 
-            if args.output:
-                qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
+            #if args.output:
+            #    qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
 
         if f:
             f.close ()
@@ -227,8 +227,10 @@ Please input a cookie file (e.g from the browser)--> """));
         args.cache = str(pkg_dir.joinpath("dog_cache"));
 
     if not args.output:
-        logger.info("no output directory given, setting default output file for quiz");
-        args.output = str(pkg_dir.joinpath("output/{matno}-{c}.txt"));
+        logger.info("no output file given, setting default output file for quiz");
+
+        #NOTE the unix-style though.
+        args.output = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt"));
 
     pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
 
@@ -253,7 +255,8 @@ Please input a cookie file (e.g from the browser)--> """));
                 # this should be in config
                 ),
             ansmgr,
-            get_nav
+            get_nav,
+            outfile = args.output
             );
 
     try:
