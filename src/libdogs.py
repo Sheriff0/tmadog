@@ -474,9 +474,9 @@ def unknown_err_handler_hook(err, *pargs):
     res = input("\n\n%s occured while running.\npress s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, ));
 
     if re.match(r's.*', res, re.I):
-        return status.Status(status.S_NULL, "skip action", cause);
+        return status.Status(status.S_NULL, "skip action", err);
     elif re.match(r'c.*', res, re.I):
-        return status.Status(status.S_OK, "continue action", cause);
+        return status.Status(status.S_OK, "continue action", err);
     else:
         raise KeyboardInterrupt();
 
@@ -966,8 +966,8 @@ def preprocess(args, excl_crs = []):
         excl_crs = [];
 
     args = args.__dict__;
-    matnos = LastList (args [P_USR]);
-    pwds = LastList (args [P_PWD]);
+    matnos = LastList (args [P_USR_OLD]);
+    pwds = LastList (args [P_PWD_OLD]);
     crscodes = LastList (args [P_CRSCODE]);
     tmas = LastList (args [P_TMA]);
     urls = LastList (args [P_URL]);

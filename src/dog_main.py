@@ -25,6 +25,7 @@ import libdogs
 import simple_dog
 import status
 
+import nourc
 
 VERSION = 1.00;
 
@@ -116,7 +117,10 @@ def main (parser, pkg_name, argv):
     logger.addHandler(dfh);
     logger.addHandler(fatal);
     logger.addHandler(stdout);
-    
+
+    argv, rest = collapse_file_argv(parser, argv);
+    argv.extend(rest);
+
     args = parser.parse_args(argv);
 
     lastcookie = args.cookies;
@@ -285,12 +289,28 @@ class ScrCtrl:
         pass;
 
 
-def gui_get_argv(scr, f_cookie = None, f_arg = None):
+def gui_get_argv(scr, parser, *pargs):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
+    f_cookie = None;
+    f_arg = None;
+ 
+    for ia,arg in enumerate(pargs):
+        if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
+            f_arg = arg[1:];
+
+        elif arg.startswith("--cookie"):
+            f_cookie = pargs[ia+1];
+
+        elif arg:
+            f_cookie = arg;
+
+        if f_arg and f_cookie:
+            break;
 
     ready = False;
     argv_frame = tkinter.ttk.Frame(scr, takefocus = 1);
+    argv_frame.grid(column=0, row=0, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
 
     ff_cookie = tkinter.StringVar();
 
@@ -352,11 +372,9 @@ def gui_get_argv(scr, f_cookie = None, f_arg = None):
 
     ready_btn["state"] = "normal" if f_cookie and f_arg else "disabled";
 
-    argv_frame.grid(column=0, row=0, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
 
     for child in argv_frame.winfo_children():
         child.pack(fill = tkinter.X, expand = True, side = tkinter.TOP, pady = 10);
-
 
     scr.mainloop();
     return ready;
@@ -519,19 +537,45 @@ def unknown_err_handler(err, *pargs):
 
 
     if res:
-        return status.Status(status.S_OK, "continue action", cause);
+        return status.Status(status.S_OK, "continue action", err);
     else:
         raise KeyboardInterrupt();
 
 
-def gui_start(parser, pkg_name, logger, argv):
+def collapse_file_argv(parser, argv):
+    aid = parser.fromfile_prefix_chars;
+    if not aid:
+        return [];
+    
+    arg_res = [];
+    rest = [];
+
+    for arg in argv:
+        if not isinstance(arg, str) or not arg.startswith(aid):
+            rest.append(arg);
+            continue;
+
+        args = libdogs.read_file_text(arg[1:]);
+        for arg_line in args.split("\n"):
+            if not re.match(r'^\s*#.*', arg_line):
+                arg_res.extend(arg_line.split());
+
+    return (arg_res, rest);
+
+
+def gui_start(parser, pkg_name, logger, argr):
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
     logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
+    
+    aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
 
-    argv = ["--cookie", argv[0], "@%s" % (argv[1],)];
+    argr = ["--cookie", argr[0], "%s%s" % (aid,argr[1])];
+    argv = argr.copy();
+    argv, rest = collapse_file_argv(parser, argv);
+    argv.extend(rest);
 
     args,ex = parser.parse_known_args(argv);
 
@@ -606,8 +650,8 @@ def gui_start(parser, pkg_name, logger, argv):
         configparser.ExtendedInterpolation ())
 
     logger.info("reading config file and initializing a webmap");
-    mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
-    mp.read_string (mstr);
+    #mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+    mp.read_string (nourc.rc);
 
     setattr(args, libdogs.P_WMAP, mp);
 
@@ -680,6 +724,7 @@ def gui_start(parser, pkg_name, logger, argv):
         cleanup();
         raise err;
 
+    return ("--cookie", args.cookies, argr[-1]);
 
 
 def gui_main(parser, pkg_name, argv = []):
@@ -713,15 +758,20 @@ def gui_main(parser, pkg_name, argv = []):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
+
+
     while True:
         stdscr = tkinter.Tk();
         stdscr.geometry('300x200+100+100');
         stdscr.title("TMADOG version %s" % (VERSION,));
-        argv = gui_get_argv(stdscr, *argv);
+        argv = gui_get_argv(stdscr, parser, *argv);
         if not argv:
             return None;
 
-        gui_start(parser, pkg_name, logger, argv);
+        sec = tkinter.Tk();
+        sec.withdraw();
+        argv = gui_start(parser, pkg_name, logger, argv);
+        sec.destroy();
 
 
 

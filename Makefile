@@ -49,7 +49,10 @@ enterprise: $(addprefix $(OUTPUT)/ent_,$(M4_DEPS:.m4=.py)) ;
 user: $(addprefix $(OUTPUT)/usr_,$(M4_DEPS:.m4=.py));
 
 rc: $(SRC)/nourc_future
-	cp -v $< $(OUTPUT)/nourc
+	printf "rc = r%s\n" '"""' > $(OUTPUT)/nourc.py
+	cat $< >> $(OUTPUT)/nourc.py
+	printf "%s;" '"""' >> $(OUTPUT)/nourc.py
+
 
 raw_py:
 	cp -v $(SRC)/{dog_main,libdogs,preproccesor,qstwriter,simple_dog,status,submit,tasker}.py $(OUTPUT)/
