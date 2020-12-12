@@ -971,7 +971,7 @@ def preprocess(args, excl_crs = []):
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
-    mt = len(args[P_USR]);
+    mtn = len(matnos);
 
     for i in range (argc):
         usr = {};
@@ -999,7 +999,7 @@ def preprocess(args, excl_crs = []):
                         logger.info("skipping %s" % (crs,));
                         continue;
 
-                logger.info("found %s for user number %s of %s", crs, i+1, mt);
+                logger.info("found %s for user number %s of %s", crs, i+1, mtn);
                 usr[P_CRSCODE] = crs;
                 yy = copy(usr);
                 if isinstance(crs, status.Status):
@@ -1007,7 +1007,7 @@ def preprocess(args, excl_crs = []):
                     break;
                 yield yy;
         else:
-            logger.info("%s specified for user number %s of %s", y, i+1, mt);
+            logger.info("%s specified for user number %s of %s", y, i+1, mtn);
             usr[P_CRSCODE] = y;
             yield copy(usr);
 
