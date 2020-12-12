@@ -216,6 +216,9 @@ class SimpleDog:
         if not nav:
             return nav;###handle
 
+        fn = None;
+        fp = None;
+
         if self.outfile:
             fn = pathlib.Path(self.outfile.format(
                 crscode = arg[libdogs.P_CRSCODE],
@@ -224,18 +227,18 @@ class SimpleDog:
                 tmano = arg[libdogs.P_TMA]
                 ));
 
-            fp = open(str(fn), "a" if fn.exists() else "w");
 
-            line = "%s" % ("=" * len(arg[libdogs.P_CRSCODE]),);
-            fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
 
-        else:
-            fp = None;
 
         for ftype in libdogs.fetch_all(nav, arg):
             if not ftype:
                 st = ftype;
                 break;
+
+            if fn and not fp:
+                fp = open(str(fn), "a" if fn.exists() else "w");
+                line = "%s" % ("=" * len(arg[libdogs.P_CRSCODE]),);
+                fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
 
             st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp);
             
