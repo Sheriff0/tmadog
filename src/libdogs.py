@@ -828,8 +828,6 @@ def discover_by_quizlist(usr, nav, retry = 3):
         yield st;
 
     else:
-        logger.info("trying to discover courses for %s",
-                    nav.keys[P_USR]);
 
         retry += 1
 
@@ -858,7 +856,6 @@ def discover_by_quizlist(usr, nav, retry = 3):
                     break
 
             if m:
-                logger.info("found %s", m.group(0));
                 yield m.group (0)
 
             try:
@@ -974,6 +971,7 @@ def preprocess(args, excl_crs = []):
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
+    mt = len(args[P_USR]);
 
     for i in range (argc):
         usr = {};
@@ -986,7 +984,7 @@ def preprocess(args, excl_crs = []):
         y = crscodes [i]
 
         if re.match('all', y, re.I):
-            logger.info("preprocess(): no course specified for %s, entering course discovery mode",
+            logger.info("preprocess(): no course specified for user %s, entering course discovery mode",
                     usr[P_USR]);
 
             for crs in discover_by_quizlist (usr, nav_hook(usr)):
@@ -1001,6 +999,7 @@ def preprocess(args, excl_crs = []):
                         logger.info("skipping %s" % (crs,));
                         continue;
 
+                logger.info("found %s for user number %s of %s", crs, i+1, mt);
                 usr[P_CRSCODE] = crs;
                 yy = copy(usr);
                 if isinstance(crs, status.Status):
@@ -1008,6 +1007,7 @@ def preprocess(args, excl_crs = []):
                     break;
                 yield yy;
         else:
+            logger.info("%s specified for user number %s of %s", y, i+1, mt);
             usr[P_CRSCODE] = y;
             yield copy(usr);
 

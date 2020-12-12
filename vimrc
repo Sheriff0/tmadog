@@ -1,5 +1,7 @@
 let s:bdir = getcwd()
 
+set shiftwidth=4
+
 if !(&viminfofile->empty())
 	set history=10000
 	let &viminfofile = trim(system("realpath -L " . &viminfofile))

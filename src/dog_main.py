@@ -202,7 +202,7 @@ Please input a cookie file (e.g from the browser)--> """));
 
     if not getattr(args, "stats"):
         logger.info("no stat file given, setting default stat file");
-        setattr(args, "stats", str(pkg_dir.joinpath("dog.stat")));
+        setattr(args, "stats", str(pkg_dir.joinpath("dog.stat.txt")));
 
 
     if not getattr(args, libdogs.P_WMAP):
