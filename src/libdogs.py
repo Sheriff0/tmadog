@@ -999,10 +999,11 @@ def preprocess(args, excl_crs = []):
                         logger.info("skipping %s" % (crs,));
                         continue;
 
-                logger.info("found %s for user number %s of %s", crs, i+1, mtn);
                 usr[P_CRSCODE] = crs;
                 yy = copy(usr);
-                if isinstance(crs, status.Status):
+                if not isinstance(crs, status.Status):
+                    logger.info("found %s for user number %s of %s", crs, i+1, mtn);
+                else:
                     LOGIN_BLACKLIST.append(yy);
                     break;
                 yield yy;
