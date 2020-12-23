@@ -482,7 +482,7 @@ def unknown_err_handler_hook(err, cause):
 
 
 def init_hooks(**kwargs):
-    global cookie_hook, nav_hook, unknown_err_handler_hook;
+    global cookie_hook, nav_hook, unknown_err_handler_hook, logger;
 
     logger.debug("initializing requested hooks");
 
@@ -494,6 +494,10 @@ def init_hooks(**kwargs):
 
     if "err_hook" in kwargs:
         unknown_err_handler_hook = kwargs.pop("err_hook");
+
+    if "logger_hook" in kwargs:
+        logger = kwargs.pop("logger_hook");
+
     logger.debug("done..");
 
 def need_cookies(nav, res):
