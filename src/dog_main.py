@@ -426,7 +426,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
             if log.index('end-1c') != '1.0':
                 log.insert('end', '\n');
 
-            log.insert('end', msg1);
+            log.insert('end', "info: %s" % msg1);
             log['state'] = 'disabled';
             log.see("end-1c linestart");
 
@@ -442,7 +442,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
             if log.index('end-1c') != '1.0':
                 log.insert('end', '\n');
 
-            log.insert('end', msg);
+            log.insert('end', "info: %s" % msg);
 
         log['state'] = 'disabled';
 
@@ -464,7 +464,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
             if win == None:
                 win = tkinter.Toplevel(scr);
                 win.protocol("WM_DELETE_WINDOW", destroy);
-                log = tkinter.scrolledtext.ScrolledText(win, background = "black", foreground = "white", state='normal', height=height, wrap='none');
+                log = tkinter.scrolledtext.ScrolledText(win, background = "black", foreground = "white", state='normal', height=height);
                 log.rowconfigure(0, weight = 1);
                 log.columnconfigure(0, weight = 1);
 
@@ -481,7 +481,6 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
                     cb(*pargs, logger = self, window = win, destroy = destroy, **kwargs);
                 
 
-                win.mainloop();
 
             elif win.state() == "iconic":
                 win.deiconify();
@@ -538,6 +537,27 @@ def gui_getcookie(win, event, default = None, attr = None, cb = None):
 
     return _getcookie
 
+
+
+def unknown_err_handler(win, event): 
+
+    import tkinter.messagebox, tkinter.filedialog
+
+    def _handler(err, *pargs):
+        event.wait();
+        event.clear();
+        res = tkinter.messagebox.askretrycancel(title = "Error",
+                icon = "error", message = "An error occured", detail = "%s" % (err,), parent = win);
+
+        event.set();
+
+        if res:
+            return status.Status(status.S_OK, "continue action", cause);
+        else:
+            raise KeyboardInterrupt();
+
+    return _handler; 
+
 def gui_start(parser, pkg_name):
     pkg_name = pathlib.Path(pkg_name);
 
@@ -573,7 +593,7 @@ def gui_start(parser, pkg_name):
 
         def destroy_win():
             if window:
-                destroy = kwargs.pop("destroy", None);
+                destroy = kwargs.get("destroy", None);
                 if destroy and callable(destroy):
                     destroy();
 
@@ -622,8 +642,7 @@ def gui_start(parser, pkg_name):
                     );
 
 
-            if del_win:
-                destroy_win();
+            window.protocol("WM_DELETE_WINDOW", destroy_win);
 
         #stdscr.protocol("WM_DELETE_WINDOW", cleanup);
 
@@ -662,17 +681,19 @@ def gui_start(parser, pkg_name):
 
         pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
 
-        logger.debug("initializing answer manager");
-        ansmgr = ansm.AnsMgr (
-                qmap = mp['qmap'],
-                database = args.database,
-                mode = ansm.ANS_MODE_NORM,
-                pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
-                )
-
+        ansmgr = None;
        
         def run():
-            nonlocal dog, cleanup;
+            nonlocal dog, cleanup, ansmgr;
+            logger.debug("initializing answer manager");
+
+            ansmgr = ansm.AnsMgr (
+                    qmap = mp['qmap'],
+                    database = args.database,
+                    mode = ansm.ANS_MODE_NORM,
+                    pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
+                    )
+
 
             try:
                 dog.submit(task);
@@ -716,19 +737,22 @@ def gui_start(parser, pkg_name):
         task = dog._InternalTask(cmd = None, args = args);
         stime = time.time();
             
-        if window:
-            getcookie = gui_getcookie(window, need_win, default = args, attr = "cookies", cb = update_cookie);
+        getcookie = gui_getcookie(window, need_win, default = args, attr = "cookies", cb = update_cookie);
+        
+        err_handle = unknown_err_handler(window, need_win);
 
-            libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger);
+        libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
 
-            window.after(5000, release_wait, need_win)
+        window.after(5000, release_wait, need_win)
 
-            window.protocol("WM_DELETE_WINDOW", cleanup);
+        window.protocol("WM_DELETE_WINDOW", cleanup);
 
         
         submit_thread = threading.Thread(target=run, daemon=True);
 
         submit_thread.start();
+
+        window.mainloop();
 
         
 

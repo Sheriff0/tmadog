@@ -470,7 +470,7 @@ def cookie_hook(nav):
 def nav_hook(nav):
     return None;
 
-def unknown_err_handler_hook(err, cause):
+def unknown_err_handler_hook(err, *pargs):
     res = input("\n\n%s occured while running.\npress s<enter key> to skip the action, c<enter key> to continue, q<enter key> to quit the program\n" % (err, ));
 
     if re.match(r's.*', res, re.I):
@@ -682,7 +682,7 @@ def lazy_login(nav, retry = 3, **kwargs):
 
                 retry -= 1;
 
-            elif unknown_err_handler_hook(err, lreq):
+            elif unknown_err_handler_hook(err):
                 retry -= 1;
             else:
                 logger.info("lazy_login(): loggin unsucessful for %s due to %s, suspending",
