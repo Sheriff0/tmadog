@@ -285,28 +285,31 @@ class ScrCtrl:
         pass;
 
 
-def gui_get_argv(scr, cb = None):
+def gui_get_argv(scr, f_cookie = None, f_arg = None):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
 
+    ready = False;
     argv_frame = tkinter.ttk.Frame(scr, takefocus = 1);
-    argv_frame.columnconfigure(0, weight=1);
-    argv_frame.rowconfigure(0, weight=1);
 
     ff_cookie = tkinter.StringVar();
-    f_cookie = None;
 
     ff_arg = tkinter.StringVar();
-    f_arg = None;
 
-    ff_cookie.set("No file");
+    ff_cookie.set("No file" if not f_cookie else f_cookie);
 
-    ff_arg.set("No file");
+    ff_arg.set("No file" if not f_arg else f_arg);
+
+    def nop():
+        nonlocal ready, scr;
+        ready = None;
+        scr.destroy();
+
 
     def _set_cookie_f(fp):
         nonlocal f_cookie, ff_cookie, ready_btn;
-        f_cookie = fp;
         if fp:
+            f_cookie = fp;
             ff_cookie.set(fp);
 
         if f_cookie and f_arg:
@@ -315,8 +318,8 @@ def gui_get_argv(scr, cb = None):
 
     def _set_arg_f(fp):
         nonlocal f_arg, ff_arg, ready_btn;
-        f_arg = fp;
         if fp:
+            f_arg = fp;
             ff_arg.set(fp);
 
         if f_cookie and f_arg:
@@ -324,12 +327,14 @@ def gui_get_argv(scr, cb = None):
 
 
     def _ready():
-        nonlocal f_cookie, f_arg;
+        nonlocal ready, f_arg, f_cookie, scr;
 
         #argv_frame.destroy();
+        ready = (f_cookie, f_arg)
+        scr.destroy();
+       
 
-        if cb and callable(cb):
-            return cb(f_cookie, f_arg, initiator = _ScrCtrl());
+    scr.protocol("WM_DELETE_WINDOW", nop);
 
     c_btn_txt = "Get cookies";
 
@@ -345,45 +350,16 @@ def gui_get_argv(scr, cb = None):
 
     ready_btn = tkinter.ttk.Button(argv_frame, text="Run Dog", command = _ready);
 
-    ready_btn["state"] = "disabled";
-
-
-    for child in argv_frame.winfo_children():
-        #child.rowconfigure(0, weight = 1);
-        #child.columnconfigure(0, weight = 1);
-        child.pack(fill = tkinter.BOTH, expand = True, padx = 5, pady = 8);
-        child["padding"] = 5;
+    ready_btn["state"] = "normal" if f_cookie and f_arg else "disabled";
 
     argv_frame.grid(column=0, row=0, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
-    #cookie_btn.grid(column=0, row=0, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
-    #label_cookie.grid(row = 3, column = 5, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
-    #arg_btn.grid(column=0, row=8, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
-    #label_arg.grid(row = 12, column = 5, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
-    #ready_btn.grid(column=0, row=20, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
 
-    def disable():
-        ready_btn["state"] = "disabled";
-        cookie_btn["state"] = "disabled";
-        arg_btn["state"] = "disabled";
+    for child in argv_frame.winfo_children():
+        child.pack(fill = tkinter.X, expand = True, side = tkinter.TOP, pady = 10);
 
 
-    def enable():
-        ready_btn["state"] = "normal";
-        cookie_btn["state"] = "normal";
-        arg_btn["state"] = "normal";
-
-
-    class _ScrCtrl(ScrCtrl):
-        def __getattribute__(self, name):
-            nonlocal enable, disable;
-            if name == "enable":
-                return enable;
-            elif name == "disable":
-                return disable;
-
-            else:
-                return getattr(argv_frame, name);
-
+    scr.mainloop();
+    return ready;
 
 
 def gui_getfile(cb, title = None):
@@ -497,15 +473,13 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
     return _Logger();
 
 
-def gui_getcookie(win, event, default = None, attr = None, cb = None):
+def gui_getcookie(default = None, attr = None, cb = None):
 
     import tkinter.messagebox, tkinter.filedialog
 
     def _getcookie(nav):
-        event.wait();
-        event.clear();
         res = tkinter.messagebox.askyesno(title = "Cookie File",
-                icon = "question", message = "Cookies needed. Update cookie file", detail = "click yes to choose a file, no to use previous file", parent = win);
+                icon = "question", message = "Cookies needed. Update cookie file", detail = "click yes to choose a file, no to use previous file");
 
         if res:
             res = tkinter.filedialog.askopenfilename(title = "Cookie File");
@@ -517,7 +491,6 @@ def gui_getcookie(win, event, default = None, attr = None, cb = None):
             elif default and isinstance(default, str):
                 res = default;
 
-        event.set();
 
         if not res or (not isinstance(res, str) or re.match(r'\s+', res)):
             return nav;
@@ -538,235 +511,181 @@ def gui_getcookie(win, event, default = None, attr = None, cb = None):
     return _getcookie
 
 
-
-def unknown_err_handler(win, event): 
-
+def unknown_err_handler(err, *pargs):
     import tkinter.messagebox, tkinter.filedialog
 
-    def _handler(err, *pargs):
-        event.wait();
-        event.clear();
-        res = tkinter.messagebox.askretrycancel(title = "Error",
-                icon = "error", message = "An error occured", detail = "%s" % (err,), parent = win);
+    res = tkinter.messagebox.askretrycancel(title = "Error",
+            icon = "error", message = "An error occured", detail = "%s" % (err,));
 
-        event.set();
 
-        if res:
-            return status.Status(status.S_OK, "continue action", cause);
-        else:
-            raise KeyboardInterrupt();
+    if res:
+        return status.Status(status.S_OK, "continue action", cause);
+    else:
+        raise KeyboardInterrupt();
 
-    return _handler; 
 
-def gui_start(parser, pkg_name):
+def gui_start(parser, pkg_name, logger, argv):
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
-    def _start(*argv, **kwargs):
-        import threading
+    logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
 
-        window = kwargs.get("window", None);
+    argv = ["--cookie", argv[0], "@%s" % (argv[1],)];
 
-        logger = kwargs.pop("logger");
-
-        logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
-
-        argv = ["--cookie", argv[0], "@%s" % (argv[1],)];
-
-        args,ex = parser.parse_known_args(argv);
+    args,ex = parser.parse_known_args(argv);
 
 
-        def get_nav(cli):
-            nonlocal dog, getcookie;
-            if dog.nav:
-                if not re.match(dog.nav.keys[libdogs.P_USR], cli[libdogs.P_USR], re.I):
-                    nav = dog.nav;
-                    dog.nav = libdogs.lazy_nav_reconf(nav, cli);
-            else:
-                nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
-                nav = getcookie(nav);
-                dog.nav = nav;
+    def get_nav(cli):
+        nonlocal dog, getcookie;
+        if dog.nav:
+            if not re.match(dog.nav.keys[libdogs.P_USR], cli[libdogs.P_USR], re.I):
+                nav = dog.nav;
+                dog.nav = libdogs.lazy_nav_reconf(nav, cli);
+        else:
+            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
+            nav = getcookie(nav);
+            dog.nav = nav;
 
-            return dog.nav;
-
-
-        def destroy_win():
-            if window:
-                destroy = kwargs.get("destroy", None);
-                if destroy and callable(destroy):
-                    destroy();
+        return dog.nav;
 
 
-        def cleanup(del_win = True):
-            nonlocal stime, window, kwargs;
-            
+    def cleanup():
+        nonlocal stime;
 
-            f = open (args.qstdump, 'w') if args.debug else None
+        f = open (args.qstdump, 'w') if args.debug else None
 
-            crsreg = mkstat(dog, args.stats);
+        crsreg = mkstat(dog, args.stats);
 
-            if args.updatedb:
-                dbm.update_hacktab (args.database, ansmgr.iter_cache (),
-                        ansmgr.qmap, fp = f);
-            #if args.debug or args.output:
-            #    arr = []
-            #    for qst in ansmgr.iter_cache ():
-            #       arr.append (qst)
+        if args.updatedb:
+            dbm.update_hacktab (args.database, ansmgr.iter_cache (),
+                    ansmgr.qmap, fp = f);
+        #if args.debug or args.output:
+        #    arr = []
+        #    for qst in ansmgr.iter_cache ():
+        #       arr.append (qst)
 
-            #    if args.debug:
-            #        json.dump (arr, f)
+        #    if args.debug:
+        #        json.dump (arr, f)
 
-                #if args.output:
-                #    qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
+            #if args.output:
+            #    qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
 
-            if f:
-                f.close ()
+        if f:
+            f.close ()
 
-            if ansmgr._cur:
-                ansmgr.close ()
+        if ansmgr._cur:
+            ansmgr.close ()
 
-            
-            etime = time.time();
-            diff = etime - stime;
-            hr,diff = divmod(diff, 60*60);
-            mn,diff = divmod(diff, 60);
-            
+        
+        etime = time.time();
+        diff = etime - stime;
+        hr,diff = divmod(diff, 60*60);
+        mn,diff = divmod(diff, 60);
+        
 
-            logger.info("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
-                    (
-                       math.trunc(hr),
-                       math.trunc(mn),
-                       math.trunc(diff),
-                        )
-                    );
-
-
-            window.protocol("WM_DELETE_WINDOW", destroy_win);
-
-        #stdscr.protocol("WM_DELETE_WINDOW", cleanup);
-
-
-        if not getattr(args, "stats"):
-            logger.info("no stat file given, setting default stat file");
-            setattr(args, "stats", str(pkg_dir.joinpath("dog.stat.txt")));
-
-
-        if not getattr(args, libdogs.P_WMAP):
-            logger.info("no config file given, setting default config file for webmap");
-            setattr(args, libdogs.P_WMAP, str(pkg_dir.joinpath("nourc")));
-
-        mp = configparser.ConfigParser (interpolation =
-            configparser.ExtendedInterpolation ())
-
-        logger.info("reading config file and initializing a webmap");
-        mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
-        mp.read_string (mstr);
-
-        setattr(args, libdogs.P_WMAP, mp);
-
-        if not args.database:
-            logger.info("no database file given, setting default database file for webmap");
-            args.database = str(pkg_dir.joinpath("noudb"));
-
-        if not args.cache:
-            logger.info("no cache dir given, setting default cache directory for quiz");
-            args.cache = str(pkg_dir.joinpath("dog_cache"));
-
-        if not args.output:
-            logger.info("no output file given, setting default output file for quiz");
-
-            #NOTE the unix-style though.
-            args.output = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt"));
-
-        pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
-
-        ansmgr = None;
-       
-        def run():
-            nonlocal dog, cleanup, ansmgr;
-            logger.debug("initializing answer manager");
-
-            ansmgr = ansm.AnsMgr (
-                    qmap = mp['qmap'],
-                    database = args.database,
-                    mode = ansm.ANS_MODE_NORM,
-                    pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
+        logger.info("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
+                (
+                   math.trunc(hr),
+                   math.trunc(mn),
+                   math.trunc(diff),
                     )
-
-
-            try:
-                dog.submit(task);
-                cleanup(False);
-
-            except KeyboardInterrupt:
-                cleanup(False);
-
-            except BaseException as err:
-                cleanup(False);
-                raise err;
-
-        def update_cookie(f):
-            nonlocal args;
-            args.cookies = f;
-
-        def release_wait(event):
-            event.set();
-            event.wait();
-
-        need_win = threading.Event();
-
-
-        logger.debug("initializing a dog to run task");
-
-        libdogs.CACHE_PAGE_CACHE = args.cache;
-        libdogs.CACHE_CACHE_FIRST = args.cache_first;
-        libdogs.CACHE_OVERWRITE = args.overwrite;
-
-        dog = simple_dog.SimpleDog(
-                libdogs.preprocess(
-                    args,
-                    args.exclude if args.exclude else [], # NOTE defaults like
-                    # this should be in config
-                    ),
-                ansmgr,
-                get_nav,
-                outfile = args.output
                 );
 
-        task = dog._InternalTask(cmd = None, args = args);
-        stime = time.time();
-            
-        getcookie = gui_getcookie(window, need_win, default = args, attr = "cookies", cb = update_cookie);
+
+    if not getattr(args, "stats"):
+        logger.info("no stat file given, setting default stat file");
+        setattr(args, "stats", str(pkg_dir.joinpath("dog.stat.txt")));
+
+
+    if not getattr(args, libdogs.P_WMAP):
+        logger.info("no config file given, setting default config file for webmap");
+        setattr(args, libdogs.P_WMAP, str(pkg_dir.joinpath("nourc")));
+
+    mp = configparser.ConfigParser (interpolation =
+        configparser.ExtendedInterpolation ())
+
+    logger.info("reading config file and initializing a webmap");
+    mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+    mp.read_string (mstr);
+
+    setattr(args, libdogs.P_WMAP, mp);
+
+    if not args.database:
+        logger.info("no database file given, setting default database file for webmap");
+        args.database = str(pkg_dir.joinpath("noudb"));
+
+    if not args.cache:
+        logger.info("no cache dir given, setting default cache directory for quiz");
+        args.cache = str(pkg_dir.joinpath("dog_cache"));
+
+    if not args.output:
+        logger.info("no output file given, setting default output file for quiz");
+
+        #NOTE the unix-style though.
+        args.output = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt"));
+
+    pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
+
+
+    def update_cookie(f):
+        nonlocal args;
+        args.cookies = f;
+
+
+    ansmgr = ansm.AnsMgr (
+            qmap = mp['qmap'],
+            database = args.database,
+            mode = ansm.ANS_MODE_NORM,
+            pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
+            )
+
+
+    logger.debug("initializing a dog to run task");
+
+    libdogs.CACHE_PAGE_CACHE = args.cache;
+    libdogs.CACHE_CACHE_FIRST = args.cache_first;
+    libdogs.CACHE_OVERWRITE = args.overwrite;
+
+    dog = simple_dog.SimpleDog(
+            libdogs.preprocess(
+                args,
+                args.exclude if args.exclude else [], # NOTE defaults like
+                # this should be in config
+                ),
+            ansmgr,
+            get_nav,
+            outfile = args.output
+            );
+
+    task = dog._InternalTask(cmd = None, args = args);
+    stime = time.time();
         
-        err_handle = unknown_err_handler(window, need_win);
+    getcookie = gui_getcookie(default = args, attr = "cookies", cb = update_cookie);
+    
+    err_handle = unknown_err_handler;
 
-        libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
+    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
 
-        window.after(5000, release_wait, need_win)
+    logger.debug("initializing answer manager");
 
-        window.protocol("WM_DELETE_WINDOW", cleanup);
+    try:
+        dog.submit(task);
+        cleanup();
 
-        
-        submit_thread = threading.Thread(target=run, daemon=True);
+    except KeyboardInterrupt:
+        cleanup();
 
-        submit_thread.start();
+    except BaseException as err:
+        cleanup();
+        raise err;
 
-        window.mainloop();
 
-        
 
-    return _start;
-
-def gui_main(parser, pkg_name, argv = None):
+def gui_main(parser, pkg_name, argv = []):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
 
-    stdscr = tkinter.Tk();
-
-    #stdscr.geometry('300x200+100+100')
-
-    stdscr.title("TMADOG version %s" % (VERSION,));
 
     pkg_name = pathlib.Path(pkg_name);
 
@@ -794,11 +713,15 @@ def gui_main(parser, pkg_name, argv = None):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
-    logger = GuiLogger(stdscr, logger, cb = gui_start(parser, pkg_name));
+    while True:
+        stdscr = tkinter.Tk();
+        stdscr.geometry('300x200+100+100');
+        stdscr.title("TMADOG version %s" % (VERSION,));
+        argv = gui_get_argv(stdscr, *argv);
+        if not argv:
+            return None;
 
-    gui_get_argv(stdscr, cb = logger);
-
-    stdscr.mainloop();
+        gui_start(parser, pkg_name, logger, argv);
 
 
 
@@ -864,5 +787,8 @@ if __name__ == '__main__':
     pkg_path = sys.argv[0];
 
     args, rest = qk_psr.parse_known_args(sys.argv);
-    
+   
+    if pkg_path == rest[0]:
+        rest.pop(0);
+
     args.main(parser, pkg_path, rest);
