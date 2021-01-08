@@ -1666,7 +1666,7 @@ def goto_page3(*pargs, **kwargs):
     while retry:
         try:
             lres = requests.request(*pargs, **kwargs);
-            lres.raise_for_status();
+            #lres.raise_for_status();
 
             return lres;
 

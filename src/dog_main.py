@@ -44,6 +44,7 @@ def getkey(retry = False):
     ts = None;
     win = None;
     ret = CHK_FAIL;
+    msg = "Please input your key" if not retry else "Invalid or expired key.  Please try again.";
 
     def _quit():
         nonlocal ret, win;
@@ -66,13 +67,20 @@ def getkey(retry = False):
         win.title("TMADOG %d" % (VERSION,));
         win.protocol("WM_DELETE_WINDOW", _quit);
         ukey = tkinter.StringVar();
+
         kentry = tkinter.Entry(win, width = 16, textvariable = ukey, validate = "key", validatecommand = (win.register(vfunc), '%P'));
+
         btn = tkinter.Button(text = "Enter", command = lambda : win.destroy(), font = tkinter.font.Font(family="Arial", size = 40, weight =
                     "bold"), background = "green", state = "disabled");
+
         kentry.place(x = 0, y = 0, relwidth = 1, relheight = 1/10);
-        tkinter.Label(win, text = "Please input your key", font = "courier").place(rely = 1/10, x = 0, relwidth = 1);
+
+        tkinter.Label(win, text = msg, font = "courier").place(rely = 1/10, x = 0, relwidth = 1);
+
         btn.place(rely = 1/2, x = 0, relwidth = 1, relheight = 1/2);
+
         win.bind("<Return>", lambda e: win.destroy() if ukey.get() else None);
+
         kentry.focus();
         win.mainloop();
         user_key = ukey.get();
@@ -83,7 +91,10 @@ def getkey(retry = False):
         win.withdraw();
 
     except ModuleNotFoundError:
-        user_key = input("\nPlease input your key->> ");
+        try:
+            user_key = input("\n%s->> " % (msg,));
+        except KeyboardInterrupt:
+            ret = CHK_QUIT;
 
     if not user_key or ret == CHK_QUIT:
         if win:
@@ -160,27 +171,31 @@ def checks(pkg_name, retry = False):
     keyf = pkg_dir.joinpath(".dogger");
 
     if not keyf.exists():
-        kt = getkey();
+        kt = getkey(retry);
 
         if not kt:
             return kt;
 
         key, tstamp = kt;
         kfile = pkg_dir.joinpath("." + str(key));
-        kfile.write_text(str(key));
+        kfile.write_text(str(tstamp));
         write_keyfile(str(keyf), "%s|%s|%s" % (str(kfile.resolve()), tstamp, uuid.getnode()));
         return True;
 
     else:
-        key,tstamp,mac = read_keyfile(str(keyf)).split("|");
+        ret = CHK_SUCCESS;
+        st = read_keyfile(str(keyf));
+        
+        try:
+            kfile,tstamp,mac = st.split("|");
+        except TypeError:
+            print("invalid key file");
+            return CHK_QUIT;
 
-        if not hasattr(sys, "getandroidapilevel") and str(uuid.getnode()) == mac:
-            return True;
-        else:
-            if not path.Path(key).exists():
-                return handle_invalid_key();
-            else:
-                return True;
+        if not hasattr(sys, "getandroidapilevel"):
+            ret = str(uuid.getnode()) == mac;
+        kfile = pathlib.Path(kfile);
+        return ret and kfile.exists() and libdogs.read_file_text(str(kfile)) == tstamp;
 
 
 def mkstat(dog, fi):
@@ -975,7 +990,7 @@ if __name__ == '__main__':
     r = -1;
 
     while True:
-        r = checks(pkg_path, retry = True if r == -1 else False);
+        r = checks(pkg_path, retry = True if r != -1 else False);
 
         if r == CHK_QUIT:
             sys.exit(1);
