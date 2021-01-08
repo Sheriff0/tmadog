@@ -1655,3 +1655,40 @@ def cache_get(page, sl = None):
                 res.content = fro_page.read_bytes();
                 res.text = read_file_text(fro_page);
         return [data["to"], res];
+
+
+
+def goto_page3(*pargs, **kwargs):
+    retry = 3;
+    
+    lres = None;
+
+    while retry:
+        try:
+            lres = requests.request(*pargs, **kwargs);
+            lres.raise_for_status();
+
+            return lres;
+
+        except Exception as err:
+
+            if isinstance(err, (
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout
+                )) and not isinstance(err.args[0], urllib3.exceptions.MaxRetryError):
+                retry -= 1;
+
+            elif isinstance(err, requests.exceptions.RequestException):
+                if not unknown_err_handler_hook(err, lres):
+                    return status.Status(status.S_ERROR, "unknown err while sending to server", (lres, err));
+
+
+                retry -= 1;
+
+            else:
+                raise err;
+
+
+    return status.Status(status.S_ERROR, "maximum retries exceeded for sending to server", lres);
+

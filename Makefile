@@ -21,6 +21,7 @@ PY_DEPS = dog_main.py \
 	  status.py \
 	  submit.py \
 	  tasker.py \
+	  dropbox.py \
 
 
 M4FLAGS = -I $(SRC) -I .

@@ -27,29 +27,160 @@ import status
 
 import nourc
 
+
+import uuid
+import dropbox
+
 VERSION = 1.00;
 
-def check(pkg_name):
-    import uuid
-    import hashlib
-    import locale
-    import os
-    import sys
 
-    pkg_dir = pathlib.Path(os.sep.join(str(pathlib.Path(pkg_name).resolve()).split(os.sep)[:-1]));
-    mac = bytes(str(uuid.getnode()), encoding = locale.getpreferredencoding());
-    hsh = hashlib.sha256(mac);
+CHK_QUIT = False;
+CHK_FAIL = None;
+CHK_SUCCESS = True;
 
-    fi = pathlib.Path(pkg_dir.joinpath("dog_key.txt"));
+def getkey(retry = False):
+    
+    user_key = None;
+    ts = None;
+    win = None;
+    ret = CHK_FAIL;
 
-    if not fi.exists():
-        print("You don't have the required key to use this product.");
+    def _quit():
+        nonlocal ret, win;
+        ret = CHK_QUIT;
+        win.destroy();
+
+    def vfunc(val):
+        nonlocal btn, ukey;
+        if val:
+            btn["state"] = "normal";
+        else:
+            btn["state"] = "disabled";
+        
+        return 1;
+
+    try:
+        import tkinter, tkinter.messagebox, tkinter.filedialog, tkinter.font
+
+        win = tkinter.Tk();
+        win.title("TMADOG %d" % (VERSION,));
+        win.protocol("WM_DELETE_WINDOW", _quit);
+        ukey = tkinter.StringVar();
+        kentry = tkinter.Entry(win, width = 16, textvariable = ukey, validate = "key", validatecommand = (win.register(vfunc), '%P'));
+        btn = tkinter.Button(text = "Enter", command = lambda : win.destroy(), font = tkinter.font.Font(family="Arial", size = 40, weight =
+                    "bold"), background = "green", state = "disabled");
+        kentry.place(x = 0, y = 0, relwidth = 1, relheight = 1/10);
+        tkinter.Label(win, text = "Please input your key", font = "courier").place(rely = 1/10, x = 0, relwidth = 1);
+        btn.place(rely = 1/2, x = 0, relwidth = 1, relheight = 1/2);
+        win.bind("<Return>", lambda e: win.destroy() if ukey.get() else None);
+        kentry.focus();
+        win.mainloop();
+        user_key = ukey.get();
+
+        dropbox.libdogs.init_hooks(err_hook = unknown_err_handler);
+
+        win = tkinter.Tk();
+        win.withdraw();
+
+    except ModuleNotFoundError:
+        user_key = input("\nPlease input your key->> ");
+
+    if not user_key or ret == CHK_QUIT:
+        if win:
+            win.destroy();
+
+        return ret;
+
+    print("checking key %s" % (user_key,));
+
+    try:
+        ts = dropbox.alloc_key(user_key);
+    except KeyboardInterrupt:
+        ts = None;
+
+    if win:
+        win.destroy();
+
+    if not ts:
+        return ret;
+
+    return (user_key, ts);
+
+
+def write_keyfile(fp, st, base = 8):
+
+    fp = open(fp, "w");
+    byt_str = "";
+    for c in st:
+        if base == 2:
+            b = str(bin(ord(c)))[2:];
+            byt_str += "%s%s" % ("0" * (8 - len(b)), b);
+        elif base == 8:
+            byt_str += "%03o" % (ord(c),);
+        elif base == 16:
+            byt_str += "%02x" % (ord(c),);
+        else:
+            fp.close();
+            return False;
+    
+    fp.write(byt_str);
+    fp.close();
+    return True
+
+def read_keyfile(fi, base = 8):
+    base_to_maxbyte_widthtable3 = {
+            2:  [8, "0b"],
+            8:  [3, "0o"],
+            16: [2, "0x"],
+            };
+
+    if not base in base_to_maxbyte_widthtable3:
         return False;
 
+    bytes_st = libdogs.read_file_text(fi);
+    st = "";
+    ln = len(bytes_st);
+    idx = 0;
+    g = base_to_maxbyte_widthtable3[base][0];
+
+    while idx < ln:
+        st += chr(
+                int(
+                    base_to_maxbyte_widthtable3[base][1] + bytes_st[idx:idx+g],
+                    base
+                    )
+                );
+        idx += g;
+
+    return st;
+
+def checks(pkg_name, retry = False):
+    pkg_dir = pathlib.Path(pkg_name).parent;
+
+    keyf = pkg_dir.joinpath(".dogger");
+
+    if not keyf.exists():
+        kt = getkey();
+
+        if not kt:
+            return kt;
+
+        key, tstamp = kt;
+        kfile = pkg_dir.joinpath("." + str(key));
+        kfile.write_text(str(key));
+        write_keyfile(str(keyf), "%s|%s|%s" % (str(kfile.resolve()), tstamp, uuid.getnode()));
+        return True;
+
     else:
-        with open(str(fi), "r") as f:
-            byt = f.read();
-            return byt == hsh.hexdigest();
+        key,tstamp,mac = read_keyfile(str(keyf)).split("|");
+
+        if not hasattr(sys, "getandroidapilevel") and str(uuid.getnode()) == mac:
+            return True;
+        else:
+            if not path.Path(key).exists():
+                return handle_invalid_key();
+            else:
+                return True;
 
 
 def mkstat(dog, fi):
@@ -840,5 +971,20 @@ if __name__ == '__main__':
    
     if pkg_path == rest[0]:
         rest.pop(0);
+    
+    r = -1;
 
-    args.main(parser, pkg_path, rest);
+    while True:
+        r = checks(pkg_path, retry = True if r == -1 else False);
+
+        if r == CHK_QUIT:
+            sys.exit(1);
+        elif r == CHK_SUCCESS:
+            break;
+
+
+    try:
+        args.main(parser, pkg_path, rest);
+
+    except ModuleNotFoundError:
+        main(parser, pkg_path, rest);
