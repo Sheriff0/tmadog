@@ -32,7 +32,9 @@ import uuid
 import dropbox
 
 VERSION = 1.00;
+GEOMETRY = '400x400+100+100';
 
+CANONICAL_URL = "https://www.nouonline.net";
 
 CHK_QUIT = False;
 CHK_FAIL = None;
@@ -64,6 +66,7 @@ def getkey(retry = False):
         import tkinter, tkinter.messagebox, tkinter.filedialog, tkinter.font
 
         win = tkinter.Tk();
+        win.geometry(GEOMETRY);
         win.title("TMADOG %d" % (VERSION,));
         win.protocol("WM_DELETE_WINDOW", _quit);
         ukey = tkinter.StringVar();
@@ -435,45 +438,144 @@ class ScrCtrl:
         pass;
 
 
+ARG_QUIT = None;
+ARG_COMPLETE = True;
+ARG_INCOMPLETE = False;
+
 def gui_get_argv(scr, parser, *pargs):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
-    f_cookie = None;
-    f_arg = None;
- 
-    for ia,arg in enumerate(pargs):
-        if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
-            f_arg = arg[1:];
 
-        elif arg.startswith("--cookie"):
-            f_cookie = pargs[ia+1];
+    psr = libdogs.DogCmdParser ();
 
-        elif arg:
-            f_cookie = arg;
+    psr.add_argument ('--matno', nargs = "+", action = libdogs.AppendList);
 
-        if f_arg and f_cookie:
-            break;
+    psr.add_argument ('--pwd', nargs = "+", action = libdogs.AppendList);
 
-    ready = False;
-    argv_frame = tkinter.ttk.Frame(scr, takefocus = 1);
-    argv_frame.grid(column=0, row=0, sticky=(tkinter.N, tkinter.W, tkinter.E, tkinter.S));
+    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList, type = str, default = "all");
 
-    ff_cookie = tkinter.StringVar();
+    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, type = str, default = "1");
 
-    ff_arg = tkinter.StringVar();
+    psr.add_argument ('--url', action = libdogs.AppendList, default = "https://www.nouonline.net");
 
-    ff_cookie.set("No file" if not f_cookie else f_cookie);
+    psr.add_argument ('--cookies', help = 'Website cookies');
 
-    ff_arg.set("No file" if not f_arg else f_arg);
+    def validate_entry(eprof):
+        nonlocal ready_btn, arr, check, ready;
+        def _val(val):
+            if val:
+                eprof["val"].set(val);
+                if "hint" in eprof:
+                    eprof["ign_hint"] = True;
+
+            else:
+                if "hint" in eprof:
+                    eprof["ign_hint"] = False;
+
+            ready = check(); 
+            ready_btn["state"] = "normal" if ready else "disabled";
+
+            return 1;
+
+        return _val;
+
+    def hinter(eprof):
+        def _h(e):
+            if eprof["ign_hint"]:
+                return;
+            eprof["val"].set(eprof["hint"]);
+        
+        return _h;
+    
+    def unhint(eprof):
+        def _uh(e):
+            if eprof["ign_hint"]:
+                return;
+            eprof["val"].set("");
+        
+
+        return _uh;
+    
+
+    def gf(eprof):
+        def _gf(e):
+            scr.focus();
+            v = tkinter.filedialog.askopenfilename(title = eprof["name"]);
+            if not v:
+                return;
+            eprof["val"].set(v);
+
+        return _gf;
+
+
+    args, rest = psr.parse_known_args(pargs);
+    
+    argv_frame = tkinter.ttk.Frame(scr);
+    argv_frame.place(x = 0, y = 0, relheight = 3/4, relwidth = 1);
+
+    url = {"def": args.url, "val": tkinter.StringVar(), "name": "WEBSITE"};
+    url["wgt"] = tkinter.Entry(argv_frame, width = 16, textvariable = url["val"], validate = "key", validatecommand = (scr.register(validate_entry(url)), '%P'));
+    #url["wgt"].bind("<FocusIn>", unhint(url));
+    url["wgt"].bind("<FocusOut>", lambda e: url["val"].set(url["def"]) if not
+            url["val"].get() else None);
+
+    cookies = {"hint": "file downloaded from a browser", "val": tkinter.StringVar(), "name": "COOKIES", "ign_hint": False};
+    cookies["wgt"] = tkinter.Entry(argv_frame, width = 16, textvariable = cookies["val"], validate = "key", validatecommand = (scr.register(validate_entry(cookies)), '%P'));
+    #cookies["wgt"].bind("<FocusOut>", hinter(cookies));
+    cookies["wgt"].bind("<FocusIn>", gf(cookies));
+
+    tma = {"def": args.tma, "val": tkinter.StringVar(), "name": "TMA"};
+    tma["wgt"] = tkinter.Spinbox(argv_frame, **{"from": 1}, to = 3, textvariable = tma["val"]); 
+    arr = [url, cookies, tma];
+
+    if not args.matno or not args.pwd:
+        f_args = {
+                "def": None,
+                "val": tkinter.StringVar(), "name": "TMAFILE",
+                "hint": "File containing matric numbers and passwords",
+                "ign_hint": False,
+                };
+
+        f_args["val"].set(f_args["hint"]);
+
+        f_args["wgt"] = tkinter.Entry(argv_frame, width = 16, textvariable =
+                f_args["val"], validate = "key", validatecommand =
+                (scr.register(validate_entry(f_args)), '%P'));
+        #f_args["wgt"].bind("<FocusOut>", hinter(cookies));
+        f_args["wgt"].bind("<FocusIn>", gf(f_args));
+
+        for ia, arg in enumerate(rest):
+            if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
+                f_args["def"] = rest.pop(ia)[1:];
+                f_args["val"].set(arg[1:]);
+                break;
+
+        arr.append(f_args);
+
+    alen = len(arr);
+
+    for ia, ar in enumerate(arr):
+        tkinter.Label(argv_frame, text = ar["name"]).place(relx = 0, rely = ia/alen, relheight = 1/alen,
+                relwidth = 1/3);
+        ar["wgt"].place(relx = 1/3, rely = ia/alen, relwidth = 2/3, relheight = 1/alen);
+
+
+    
+    def check():
+        nonlocal arr;
+        for a in arr:
+            if not a["def"] or not ("ign_hint" in a and a["ign_hint"] and a["val"].get()) or not a["val"].get():
+                a = False;
+                break;
+        return ARG_COMPLETE if a else ARG_INCOMPLETE;
 
     def nop():
         nonlocal ready, scr;
-        ready = None;
+        ready = ARG_QUIT;
         scr.destroy();
 
 
     def _set_cookie_f(fp):
-        nonlocal f_cookie, ff_cookie, ready_btn;
         if fp:
             f_cookie = fp;
             ff_cookie.set(fp);
@@ -483,7 +585,6 @@ def gui_get_argv(scr, parser, *pargs):
 
 
     def _set_arg_f(fp):
-        nonlocal f_arg, ff_arg, ready_btn;
         if fp:
             f_arg = fp;
             ff_arg.set(fp);
@@ -493,37 +594,28 @@ def gui_get_argv(scr, parser, *pargs):
 
 
     def _ready():
-        nonlocal ready, f_arg, f_cookie, scr;
 
         #argv_frame.destroy();
         ready = (f_cookie, f_arg)
         scr.destroy();
        
 
+    ready = check();
+
     scr.protocol("WM_DELETE_WINDOW", nop);
 
-    c_btn_txt = "Get cookies";
+    ready_btn = tkinter.ttk.Button(scr, text="Start the Dog", command =
+            lambda : scr.destroy());
 
-    cookie_btn = tkinter.ttk.Button(argv_frame, text=c_btn_txt, command = gui_getfile(_set_cookie_f, "Cookie file"));
+    ready_btn["state"] = "normal" if ready else "disabled";
+    ready_btn.place(relheight = 1/4, rely = 3/4, x = 0, relwidth = 1);
 
-    label_cookie = tkinter.ttk.Label(argv_frame, textvariable = ff_cookie);
-
-    arg_f_txt = "Get TMA file";
-
-    arg_btn = tkinter.ttk.Button(argv_frame, text=arg_f_txt, command = gui_getfile(_set_arg_f, "TMA file"));
-
-    label_arg = tkinter.ttk.Label(argv_frame, textvariable = ff_arg);
-
-    ready_btn = tkinter.ttk.Button(argv_frame, text="Run Dog", command = _ready);
-
-    ready_btn["state"] = "normal" if f_cookie and f_arg else "disabled";
-
-
-    for child in argv_frame.winfo_children():
-        child.pack(fill = tkinter.X, expand = True, side = tkinter.TOP, pady = 10);
 
     scr.mainloop();
-    return ready;
+
+    return ARG_INCOMPLETE;
+    if not ready:
+        return ready;
 
 
 def gui_getfile(cb, title = None):
@@ -908,7 +1000,7 @@ def gui_main(parser, pkg_name, argv = []):
 
     while True:
         stdscr = tkinter.Tk();
-        stdscr.geometry('300x200+100+100');
+        stdscr.geometry(GEOMETRY);
         stdscr.title("TMADOG version %s" % (VERSION,));
         argv = gui_get_argv(stdscr, parser, *argv);
         if not argv:
