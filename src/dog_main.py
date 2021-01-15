@@ -498,17 +498,11 @@ def gui_get_argv(scr, parser, *pargs):
 
     psr = libdogs.DogCmdParser ();
 
-    psr.add_argument ('--matno', nargs = "+", action = libdogs.AppendList);
+    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
 
-    psr.add_argument ('--pwd', nargs = "+", action = libdogs.AppendList);
+    psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
 
-    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList, type = str, default = "all");
-
-    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, type = str, default = "1");
-
-    psr.add_argument ('--url', default = "https://www.nouonline.net");
-
-    psr.add_argument ('--cookies', help = 'Website cookies');
+    psr.add_argument ('--cookies');
 
     arr = [];
 
@@ -550,8 +544,8 @@ def gui_get_argv(scr, parser, *pargs):
     argv_frame.place(x = 0, y = 0, relheight = 3/4, relwidth = 1);
 
     url = {
-            "def": args.url,
-            "val": tkinter.StringVar(value = args.url),
+            "def": args.url[0],
+            "val": tkinter.StringVar(value = args.url[0]),
             "name": "WEBSITE"
             };
 
@@ -575,8 +569,8 @@ def gui_get_argv(scr, parser, *pargs):
     cookies["wgt"].bind("<FocusIn>", gf(cookies, scr, check));
 
     tma = {
-            "def": args.tma,
-            "val": tkinter.StringVar(value = args.tma),
+            "def": args.tma[0],
+            "val": tkinter.StringVar(value = args.tma[0]),
             "name": "TMA"
             };
 
@@ -584,30 +578,29 @@ def gui_get_argv(scr, parser, *pargs):
 
     arr.extend([url, cookies, tma]);
     
-    if not args.matno or args.pwd:
-        f_args = {
-                "def": None,
-                "val": tkinter.StringVar(),
-                "name": "TMAFILE",
-                "hint": "File containing matric numbers and passwords",
-                "ign_hint": False,
-                };
+    f_args = {
+            "def": None,
+            "val": tkinter.StringVar(),
+            "name": "TMAFILE",
+            "hint": "File containing matric numbers and passwords",
+            "ign_hint": False,
+            };
 
-        f_args["val"].set(f_args["hint"]);
+    f_args["val"].set(f_args["hint"]);
 
-        f_args["wgt"] = tkinter.Entry(argv_frame, textvariable =
-                f_args["val"], validate = "key", validatecommand =
-                (scr.register(validate_entry(f_args)), '%P'));
-        #f_args["wgt"].bind("<FocusOut>", hinter(cookies));
-        f_args["wgt"].bind("<FocusIn>", gf(f_args, scr, check));
+    f_args["wgt"] = tkinter.Entry(argv_frame, textvariable =
+            f_args["val"], validate = "key", validatecommand =
+            (scr.register(validate_entry(f_args)), '%P'));
+    #f_args["wgt"].bind("<FocusOut>", hinter(cookies));
+    f_args["wgt"].bind("<FocusIn>", gf(f_args, scr, check));
 
-        for ia, arg in enumerate(rest):
-            if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
-                f_args["def"] = rest.pop(ia)[1:];
-                f_args["val"].set(f_args["def"]);
-                break;
+    for ia, arg in enumerate(rest):
+        if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
+            f_args["def"] = rest.pop(ia)[1:];
+            f_args["val"].set(f_args["def"]);
+            break;
 
-        arr.append(f_args);
+    arr.append(f_args);
 
     alen = len(arr);
 
@@ -618,24 +611,34 @@ def gui_get_argv(scr, parser, *pargs):
 
 
     def _ready():
-        argstr = "--url %s --cookies %s --tma %s" 
+        nonlocal ready, scr;
+        args.url[0] = url["val"].get();
+        argrv = ["--url"];
+        argrv.extend(set(args.url));
+
+        args.tma[0] = tma["val"].get();
+        argrv.extend(["--tma"]);
+        argrv.extend(set(args.tma));
+
+        argrv.extend(["--cookies", cookies["val"].get()]);
+
+        argrv.append("%s%s" % (parser.fromfile_prefix_chars, f_args["val"].get()));
+        rest.extend(argrv);
+        ready = rest;
         scr.destroy();
        
 
 
     scr.protocol("WM_DELETE_WINDOW", nop);
 
-
-    ready_btn["state"] = "normal" if ready else "disabled";
+    check(arr[0]);
     ready_btn["command"] = _ready;
     ready_btn.place(relheight = 1/4, rely = 3/4, x = 0, relwidth = 1);
 
 
     scr.mainloop();
 
-    return ARG_INCOMPLETE;
-    if not ready:
-        return ready;
+    return ready;
 
 
 def gui_getfile(cb, title = None):
@@ -824,7 +827,7 @@ def collapse_file_argv(parser, argv):
     return (arg_res, rest);
 
 
-def gui_start(parser, pkg_name, logger, argr):
+def gui_start(parser, pkg_name, logger, *argv):
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
@@ -833,8 +836,6 @@ def gui_start(parser, pkg_name, logger, argr):
     
     aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
 
-    argr = ["--cookie", argr[0], "%s%s" % (aid,argr[1])];
-    argv = argr.copy();
     argv, rest = collapse_file_argv(parser, argv);
     argv.extend(rest);
 
@@ -985,7 +986,7 @@ def gui_start(parser, pkg_name, logger, argr):
         cleanup();
         raise err;
 
-    return ("--cookie", args.cookies, argr[-1]);
+    return True;
 
 
 def gui_main(parser, pkg_name, argv = []):
@@ -1031,7 +1032,7 @@ def gui_main(parser, pkg_name, argv = []):
 
         sec = tkinter.Tk();
         sec.withdraw();
-        argv = gui_start(parser, pkg_name, logger, argv);
+        gui_start(parser, pkg_name, logger, *argv);
         sec.destroy();
 
 
@@ -1053,8 +1054,7 @@ if __name__ == '__main__':
             libdogs.AppendList, dest = libdogs.P_PWD, required = True);
 
     parser.add_argument ('--crscode', help = 'Your target course', nargs = "+",
-            action = libdogs.AppendList, dest = libdogs.P_CRSCODE, required =
-            True);
+            action = libdogs.AppendList, dest = libdogs.P_CRSCODE, default = ["all"]);
 
     parser.add_argument ('--tma', nargs = "+", help = 'Your target TMA for the chosen course',
             action = libdogs.AppendList, dest = libdogs.P_TMA, type = int,
