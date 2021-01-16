@@ -202,6 +202,50 @@ def checks(pkg_name, retry = False):
         return ret and kfile.exists() and libdogs.read_file_text(str(kfile)) == tstamp;
 
 
+def mkstat_tab(dog):
+    stat_tab = {};
+    for st in simple_dog.dog_submit_stat(dog):
+        arg = st[simple_dog.STAT_ARG];
+        hsh = "%s%s%s" % (arg[libdogs.P_USR], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA]);
+        stat_tab[hsh.lower()] = st;
+
+    return stat_tab;
+
+
+
+def write_stat_raw(itr, fi):
+    col_max = 4;
+    ok = 0;
+    sta = "";
+    not_ok = 0;
+    ok_str = "# Submitted quizes:";
+    not_ok_str = "# Quizes not submitted:";
+    with open(fi, "w") as fp:
+        for st in itr.values():
+            arg = st[simple_dog.STAT_ARG];
+            line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
+            line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
+            
+            line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
+            sta += line;
+
+            if st[simple_dog.STAT_ST].code >= status.S_INT:
+                not_ok_str += "\n#\t%s" % (arg[libdogs.P_CRSCODE],) if (not_ok % col_max) == 0 else "  %s" % (arg[libdogs.P_CRSCODE],);
+                not_ok_str += "(%s,%s)" % (arg[libdogs.P_USR], arg[libdogs.P_TMA]) ;
+                not_ok += 1;
+
+            else:
+                ok_str += "\n#\t%s" % (arg[libdogs.P_CRSCODE],) if (ok % col_max) == 0 else "  %s" % (arg[libdogs.P_CRSCODE],);
+                ok_str += "(%s,%s)" % (arg[libdogs.P_USR], arg[libdogs.P_TMA]) ;
+                ok += 1;
+
+        ok_str += "\n\n#total submitted: %s\n\n" % (ok,);
+        not_ok_str += "\n\n#total not submitted: %s\n\n" % (not_ok,);
+        fp.write(ok_str);
+        fp.write(not_ok_str);
+        fp.write(sta);
+
+
 def mkstat(dog, fi):
     crsreg = {};
     col_max = 4;
@@ -369,8 +413,8 @@ Please input a cookie file (e.g from the browser)--> """));
         configparser.ExtendedInterpolation ())
 
     logger.info("reading config file and initializing a webmap");
-    mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
-    mp.read_string (mstr);
+    #mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+    mp.read_string (nourc.rc);
 
     setattr(args, libdogs.P_WMAP, mp);
 
@@ -544,8 +588,8 @@ def gui_get_argv(scr, parser, *pargs):
     argv_frame.place(x = 0, y = 0, relheight = 3/4, relwidth = 1);
 
     url = {
-            "def": args.url[0],
-            "val": tkinter.StringVar(value = args.url[0]),
+            "def": args.url[-1],
+            "val": tkinter.StringVar(value = args.url[-1]),
             "name": "WEBSITE"
             };
 
@@ -554,30 +598,9 @@ def gui_get_argv(scr, parser, *pargs):
     #url["wgt"].bind("<FocusIn>", unhint(url));
     url["wgt"].bind("<FocusOut>", lambda e: url["val"].set(url["def"]) if not
             url["val"].get() else None);
-
-    cookies = {
-            "hint": "file downloaded from a browser",
-            "val": tkinter.StringVar(),
-            "name": "COOKIE FILE",
-            "ign_hint": False
-            };
-
-    cookies["val"].set(cookies["hint"] if not args.cookies else args.cookies);
-
-    cookies["wgt"] = tkinter.Entry(argv_frame, textvariable = cookies["val"], validate = "key", validatecommand = (scr.register(validate_entry(cookies)), '%P'));
-    #cookies["wgt"].bind("<FocusOut>", hinter(cookies, check));
-    cookies["wgt"].bind("<FocusIn>", gf(cookies, scr, check));
-
-    tma = {
-            "def": args.tma[0],
-            "val": tkinter.StringVar(value = args.tma[0]),
-            "name": "TMA"
-            };
-
-    tma["wgt"] = tkinter.Spinbox(argv_frame, **{"from": 1}, to = 3, textvariable = tma["val"]); 
-
-    arr.extend([url, cookies, tma]);
     
+    arr.append(url);
+
     f_args = {
             "def": None,
             "val": tkinter.StringVar(),
@@ -602,6 +625,31 @@ def gui_get_argv(scr, parser, *pargs):
 
     arr.append(f_args);
 
+    cookies = {
+            "hint": "file downloaded from a browser",
+            "val": tkinter.StringVar(),
+            "name": "COOKIE FILE",
+            "ign_hint": False
+            };
+
+    cookies["val"].set(cookies["hint"] if not args.cookies else args.cookies);
+
+    cookies["wgt"] = tkinter.Entry(argv_frame, textvariable = cookies["val"], validate = "key", validatecommand = (scr.register(validate_entry(cookies)), '%P'));
+    #cookies["wgt"].bind("<FocusOut>", hinter(cookies, check));
+    cookies["wgt"].bind("<FocusIn>", gf(cookies, scr, check));
+
+    tma = {
+            "def": args.tma[-1],
+            "val": tkinter.StringVar(value = args.tma[-1]),
+            "name": "TMA"
+            };
+
+    tma["wgt"] = tkinter.Spinbox(argv_frame, **{"from": 1}, to = 3, textvariable = tma["val"], validate =
+            "key", validatecommand = (scr.register(validate_entry(tma, check)), '%P')); 
+
+
+    arr.extend([cookies, tma]);
+    
     alen = len(arr);
 
     for ia, ar in enumerate(arr):
@@ -612,13 +660,9 @@ def gui_get_argv(scr, parser, *pargs):
 
     def _ready():
         nonlocal ready, scr;
-        args.url[0] = url["val"].get();
-        argrv = ["--url"];
-        argrv.extend(set(args.url));
+        argrv = ["--url", url["val"].get()];
 
-        args.tma[0] = tma["val"].get();
-        argrv.extend(["--tma"]);
-        argrv.extend(set(args.tma));
+        argrv.extend(["--tma", tma["val"].get()]);
 
         argrv.extend(["--cookies", cookies["val"].get()]);
 
@@ -758,15 +802,15 @@ def gui_getcookie(default = None, attr = None, cb = None):
 
     def _getcookie(nav):
         res = tkinter.messagebox.askyesnocancel(title = "Cookie File",
-                icon = "question", message = "Cookies needed. Do you want to use a different file", detail = "click yes to choose a file, click no to use previous file. click cancel to exit the program");
+                icon = "question", message = "Cookies needed. Do you want to continue with your previous cookie file", detail = "click no to choose a file, click yes to use previous file. click cancel to exit the program");
         
         if res == None:
             raise KeyboardInterrupt();
 
-        if res:
+        if not res:
             res = tkinter.filedialog.askopenfilename(title = "Cookie File");
 
-        if not res:
+        if not res or res == True:
             if default and not isinstance(default, str) and attr:
                 res = getattr(default, attr);
 
@@ -827,19 +871,23 @@ def collapse_file_argv(parser, argv):
     return (arg_res, rest);
 
 
-def gui_start(parser, pkg_name, logger, *argv):
+def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
-    logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
+    args = kwargs.pop("args", None);
+    dog = kwargs.pop("dog", None);
     
-    aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
+    if not args:
+        logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
+        
+        aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
 
-    argv, rest = collapse_file_argv(parser, argv);
-    argv.extend(rest);
+        argr, rest = collapse_file_argv(parser, argv);
+        argr.extend(rest);
 
-    args,ex = parser.parse_known_args(argv);
+        args,ex = parser.parse_known_args(argr);
 
 
     def get_nav(cli):
@@ -850,7 +898,10 @@ def gui_start(parser, pkg_name, logger, *argv):
                 dog.nav = libdogs.lazy_nav_reconf(nav, cli);
         else:
             nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
-            nav = getcookie(nav);
+            session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], args.cookies);
+            if session:
+                nav.session = session;
+
             dog.nav = nav;
 
         return dog.nav;
@@ -860,8 +911,6 @@ def gui_start(parser, pkg_name, logger, *argv):
         nonlocal stime;
 
         f = open (args.qstdump, 'w') if args.debug else None
-
-        crsreg = mkstat(dog, args.stats);
 
         if args.updatedb:
             dbm.update_hacktab (args.database, ansmgr.iter_cache (),
@@ -889,7 +938,6 @@ def gui_start(parser, pkg_name, logger, *argv):
         hr,diff = divmod(diff, 60*60);
         mn,diff = divmod(diff, 60);
         
-
         logger.info("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
                 (
                    math.trunc(hr),
@@ -905,17 +953,19 @@ def gui_start(parser, pkg_name, logger, *argv):
 
 
     if not getattr(args, libdogs.P_WMAP):
-        logger.info("no config file given, setting default config file for webmap");
+       #logger.info("no config file given, setting default config file for webmap");
         setattr(args, libdogs.P_WMAP, str(pkg_dir.joinpath("nourc")));
 
-    mp = configparser.ConfigParser (interpolation =
-        configparser.ExtendedInterpolation ())
+        mp = configparser.ConfigParser (interpolation =
+            configparser.ExtendedInterpolation ())
 
-    logger.info("reading config file and initializing a webmap");
-    #mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
-    mp.read_string (nourc.rc);
+        logger.info("reading config file and initializing a webmap");
+        #mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+        mp.read_string (nourc.rc);
 
-    setattr(args, libdogs.P_WMAP, mp);
+        setattr(args, libdogs.P_WMAP, mp);
+
+    mp = getattr(args, libdogs.P_WMAP);
 
     if not args.database:
         logger.info("no database file given, setting default database file for webmap");
@@ -939,6 +989,7 @@ def gui_start(parser, pkg_name, logger, *argv):
         args.cookies = f;
 
 
+    logger.debug("initializing answer manager");
     ansmgr = ansm.AnsMgr (
             qmap = mp['qmap'],
             database = args.database,
@@ -953,7 +1004,7 @@ def gui_start(parser, pkg_name, logger, *argv):
     libdogs.CACHE_CACHE_FIRST = args.cache_first;
     libdogs.CACHE_OVERWRITE = args.overwrite;
 
-    dog = simple_dog.SimpleDog(
+    ndog = simple_dog.SimpleDog(
             libdogs.preprocess(
                 args,
                 args.exclude if args.exclude else [], # NOTE defaults like
@@ -963,7 +1014,11 @@ def gui_start(parser, pkg_name, logger, *argv):
             get_nav,
             outfile = args.output
             );
+    
+    if dog:
+        ndog.nav = dog.nav;
 
+    dog = ndog; 
     task = dog._InternalTask(cmd = None, args = args);
     stime = time.time();
         
@@ -973,8 +1028,7 @@ def gui_start(parser, pkg_name, logger, *argv):
 
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
 
-    logger.debug("initializing answer manager");
-
+    
     try:
         dog.submit(task);
         cleanup();
@@ -985,8 +1039,13 @@ def gui_start(parser, pkg_name, logger, *argv):
     except BaseException as err:
         cleanup();
         raise err;
+    
+    argv = list(argv);
+    for ia,ag in enumerate(argv.copy()):
+        if ag == "--cookies":
+            argv[ia+1] = args.cookies;
 
-    return True;
+    return (dog, args, argv);
 
 
 def gui_main(parser, pkg_name, argv = []):
@@ -1020,7 +1079,9 @@ def gui_main(parser, pkg_name, argv = []):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
-
+    stat_tab = {};
+    args = None;
+    dog = None;
 
     while True:
         stdscr = tkinter.Tk();
@@ -1028,13 +1089,19 @@ def gui_main(parser, pkg_name, argv = []):
         stdscr.title("TMADOG version %s" % (VERSION,));
         argv = gui_get_argv(stdscr, parser, *argv);
         if not argv:
-            return None;
+            break;
 
         sec = tkinter.Tk();
         sec.withdraw();
-        gui_start(parser, pkg_name, logger, *argv);
+        dog, args, argv = gui_start(parser, pkg_name, logger, *argv, dog = dog);
         sec.destroy();
 
+        stat_tab.update(
+                mkstat_tab(dog)
+                );
+    
+    if stat_tab and args:
+        write_stat_raw(stat_tab, args.stats);
 
 
 
