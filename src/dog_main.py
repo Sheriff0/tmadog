@@ -536,7 +536,7 @@ def gf(eprof, win, cb = None):
     return _gf;
 
 
-def gui_get_argv(scr, parser, *pargs):
+def gui_get_argv(pscr, parser, *pargs):
 
     import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font
 
@@ -548,7 +548,14 @@ def gui_get_argv(scr, parser, *pargs):
 
     psr.add_argument ('--cookies');
 
+    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
+
+    exit = tkinter.StringVar();
+
     arr = [];
+
+    scr = tkinter.ttk.Frame(pscr);
+    scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
 
     ready = ARG_INCOMPLETE;
 
@@ -580,7 +587,8 @@ def gui_get_argv(scr, parser, *pargs):
     def nop():
         nonlocal ready, scr;
         ready = ARG_QUIT;
-        scr.destroy();
+        pscr.protocol("WM_DELETE_WINDOW");
+        exit.set("ok");
 
     args, rest = psr.parse_known_args(pargs);
     
@@ -599,7 +607,16 @@ def gui_get_argv(scr, parser, *pargs):
     url["wgt"].bind("<FocusOut>", lambda e: url["val"].set(url["def"]) if not
             url["val"].get() else None);
     
-    arr.append(url);
+    crscode = {
+            "val": tkinter.StringVar(),
+            "name": "COURSE CODE",
+            "list": ("all", "From TMA file"),
+            };
+
+    crscode["wgt"] = tkinter.ttk.Combobox(argv_frame, textvariable = crscode["val"], values = crscode["list"], state = "readonly");
+    crscode["wgt"].current(0);
+
+    arr.extend([url, crscode]);
 
     f_args = {
             "def": None,
@@ -639,13 +656,16 @@ def gui_get_argv(scr, parser, *pargs):
     cookies["wgt"].bind("<FocusIn>", gf(cookies, scr, check));
 
     tma = {
-            "def": args.tma[-1],
-            "val": tkinter.StringVar(value = args.tma[-1]),
-            "name": "TMA"
+            "val": tkinter.StringVar(),
+            "list": ("1", "2", "3", "From TMA file"),
+            "name": "TMA No"
             };
 
-    tma["wgt"] = tkinter.Spinbox(argv_frame, **{"from": 1}, to = 3, textvariable = tma["val"], validate =
-            "key", validatecommand = (scr.register(validate_entry(tma, check)), '%P')); 
+    tma["wgt"] = tkinter.ttk.Combobox(argv_frame, values = tma["list"], textvariable = tma["val"], state = "readonly");
+    n = tma["list"].index(args.tma[-1]);
+
+    n = 0 if n == -1 else n;
+    tma["wgt"].current(n);
 
 
     arr.extend([cookies, tma]);
@@ -662,27 +682,38 @@ def gui_get_argv(scr, parser, *pargs):
         nonlocal ready, scr;
         argrv = ["--url", url["val"].get()];
 
-        argrv.extend(["--tma", tma["val"].get()]);
+        if tma["val"].get() != tma["list"][-1]:
+            argrv.extend(["--tma", tma["val"].get()]);
+
+        if crscode["val"].get() != crscode["list"][-1]:
+            argrv.extend(["--crscode", crscode["val"].get()]);
+        else:
+            if args.crscode:
+                argrv.extend(["--crscode"]);
+                argrv.extend(args.crscode);
 
         argrv.extend(["--cookies", cookies["val"].get()]);
 
         argrv.append("%s%s" % (parser.fromfile_prefix_chars, f_args["val"].get()));
         rest.extend(argrv);
         ready = rest;
-        scr.destroy();
+        pscr.protocol("WM_DELETE_WINDOW");
+        exit.set("ok");
        
 
 
-    scr.protocol("WM_DELETE_WINDOW", nop);
+    pscr.protocol("WM_DELETE_WINDOW", nop);
 
     check(arr[0]);
     ready_btn["command"] = _ready;
     ready_btn.place(relheight = 1/4, rely = 3/4, x = 0, relwidth = 1);
 
 
-    scr.mainloop();
+    pscr.wait_variable(exit);
+    ready_btn["state"] = "disabled";
+    pscr.update();
 
-    return ready;
+    return (ready, scr);
 
 
 def gui_getfile(cb, title = None):
@@ -1111,19 +1142,20 @@ def gui_main(parser, pkg_name, argv = []):
     stat_tab = {};
     args = None;
     dog = None;
+    frame = None;
+
+    stdscr = tkinter.Tk();
+    stdscr.geometry(GEOMETRY);
+    stdscr.title("TMADOG version %s" % (VERSION,));
 
     while True:
-        stdscr = tkinter.Tk();
-        stdscr.geometry(GEOMETRY);
-        stdscr.title("TMADOG version %s" % (VERSION,));
-        argv = gui_get_argv(stdscr, parser, *argv);
+        if frame:
+            frame.destroy();
+        argv, frame = gui_get_argv(stdscr, parser, *argv);
         if not argv:
             break;
 
-        sec = tkinter.Tk();
-        sec.withdraw();
         dog, args, argv = gui_start(parser, pkg_name, logger, *argv, dog = dog);
-        sec.destroy();
 
         stat_tab.update(
                 mkstat_tab(dog)
@@ -1131,6 +1163,8 @@ def gui_main(parser, pkg_name, argv = []):
     
     if stat_tab and args:
         write_stat_raw(stat_tab, args.stats);
+
+    stdscr.destroy();
 
 
 
@@ -1150,7 +1184,7 @@ if __name__ == '__main__':
             libdogs.AppendList, dest = libdogs.P_PWD, required = True);
 
     parser.add_argument ('--crscode', help = 'Your target course', nargs = "+",
-            action = libdogs.AppendList, dest = libdogs.P_CRSCODE, default = ["all"]);
+            action = libdogs.AppendList, dest = libdogs.P_CRSCODE);
 
     parser.add_argument ('--tma', nargs = "+", help = 'Your target TMA for the chosen course',
             action = libdogs.AppendList, dest = libdogs.P_TMA, type = int,
@@ -1214,3 +1248,9 @@ if __name__ == '__main__':
 
     except ModuleNotFoundError:
         main(parser, pkg_path, rest);
+
+    except BaseException as err:
+        import traceback
+        print (err, "\n\n");
+        traceback.print_tb(err.__traceback__);
+        time.sleep(10);
