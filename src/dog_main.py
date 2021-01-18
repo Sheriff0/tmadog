@@ -850,6 +850,17 @@ def unknown_err_handler(err, *pargs):
         raise KeyboardInterrupt();
 
 
+
+def iter_file_argv(argf):
+    args = libdogs.read_file_text(argf);
+    for arg_line in args.split("\n"):
+        if not re.match(r'^\s*#.*', arg_line):
+            ar = arg_line.split();
+            for a1 in ar:
+                yield a1;
+
+
+
 def collapse_file_argv(parser, argv, preproc = lambda a,b: a):
     aid = parser.fromfile_prefix_chars;
     if not aid:
@@ -863,28 +874,25 @@ def collapse_file_argv(parser, argv, preproc = lambda a,b: a):
             rest.append(arg);
             continue;
 
-        args = libdogs.read_file_text(arg[1:]);
-        idx = 0;
-        for arg_line in args.split("\n"):
-            if not re.match(r'^\s*#.*', arg_line):
-                ar = arg_line.split();
-                el = len(ar);
-                arg_res.extend(preproc(ar, idx));
-                idx += el;
+        ar = iter_file_argv(arg[1:]);
+        arg_res.extend(preproc(ar, 0));
 
     return (arg_res, rest);
 
 
 def prep_hypen(args, idx):
     argr = [];
-    for i, a in enumerate(args, idx):
+    el = 0;
+    args = iter(args);
+    for a in args:
         if a.startswith("-"):
-            argr.append(a);
-            continue;
-        if i % 2:
-            argr.extend(["--pwd", a]);
-        else:
+            argr.extend([a, next(args)]);
+        elif el == 0 or not el % 4:
             argr.extend(["--matno", a]);
+        else:
+            argr.extend(["--pwd", a]);
+
+        el += 2;
 
     return argr;
 
