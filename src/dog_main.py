@@ -885,8 +885,12 @@ def prep_hypen(args, idx):
     el = 0;
     args = iter(args);
     for a in args:
+
         if a.startswith("-"):
             argr.extend([a, next(args)]);
+            if not a.startswith(("--matno", "--pwd")):
+                continue;
+
         elif el == 0 or not el % 4:
             argr.extend(["--matno", a]);
         else:
