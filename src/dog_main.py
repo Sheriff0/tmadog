@@ -312,7 +312,7 @@ def main (parser, pkg_name, argv):
     logger.addHandler(fatal);
     logger.addHandler(stdout);
 
-    argv, rest = collapse_file_argv(parser, argv);
+    argv, rest = collapse_file_argv(parser, argv, prep_hypen);
     argv.extend(rest);
 
     args = parser.parse_args(argv);
@@ -850,7 +850,7 @@ def unknown_err_handler(err, *pargs):
         raise KeyboardInterrupt();
 
 
-def collapse_file_argv(parser, argv):
+def collapse_file_argv(parser, argv, preproc = lambda a,b: a):
     aid = parser.fromfile_prefix_chars;
     if not aid:
         return [];
@@ -864,12 +864,29 @@ def collapse_file_argv(parser, argv):
             continue;
 
         args = libdogs.read_file_text(arg[1:]);
+        idx = 0;
         for arg_line in args.split("\n"):
             if not re.match(r'^\s*#.*', arg_line):
-                arg_res.extend(arg_line.split());
+                ar = arg_line.split();
+                el = len(ar);
+                arg_res.extend(preproc(ar, idx));
+                idx += el;
 
     return (arg_res, rest);
 
+
+def prep_hypen(args, idx):
+    argr = [];
+    for i, a in enumerate(args, idx):
+        if a.startswith("-"):
+            argr.append(a);
+            continue;
+        if i % 2:
+            argr.extend(["--pwd", a]);
+        else:
+            argr.extend(["--matno", a]);
+
+    return argr;
 
 def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     pkg_name = pathlib.Path(pkg_name);
@@ -884,7 +901,7 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
         
         aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
 
-        argr, rest = collapse_file_argv(parser, argv);
+        argr, rest = collapse_file_argv(parser, argv, prep_hypen);
         argr.extend(rest);
 
         args,ex = parser.parse_known_args(argr);
