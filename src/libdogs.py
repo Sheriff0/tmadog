@@ -34,6 +34,8 @@ copy = copy.copy if sys.implementation.version.minor < 7 else copy.deepcopy
 
 logger = logging.getLogger('tmadog.libdog');
 
+MAX_RETRIES = 10;
+
 P_PWD = "pwd";
 P_USR = "matno";
 P_PWD_OLD = P_PWD;
@@ -630,7 +632,8 @@ def lazy_logout(nav, retry = 3, **kwargs):
 
 
 
-def lazy_login(nav, retry = 3, **kwargs):
+def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
+    global LOGIN_BLACKLIST;
 
     retry += 1;
 
@@ -659,7 +662,11 @@ def lazy_login(nav, retry = 3, **kwargs):
             logger.info("lazy_login(): loggin unsucessful for %s due to %s",
                     nav.keys[P_USR], err);
 
-            if lres == False:
+            if not isinstance(lres, requests.Response):
+                lres = nav.session.get(nav.keys[P_URL]);
+
+            if isinstance(err, DogTypeError):
+                LOGIN_BLACKLIST.append(nav.keys);
                 return status.Status(status.S_ERROR, "cant' login %s" % (nav.keys[P_USR],), nav);
 
             elif need_cookies(nav, lres):
@@ -694,7 +701,7 @@ def lazy_login(nav, retry = 3, **kwargs):
 
 
 
-def goto_page(nav, pg, stp = None, retry = 3, login = False):
+def goto_page(nav, pg, stp = None, retry = MAX_RETRIES, login = False):
     retry += 1;
     
     logger.debug("goto_page(): preparing navigate to %s", pg);
@@ -748,7 +755,7 @@ def goto_page(nav, pg, stp = None, retry = 3, login = False):
 
 
 
-def goto_page2(nav, req, retry = 3, login = False, **kwargs):
+def goto_page2(nav, req, retry = MAX_RETRIES, login = False, **kwargs):
     retry += 1;
     
     logger.debug("goto_page2(): preparing to send to server");
@@ -1175,13 +1182,12 @@ def answer_lax(qst, amgr):
         return x;
 
 def submit(nav, sreq, **kwargs):
-    res = goto_page2(nav = nav, req = sreq, login = True, **kwargs);
-
     logger.info("libdog.submit(): preparing to submit quiz");
+    res = None;
 
-    if not res:
-        logger.info("libdog.submit(): submit unsucessful");
-        return res;
+    while not res:
+        res = goto_page2(nav = nav, req = sreq, login = True, **kwargs);
+
 
     logger.info("libdogs.submit(): submit sucessful, checking result...");
 
@@ -1257,6 +1263,9 @@ def login_needed(nav, qres):
     return re.search(nav.webmap["events"]["on_login_needed"].strip(), qres.text, re.I);
 
 def can_retry_fetch(nav, qres):
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
     if need_cookies(nav, qres):
         st = cookie_hook(nav);
 
@@ -1341,9 +1350,8 @@ def fetch_all(nav, usr, **kwargs):
                 );
         qres = goto_page2(nav, freq ,login = True,  **kwargs);
         if not qres:
-            logger.info("fetch_all(): fetch unsucessful");
-            yield qres;
-            return;
+            logger.info("fetch_all(): fetch unsucessful, retrying");
+            continue;
 
         try:
             result[F_SREQUEST] = fill_form (
@@ -1429,8 +1437,7 @@ def fetch_allq(nav, usr, **kwargs):
 
         qres = goto_page2(nav, freq ,login = True,  **kwargs);
         if not qres:
-            yield qres;
-            return;
+            continue;
 
         try:
             result[F_SREQUEST] = fill_form (
@@ -1659,10 +1666,10 @@ def cache_get(page, sl = None):
 
 
 def goto_page3(*pargs, **kwargs):
-    retry = 3;
     
     lres = None;
 
+    retry = MAX_RETRIES;
     while retry:
         try:
             lres = requests.request(*pargs, **kwargs);
