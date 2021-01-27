@@ -41,7 +41,7 @@ CHK_FAIL = None;
 CHK_SUCCESS = True;
 
 def getkey(retry = False):
-    
+
     user_key = None;
     ts = None;
     win = None;
@@ -59,7 +59,7 @@ def getkey(retry = False):
             btn["state"] = "normal";
         else:
             btn["state"] = "disabled";
-        
+
         return 1;
 
     try:
@@ -136,7 +136,7 @@ def write_keyfile(fp, st, base = 8):
         else:
             fp.close();
             return False;
-    
+
     fp.write(byt_str);
     fp.close();
     return True
@@ -188,7 +188,7 @@ def checks(pkg_name, retry = False):
     else:
         ret = CHK_SUCCESS;
         st = read_keyfile(str(keyf));
-        
+
         try:
             kfile,tstamp,mac = st.split("|");
         except TypeError:
@@ -206,7 +206,9 @@ def mkstat_tab(dog):
     stat_tab = {};
     for st in simple_dog.dog_submit_stat(dog):
         arg = st[simple_dog.STAT_ARG];
-        hsh = "%s%s%s" % (arg[libdogs.P_USR], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA]);
+        u, c, t = arg[libdogs.P_USR], arg.get(libdogs.P_CRSCODE, "nil"), arg[libdogs.P_TMA];
+
+        hsh = "%s%s%s" % (u, c, t);
         stat_tab[hsh.lower()] = st;
 
     return stat_tab;
@@ -224,8 +226,10 @@ def write_stat_raw(itr, fi):
         for st in itr.values():
             arg = st[simple_dog.STAT_ARG];
             line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
+            if not arg.get(libdogs.P_CRSCODE, None):
+                arg[libdogs.P_CRSCODE] = "nil";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
-            
+
             line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
             sta += line;
 
@@ -241,6 +245,15 @@ def write_stat_raw(itr, fi):
 
         ok_str += "\n\n#total submitted: %s\n\n" % (ok,);
         not_ok_str += "\n\n#total not submitted: %s\n\n" % (not_ok,);
+        tfp = open(
+                str(pathlib.Path(fi).parent.joinpath("stat-%s.txt" %
+                    (math.trunc(time.time()),)).resolve()),
+                "w"
+                );
+        tfp.write(ok_str);
+        tfp.write(not_ok_str);
+        tfp.write(sta);
+        tfp.close();
         fp.write(ok_str);
         fp.write(not_ok_str);
         fp.write(sta);
@@ -257,12 +270,15 @@ def mkstat(dog, fi):
     with open(fi, "w") as fp:
         for st in simple_dog.dog_submit_stat(dog):
             arg = st[simple_dog.STAT_ARG];
+            if not arg.get(libdogs.P_CRSCODE, None):
+                arg[libdogs.P_CRSCODE] = "nil";
+
             crsreg.setdefault(arg[libdogs.P_CRSCODE].lower(), set());
             crsreg[arg[libdogs.P_CRSCODE].lower()].add(arg[libdogs.P_USR].upper());
 
             line = "" if st[simple_dog.STAT_ST].code >= status.S_INT else "# ";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
-            
+
             line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
             sta += line;
 
@@ -278,6 +294,16 @@ def mkstat(dog, fi):
 
         ok_str += "\n\n#total submitted: %s\n\n" % (ok,);
         not_ok_str += "\n\n#total not submitted: %s\n\n" % (not_ok,);
+        tfp = open(
+                str(pathlib.Path(fi).parent.joinpath("stat-%s.txt" %
+                    (math.trunc(time.time()),)).resolve()),
+                "w"
+                );
+        tfp.write(ok_str);
+        tfp.write(not_ok_str);
+        tfp.write(sta);
+        tfp.close();
+
         fp.write(ok_str);
         fp.write(not_ok_str);
         fp.write(sta);
@@ -383,12 +409,12 @@ Please input a cookie file (e.g from the browser)--> """));
         if ansmgr._cur:
             ansmgr.close ()
 
-        
+
         etime = time.time();
         diff = etime - stime;
         hr,diff = divmod(diff, 60*60);
         mn,diff = divmod(diff, 60);
-        
+
 
         print("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
                 (
@@ -472,13 +498,13 @@ Please input a cookie file (e.g from the browser)--> """));
     except BaseException as err:
         cleanup();
         raise err;
-    
+
 
 
 class ScrCtrl:
     def disable(self):
         pass;
-    
+
     def enable(self):
         pass;
 
@@ -505,7 +531,7 @@ def hinter(eprof, cb = None):
 
         if cb and callable(cb):
             return cb(eprof);
-    
+
     return _h;
 
 def unhint(eprof, cb = None):
@@ -591,7 +617,7 @@ def gui_get_argv(pscr, parser, *pargs):
         exit.set("ok");
 
     args, rest = psr.parse_known_args(pargs);
-    
+
     argv_frame = tkinter.ttk.Frame(scr);
     argv_frame.place(x = 0, y = 0, relheight = 3/4, relwidth = 1);
 
@@ -606,7 +632,7 @@ def gui_get_argv(pscr, parser, *pargs):
     #url["wgt"].bind("<FocusIn>", unhint(url));
     url["wgt"].bind("<FocusOut>", lambda e: url["val"].set(url["def"]) if not
             url["val"].get() else None);
-    
+
     crscode = {
             "val": tkinter.StringVar(),
             "name": "COURSE CODE",
@@ -669,7 +695,7 @@ def gui_get_argv(pscr, parser, *pargs):
 
 
     arr.extend([cookies, tma]);
-    
+
     alen = len(arr);
 
     for ia, ar in enumerate(arr):
@@ -699,7 +725,7 @@ def gui_get_argv(pscr, parser, *pargs):
         ready = rest;
         pscr.protocol("WM_DELETE_WINDOW");
         exit.set("ok");
-       
+
 
 
     pscr.protocol("WM_DELETE_WINDOW", nop);
@@ -718,7 +744,7 @@ def gui_get_argv(pscr, parser, *pargs):
 
 def gui_getfile(cb, title = None):
     import tkinter, tkinter.ttk, tkinter.filedialog
-    
+
     def _get():
         fp = tkinter.filedialog.askopenfilename(title = title);
 
@@ -731,7 +757,7 @@ def gui_getfile(cb, title = None):
 def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
 
     import tkinter, tkinter.ttk, tkinter.scrolledtext
-    
+
     log = None;
     win = None;
     ltext = [];
@@ -739,7 +765,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
 
     def info(msg, *pargs, **kwargs):
         nonlocal log, ltext;
-        
+
         msg1 =  msg % pargs;
 
         if len(ltext) == 50:
@@ -809,7 +835,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
 
                 if cb and callable(cb):
                     cb(*pargs, logger = self, window = win, destroy = destroy, **kwargs);
-                
+
 
 
             elif win.state() == "iconic":
@@ -820,7 +846,7 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
             nonlocal info;
             if name == "info":
                 return info;
-            
+
             else:
                 return getattr(logger, name);
 
@@ -834,7 +860,7 @@ def gui_getcookie(default = None, attr = None, cb = None):
     def _getcookie(nav):
         res = tkinter.messagebox.askyesnocancel(title = "Cookie File",
                 icon = "question", message = "Cookies needed. Do you want to continue with your previous cookie file", detail = "click no to choose a file, click yes to use previous file. click cancel to exit the program");
-        
+
         if res == None:
             raise KeyboardInterrupt();
 
@@ -896,7 +922,7 @@ def collapse_file_argv(parser, argv, preproc = lambda a,b: a):
     aid = parser.fromfile_prefix_chars;
     if not aid:
         return [];
-    
+
     arg_res = [];
     rest = [];
 
@@ -938,10 +964,10 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
 
     args = kwargs.pop("args", None);
     dog = kwargs.pop("dog", None);
-    
+
     if not args:
         logger.info("Welcome to TMADOG version %s\n" % (VERSION,));
-        
+
         aid = parser.fromfile_prefix_chars if parser.fromfile_prefix_chars else "";
 
         argr, rest = collapse_file_argv(parser, argv, prep_hypen);
@@ -992,12 +1018,12 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
         if ansmgr._cur:
             ansmgr.close ()
 
-        
+
         etime = time.time();
         diff = etime - stime;
         hr,diff = divmod(diff, 60*60);
         mn,diff = divmod(diff, 60);
-        
+
         logger.info("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
                 (
                    math.trunc(hr),
@@ -1074,21 +1100,21 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
             get_nav,
             outfile = args.output
             );
-    
+
     if dog:
         ndog.nav = dog.nav;
 
-    dog = ndog; 
+    dog = ndog;
     task = dog._InternalTask(cmd = None, args = args);
     stime = time.time();
-        
+
     getcookie = gui_getcookie(default = args, attr = "cookies", cb = update_cookie);
-    
+
     err_handle = unknown_err_handler;
 
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
 
-    
+
     try:
         dog.submit(task);
         cleanup();
@@ -1099,7 +1125,7 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     except BaseException as err:
         cleanup();
         raise err;
-    
+
     argv = list(argv);
     for ia,ag in enumerate(argv.copy()):
         if ag == "--cookies":
@@ -1160,9 +1186,9 @@ def gui_main(parser, pkg_name, argv = []):
         stat_tab.update(
                 mkstat_tab(dog)
                 );
-    
-    if stat_tab and args:
-        write_stat_raw(stat_tab, args.stats);
+
+        if stat_tab:
+            write_stat_raw(stat_tab, args.stats);
 
     stdscr.destroy();
 
@@ -1221,17 +1247,17 @@ if __name__ == '__main__':
             "course codes to exclude e.g for NOUN students GST", nargs = "+");
 
     qk_psr = argparse.ArgumentParser();
-    
+
     qk_psr.add_argument("--no-gui", action = "store_const", const = main,
             default = gui_main, dest = "main");
 
     pkg_path = sys.argv[0];
 
     args, rest = qk_psr.parse_known_args(sys.argv);
-   
+
     if pkg_path == rest[0]:
         rest.pop(0);
-    
+
     r = -1;
 
     while True:

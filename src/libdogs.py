@@ -667,7 +667,8 @@ def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
 
             if isinstance(err, DogTypeError):
                 LOGIN_BLACKLIST.append(nav.keys);
-                return status.Status(status.S_ERROR, "cant' login %s" % (nav.keys[P_USR],), nav);
+                return status.Status(status.S_ERROR, "cant' login %s" %
+                        (nav.keys[P_USR],), nav.keys);
 
             elif need_cookies(nav, lres):
                 st = cookie_hook(nav);
@@ -1010,14 +1011,18 @@ def preprocess(args, excl_crs = []):
                         logger.info("skipping %s" % (crs,));
                         continue;
 
-                usr[P_CRSCODE] = crs;
                 yy = copy(usr);
+
                 if not isinstance(crs, status.Status):
                     logger.info("found %s for user number %s of %s", crs, i+1, mtn);
+                    yy[P_CRSCODE] = crs;
+                    yield yy;
                 else:
                     LOGIN_BLACKLIST.append(yy);
+                    yy.pop(P_CRSCODE, None);
+                    yield status.Status(status.S_ERROR, "can't login", cause =
+                            yy);
                     break;
-                yield yy;
         else:
             logger.info("%s specified for user number %s of %s", y, i+1, mtn);
             usr[P_CRSCODE] = y;

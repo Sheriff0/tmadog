@@ -29,11 +29,6 @@ SUB_MBR = 0;
 
 
 def dog_submit_stat(dog):
-    for ta in libdogs.LOGIN_BLACKLIST:
-        st = ta.pop(libdogs.P_CRSCODE);
-        ta[libdogs.P_CRSCODE] = "nil";
-        yield [ta, st];
-
     for ta in dog.tasktab:
         if not hasattr(ta, "magic") or ta.magic != SUB_MBR:
             continue;
@@ -173,12 +168,18 @@ class SimpleDog:
                 prev = ldr;
 
                 for arg in self.argv():
-                    if not libdogs.is_net_valid_arg(ldr.args, arg):
+                    if isinstance(arg, status.Status):
+                        self._alloc(self._InternalTask(magic = SUB_MBR, group =
+                            ldr, cmd = self.nop, args = arg.cause, status = arg,
+                            state = tasker.TS_TERM));
+
+                        continue;
+
+                    elif not libdogs.is_net_valid_arg(ldr.args, arg):
                         continue;
 
                     mbr = self._InternalTask(magic = SUB_MBR, group = ldr, cmd =
                                 self.nop, args = arg, status = status.Status());
-                    self._alloc(mbr);
                     # start submiting
                     st = self.submit_main(arg);
                     if st.code == status.S_FATAL:
@@ -190,6 +191,7 @@ class SimpleDog:
                         mbr.state = tasker.TS_EXITED;
 
                     mbr.status = st;
+                    self._alloc(mbr);
                     self.status = st;
                     prev.nxt = mbr;
                     prev = mbr;
@@ -241,7 +243,7 @@ class SimpleDog:
                 fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
 
             st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp);
-            
+
 
             if not st:
                 break;
