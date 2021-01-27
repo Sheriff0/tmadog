@@ -11,7 +11,7 @@ def parse_cook (fstr, targets):
 
     headers = email.message.Message ()
 
-    for m in re.finditer (r'(?<![-_])(set-cookie2?)[^-_]*?(?::|=|\n.*?[:=])\W*(' + '|'.join (targets) + r')( *=[^"\'\n\\]+)', fstr, flags = re.I):
+    for m in re.finditer (r'(?<![-_])(set-cookie2?)[^-_]*?(?::|=|\n.*?[:=])\W*(' + '|'.join (targets) + r')( *=?[^"\'\n\\]+)', fstr, flags = re.I):
 
         headers [m.group (1)] = m.group (2) + m.group (3).strip ('"\' \n')
 
@@ -22,7 +22,7 @@ def parse_cook (fstr, targets):
 def bake_cookies (
         f_or_str,
         url,
-        targets = ['__cfduid', 'cf_clearance', 'PHPSESSID'],
+        targets = [r'.*?'],
         method = 'GET'
         ):
 
