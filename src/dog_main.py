@@ -858,8 +858,10 @@ def gui_getcookie(default = None, attr = None, cb = None):
     import tkinter.messagebox, tkinter.filedialog
 
     def _getcookie(nav):
+        print("\n\nCookies have expired. Check the main screen to resolve this.\n\n");
         res = tkinter.messagebox.askyesnocancel(title = "Cookie File",
                 icon = "question", message = "Cookies needed. Do you want to continue with your previous cookie file", detail = "click no to choose a file, click yes to use previous file. click cancel to exit the program");
+
 
         if res == None:
             raise KeyboardInterrupt();
@@ -896,6 +898,8 @@ def gui_getcookie(default = None, attr = None, cb = None):
 
 def unknown_err_handler(err, *pargs):
     import tkinter.messagebox, tkinter.filedialog
+
+    print("\n\nAn unknown, possibly network, error occured. Check the main screen to resolve this.\n\n");
 
     res = tkinter.messagebox.askretrycancel(title = "Error",
             icon = "error", message = "An error occured", detail = "%s" % (err,));
