@@ -899,6 +899,8 @@ def discover_by_crslist(usr, nav, retry = 3):
             yield m.group (0)
 
 
+TMANO_STRICT = 0;
+TMANO_LAX = 1;
 
 def get_valid_qreq(usr, nav):
     st = goto_page(nav, "qst_page", -1, login = True);
@@ -966,7 +968,8 @@ def is_net_valid_arg(cmdl, arg):
 
 LOGIN_BLACKLIST = [];
 
-def preprocess(args, excl_crs = []):
+def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
+        = None, *pargs, **kwargs):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
     global LOGIN_BLACKLIST;
     
@@ -983,10 +986,21 @@ def preprocess(args, excl_crs = []):
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
-    mtn = len(matnos);
 
     for i in range (argc):
         usr = {};
+        if whitelist != None and max_wlist:
+            wlen = len(whitelist);
+            if wlen >= max_wlist and matnos [i] not in whitelist:
+                logger.info("skipping %s: maximum user list has been reached", matnos [i]);
+                continue;
+
+            elif wlen < max_wlist and matnos [i] not in whitelist:
+                whitelist.append(matnos [i]);
+                if not wlist_cb(whitelist):
+                    logger.info("There is a problem with the whitelist handler");
+                    return None;
+
         usr[P_WMAP] = wmap;
         usr[P_USR] = matnos [i]
         usr[P_PWD] = pwds [i]
@@ -1014,7 +1028,8 @@ def preprocess(args, excl_crs = []):
                 yy = copy(usr);
 
                 if not isinstance(crs, status.Status):
-                    logger.info("found %s for user number %s of %s", crs, i+1, mtn);
+                    logger.info("found %s for user number %s of %s", crs, i+1,
+                            argc);
                     yy[P_CRSCODE] = crs;
                     yield yy;
                 else:
@@ -1024,7 +1039,7 @@ def preprocess(args, excl_crs = []):
                             yy);
                     break;
         else:
-            logger.info("%s specified for user number %s of %s", y, i+1, mtn);
+            logger.info("%s specified for user number %s of %s", y, i+1, argc);
             usr[P_CRSCODE] = y;
             yield copy(usr);
 

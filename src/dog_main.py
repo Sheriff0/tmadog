@@ -38,7 +38,7 @@ CANONICAL_URL = "https://www.nouonline.net";
 
 CHK_QUIT = False;
 CHK_FAIL = None;
-CHK_SUCCESS = True;
+CHK_SUCCESS = dropbox.KeyInfo;
 
 def getkey(retry = False):
 
@@ -118,7 +118,7 @@ def getkey(retry = False):
     if not ts:
         return ret;
 
-    return (user_key, ts);
+    return ts;
 
 
 def write_keyfile(fp, st, base = 8):
@@ -179,27 +179,22 @@ def checks(pkg_name, retry = False):
         if not kt:
             return kt;
 
-        key, tstamp = kt;
-        kfile = pkg_dir.joinpath("." + str(key));
-        kfile.write_text(str(tstamp));
-        write_keyfile(str(keyf), "%s|%s|%s" % (str(kfile.resolve()), tstamp, uuid.getnode()));
-        return True;
+        kfile = pkg_dir.joinpath("." + str(kt));
+        write_keyfile(str(kfile), json.dumps(kt));
+        write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
+        return kt;
 
     else:
-        ret = CHK_SUCCESS;
-        st = read_keyfile(str(keyf));
+        kfile = read_keyfile(str(keyf));
 
         try:
-            kfile,tstamp,mac = st.split("|");
-        except TypeError:
+            lparam = json.loads(read_keyfile(kfile));
+            key = pathlib.Path(kfile).stem[1:];
+            return dropbox.KeyInfo(key, lparam);
+        except BaseException:
             print("invalid key file");
             return CHK_QUIT;
 
-        #NOTE: MAC ain't reliable
-        #if not hasattr(sys, "getandroidapilevel"):
-        #  ret = str(uuid.getnode()) == mac;
-        kfile = pathlib.Path(kfile);
-        return ret and kfile.exists() and libdogs.read_file_text(str(kfile)) == tstamp;
 
 
 def mkstat_tab(dog):
@@ -310,11 +305,55 @@ def mkstat(dog, fi):
 
     return crsreg;
 
-def main (parser, pkg_name, argv):
+
+class Wlist_Handler(dropbox.KeyInfo):
+    def __init__(self, key, *pargs, **kwargs):
+        if isinstance(key, dropbox.KeyInfo):
+            pargs = list(pargs);
+            pargs.insert(0, key);
+            key = str(key);
+
+        self.path = kwargs.pop("lpath", ".");
+        super().__init__(key, *pargs, **kwargs);
+        rkinfo = dropbox.fetch_keyinfo(str(self.key));
+
+
+        if rkinfo and rkinfo.get("mtime", 0) > self.get("mtime", 0):
+            self.update(rkinfo);
+        
+            if "whitelist" in self:
+                self["whitelist"] = dropbox.Whitelist(self["whitelist"]);
+    
+    def __call__(self, wlist):
+        self["whitelist"] = wlist;
+        try:
+            write_keyfile(
+                    str(
+                        pathlib.Path(
+                            self.path
+                            ).joinpath(
+                                ".%s" % (self.key,)
+                                ).resolve()
+                            ),
+                    json.dumps(self)
+                    );
+
+            return dropbox.update_key(self);
+        except BaseException:
+            return False;
+
+
+def main (parser, pkg_name, argv, kinfo = None):
+
+    if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
+        print("Please renew your package as the current package has expired");
+        return False;
 
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
+
+    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
 
     logger = logging.getLogger('tmadog');
 
@@ -479,6 +518,8 @@ Please input a cookie file (e.g from the browser)--> """));
                 args,
                 args.exclude if args.exclude else [], # NOTE defaults like
                 # this should be in config
+                **wlist_h,
+                wlist_cb = wlist_h,
                 ),
             ansmgr,
             get_nav,
@@ -585,9 +626,7 @@ def gui_get_argv(pscr, parser, *pargs):
 
     ready = ARG_INCOMPLETE;
 
-    ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"));
-
-    ready_btn["state"] = "disabled";
+    ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
 
     def check(pro, v = None):
         nonlocal arr, ready, ready_btn, scr;
@@ -961,7 +1000,11 @@ def prep_hypen(args, idx):
 
     return argr;
 
-def gui_start(parser, pkg_name, logger, *argv, **kwargs):
+def gui_start(parser, pkg_name, logger, wlist_h, *argv, **kwargs):
+    if wlist_h and not dropbox.fetch_keyinfo(str(wlist_h)):
+        print("Please renew your package as the current package has expired");
+        return False;
+
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
@@ -1099,6 +1142,8 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
                 args,
                 args.exclude if args.exclude else [], # NOTE defaults like
                 # this should be in config
+                **wlist_h,
+                wlist_cb = wlist_h,
                 ),
             ansmgr,
             get_nav,
@@ -1138,7 +1183,7 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     return (dog, args, argv);
 
 
-def gui_main(parser, pkg_name, argv = []):
+def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
 
@@ -1146,6 +1191,9 @@ def gui_main(parser, pkg_name, argv = []):
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
+
+    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
+
 
     logger = logging.getLogger('tmadog');
 
@@ -1185,14 +1233,17 @@ def gui_main(parser, pkg_name, argv = []):
         if not argv:
             break;
 
-        dog, args, argv = gui_start(parser, pkg_name, logger, *argv, dog = dog);
+        rez = gui_start(parser, pkg_name, logger, *argv, dog = dog,
+                wlist_h = wlist_h);
+        if rez:
+            dog, args, argv = rez;
 
-        stat_tab.update(
-                mkstat_tab(dog)
-                );
+            stat_tab.update(
+                    mkstat_tab(dog)
+                    );
 
-        if stat_tab:
-            write_stat_raw(stat_tab, args.stats);
+            if stat_tab:
+                write_stat_raw(stat_tab, args.stats);
 
     stdscr.destroy();
 
@@ -1200,10 +1251,6 @@ def gui_main(parser, pkg_name, argv = []):
 
 
 if __name__ == '__main__':
-
-    if time.time() >= 1612137600: # for february 1st.
-        print("Please renew your package as the current package has expired");
-        sys.exit(1);
 
     parser = libdogs.DogCmdParser (fromfile_prefix_chars='@');
 
@@ -1269,15 +1316,15 @@ if __name__ == '__main__':
 
         if r == CHK_QUIT:
             sys.exit(1);
-        elif r == CHK_SUCCESS:
+        elif isinstance(r, CHK_SUCCESS):
             break;
 
 
     try:
-        args.main(parser, pkg_path, rest);
+        args.main(parser, pkg_path, rest, r);
 
     except ModuleNotFoundError:
-        main(parser, pkg_path, rest);
+        main(parser, pkg_path, rest, r);
 
     except BaseException as err:
         import traceback

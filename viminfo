@@ -11,7 +11,7 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/cant
+~MSle0~/prepr
 
 # Last Substitute Search Pattern:
 ~MSle0&ger\.\i\+("\zs\\n
@@ -20,12 +20,16 @@
 $
 
 # Command Line History (newest to oldest):
+:qall!
+|2,0,1612523471,,"qall!"
+:w
+|2,0,1612523366,,"w"
 :qall
-|2,0,1611706103,,"qall"
+|2,0,1612522310,,"qall"
+:q
+|2,0,1612345296,,"q"
 :sh
 |2,0,1611701467,,"sh"
-:w
-|2,0,1611701464,,"w"
 :py3 help(time)
 |2,0,1611699961,,"py3 help(time)"
 :py3 t,v,u = 1,2,3
@@ -34,8 +38,6 @@ $
 |2,0,1611697161,,"tabs"
 :split src/simple_dog.py
 |2,0,1611679523,,"split src/simple_dog.py"
-:q
-|2,0,1611679336,,"q"
 :py3 print(time.asctime())
 |2,0,1611677786,,"py3 print(time.asctime())"
 :py3 import time
@@ -434,12 +436,14 @@ $
 |2,0,1606263456,,"py3 print(url.geturl)"
 
 # Search String History (newest to oldest):
+??prepr
+|2,1,1612523022,63,"prepr"
+?/fetch_a
+|2,1,1612299693,47,"fetch_a"
 ?/cant
 |2,1,1611696641,47,"cant"
 ??lazy_login
 |2,1,1611681327,63,"lazy_login"
-?/fetch_a
-|2,1,1611679489,47,"fetch_a"
 ?/return
 |2,1,1611679349,47,"return"
 ?/hook
@@ -872,43 +876,43 @@ $
 # Debug Line History (newest to oldest):
 
 # Registers:
-"0	CHAR	0
-	tasker.TS_TERM
-|3,0,0,0,1,0,1611698966,"tasker.TS_TERM"
-""1	LINE	0
+""0	CHAR	0
+	P_WHITE_LIST
+|3,1,0,0,1,0,1612523167,"P_WHITE_LIST"
+"1	LINE	0
 	
-|3,1,1,1,1,0,1611699670,""
+|3,0,1,1,1,0,1612299847,""
 "2	LINE	0
+	
+|3,0,2,1,1,0,1611699670,""
+"3	LINE	0
 	    for ta in libdogs.LOGIN_BLACKLIST:
 	        st = ta.pop(libdogs.P_CRSCODE);
 	        ta[libdogs.P_CRSCODE] = "nil";
 	        yield [ta, st];
-|3,0,2,1,4,0,1611699668,"    for ta in libdogs.LOGIN_BLACKLIST:","        st = ta.pop(libdogs.P_CRSCODE);","        ta[libdogs.P_CRSCODE] = \"nil\";","        yield [ta, st];"
-"3	LINE	0
-	                                self.nop, args = arg, status = arg));
-|3,0,3,1,1,0,1611698906,"                                self.nop, args = arg, status = arg));"
+|3,0,3,1,4,0,1611699668,"    for ta in libdogs.LOGIN_BLACKLIST:","        st = ta.pop(libdogs.P_CRSCODE);","        ta[libdogs.P_CRSCODE] = \"nil\";","        yield [ta, st];"
 "4	LINE	0
+	                                self.nop, args = arg, status = arg));
+|3,0,4,1,1,0,1611698906,"                                self.nop, args = arg, status = arg));"
+"5	LINE	0
 	                        self._alloc(self._InternalTask(magic = SUB_MBR, group = ldr, cmd =
-|3,0,4,1,1,0,1611698904,"                        self._alloc(self._InternalTask(magic = SUB_MBR, group = ldr, cmd ="
-"5	CHAR	0
+|3,0,5,1,1,0,1611698904,"                        self._alloc(self._InternalTask(magic = SUB_MBR, group = ldr, cmd ="
+"6	CHAR	0
 	not libdogs.is_net_valid_arg(ldr.args,
 	                            arg.cause)
-|3,0,5,0,2,0,1611698725,"not libdogs.is_net_valid_arg(ldr.args,","                            arg.cause)"
-"6	LINE	0
-	            arg.setdefault(libdogs.P_CRSCODE, st[simple_dog.STAT_ST].msg);
-|3,0,6,1,1,0,1611698495,"            arg.setdefault(libdogs.P_CRSCODE, st[simple_dog.STAT_ST].msg);"
+|3,0,6,0,2,0,1611698725,"not libdogs.is_net_valid_arg(ldr.args,","                            arg.cause)"
 "7	LINE	0
+	            arg.setdefault(libdogs.P_CRSCODE, st[simple_dog.STAT_ST].msg);
+|3,0,7,1,1,0,1611698495,"            arg.setdefault(libdogs.P_CRSCODE, st[simple_dog.STAT_ST].msg);"
+"8	LINE	0
 	        tfp = open(
 	                "stat-%s.txt" % (time.asctime(),),
 	                "w"
 	                );
-|3,0,7,1,4,0,1611697856,"        tfp = open(","                \"stat-%s.txt\" % (time.asctime(),),","                \"w\"","                );"
-"8	LINE	0
-	                    yy = copy(usr);
-|3,0,8,1,1,0,1611696556,"                    yy = copy(usr);"
+|3,0,8,1,4,0,1611697856,"        tfp = open(","                \"stat-%s.txt\" % (time.asctime(),),","                \"w\"","                );"
 "9	LINE	0
-	                yield yy;
-|3,0,9,1,1,0,1611696432,"                yield yy;"
+	                    yy = copy(usr);
+|3,0,9,1,1,0,1611696556,"                    yy = copy(usr);"
 "a@	LINE	0
 	        tfp = open(
 	                "stat-%s" % (time.asctime(),),
@@ -945,30 +949,60 @@ $
 !PREFIX_ONLY	NUM	3
 
 # File marks:
-'0  250  46  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,48,250,46,1611706104,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'1  91  0  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,49,91,0,1610067213,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'2  62  0  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,50,62,0,1610054492,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'3  8  7  zipfile:/storage/emulated/0/Android/data/com.android.chrome/files/Download/PyDrive-master.zip::PyDrive-master/docs/quickstart.rst
-|4,51,8,7,1609680960,"zipfile:/storage/emulated/0/Android/data/com.android.chrome/files/Download/PyDrive-master.zip::PyDrive-master/docs/quickstart.rst"
-'4  768  0  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,52,768,0,1609326021,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'5  766  28  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,53,766,28,1609317697,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'6  1005  22  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,54,1005,22,1607814444,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'7  1004  19  /storage/sdcard0/2020/dogger/src/libdogs.py
-|4,55,1004,19,1607804141,"/storage/sdcard0/2020/dogger/src/libdogs.py"
-'8  245  16  /storage/sdcard0/2020/dogger/src/simple_dog.py
-|4,56,245,16,1607763710,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
-'9  299  4  /f/2020/dogger/src/dog_main.py
-|4,57,299,4,1607667214,"/f/2020/dogger/src/dog_main.py"
+'0  48  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,48,48,0,1612523472,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'1  1334  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,49,1334,13,1612522310,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'2  250  46  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,50,250,46,1611706104,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'3  91  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,51,91,0,1610067213,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'4  62  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,52,62,0,1610054492,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'5  8  7  zipfile:/storage/emulated/0/Android/data/com.android.chrome/files/Download/PyDrive-master.zip::PyDrive-master/docs/quickstart.rst
+|4,53,8,7,1609680960,"zipfile:/storage/emulated/0/Android/data/com.android.chrome/files/Download/PyDrive-master.zip::PyDrive-master/docs/quickstart.rst"
+'6  768  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,54,768,0,1609326021,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'7  766  28  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,55,766,28,1609317697,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'8  1005  22  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,56,1005,22,1607814444,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+'9  1004  19  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,57,1004,19,1607804141,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 
 # Jumplist (newest first):
+-'  48  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,48,0,1612523472,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  49  3  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,49,3,1612523465,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  965  51  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,965,51,1612523081,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  968  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,968,0,1612523062,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1334  13  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1334,13,1612523022,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  32  4  /storage/sdcard0/2020/dogger/src/simple_dog.py
+|4,39,32,4,1612523013,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
 -'  250  46  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,39,250,46,1611706104,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+|4,39,250,46,1612523013,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+-'  1  0  /storage/sdcard0/2020/dogger/src/tasker.py
+|4,39,1,0,1612523013,"/storage/sdcard0/2020/dogger/src/tasker.py"
+-'  15  48  /storage/sdcard0/2020/dogger/src/status.py
+|4,39,15,48,1612523013,"/storage/sdcard0/2020/dogger/src/status.py"
+-'  207  13  /storage/sdcard0/2020/dogger/src/ansm.m4
+|4,39,207,13,1612523013,"/storage/sdcard0/2020/dogger/src/ansm.m4"
+-'  157  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
+|4,39,157,0,1612523013,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
+-'  1  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
+|4,39,1,0,1612523013,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
+-'  1335  0  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1335,0,1612345285,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1329  75  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1329,75,1612345283,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  865  62  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,865,62,1612299693,"/storage/sdcard0/2020/dogger/src/libdogs.py"
+-'  1002  25  /storage/sdcard0/2020/dogger/src/libdogs.py
+|4,39,1002,25,1612299293,"/storage/sdcard0/2020/dogger/src/libdogs.py"
 -'  230  69  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,230,69,1611700898,"/storage/sdcard0/2020/dogger/src/dog_main.py"
 -'  227  41  /storage/sdcard0/2020/dogger/src/dog_main.py
@@ -987,14 +1021,6 @@ $
 |4,39,91,0,1611676575,"/storage/sdcard0/2020/dogger/src/dog_main.py"
 -'  3  13  /storage/sdcard0/2020/dogger/src/tasker.py
 |4,39,3,13,1611676575,"/storage/sdcard0/2020/dogger/src/tasker.py"
--'  15  48  /storage/sdcard0/2020/dogger/src/status.py
-|4,39,15,48,1611676574,"/storage/sdcard0/2020/dogger/src/status.py"
--'  207  13  /storage/sdcard0/2020/dogger/src/ansm.m4
-|4,39,207,13,1611676574,"/storage/sdcard0/2020/dogger/src/ansm.m4"
--'  157  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
-|4,39,157,0,1611676574,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
--'  1  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
-|4,39,1,0,1611676574,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
 -'  62  0  /storage/sdcard0/2020/dogger/src/dog_main.py
 |4,39,62,0,1610067182,"/storage/sdcard0/2020/dogger/src/dog_main.py"
 -'  902  8  /storage/sdcard0/2020/dogger/src/dog_main.py
@@ -1109,59 +1135,27 @@ $
 |4,39,362,21,1607662927,"/f/2020/dogger/src/dog_main.py"
 -'  293  21  /f/2020/dogger/src/dog_main.py
 |4,39,293,21,1607662634,"/f/2020/dogger/src/dog_main.py"
--'  442  33  /f/2020/dogger/src/dog_main.py
-|4,39,442,33,1607662593,"/f/2020/dogger/src/dog_main.py"
--'  337  21  /f/2020/dogger/src/dog_main.py
-|4,39,337,21,1607662587,"/f/2020/dogger/src/dog_main.py"
--'  679  31  /f/2020/dogger/src/dog_main.py
-|4,39,679,31,1607662584,"/f/2020/dogger/src/dog_main.py"
--'  476  52  /f/2020/dogger/src/dog_main.py
-|4,39,476,52,1607662084,"/f/2020/dogger/src/dog_main.py"
--'  526  4  /f/2020/dogger/src/dog_main.py
-|4,39,526,4,1607662028,"/f/2020/dogger/src/dog_main.py"
--'  514  0  /f/2020/dogger/src/dog_main.py
-|4,39,514,0,1607662018,"/f/2020/dogger/src/dog_main.py"
--'  513  0  /f/2020/dogger/src/dog_main.py
-|4,39,513,0,1607662017,"/f/2020/dogger/src/dog_main.py"
--'  485  0  /f/2020/dogger/src/dog_main.py
-|4,39,485,0,1607661993,"/f/2020/dogger/src/dog_main.py"
--'  482  155  /f/2020/dogger/src/dog_main.py
-|4,39,482,155,1607661980,"/f/2020/dogger/src/dog_main.py"
--'  494  15  /f/2020/dogger/src/dog_main.py
-|4,39,494,15,1607661980,"/f/2020/dogger/src/dog_main.py"
--'  314  0  /f/2020/dogger/src/dog_main.py
-|4,39,314,0,1607661446,"/f/2020/dogger/src/dog_main.py"
--'  723  0  /f/2020/dogger/src/dog_main.py
-|4,39,723,0,1607661436,"/f/2020/dogger/src/dog_main.py"
--'  302  0  /f/2020/dogger/src/dog_main.py
-|4,39,302,0,1607661412,"/f/2020/dogger/src/dog_main.py"
--'  557  0  /f/2020/dogger/src/dog_main.py
-|4,39,557,0,1607661404,"/f/2020/dogger/src/dog_main.py"
--'  333  32  /f/2020/dogger/src/dog_main.py
-|4,39,333,32,1607661303,"/f/2020/dogger/src/dog_main.py"
--'  336  4  /f/2020/dogger/src/dog_main.py
-|4,39,336,4,1607661291,"/f/2020/dogger/src/dog_main.py"
 
 # History of marks within files (newest to oldest):
 
 > /storage/sdcard0/2020/dogger/src/qstwriter.py
-	*	1611676574	0
+	*	1612523013	0
 	"	157	0
 
 > /storage/sdcard0/2020/dogger/src/ansm.m4
-	*	1611676574	0
+	*	1612523013	0
 	"	207	13
 
 > /storage/sdcard0/2020/dogger/src/status.py
-	*	1611676574	0
+	*	1612523013	0
 	"	15	48
 
 > /storage/sdcard0/2020/dogger/src/tasker.py
-	*	1611697077	0
+	*	1612523013	0
 	"	1	0
 
 > /storage/sdcard0/2020/dogger/src/dog_main.py
-	*	1611706094	0
+	*	1612523013	0
 	"	250	46
 	^	250	46
 	.	250	0
@@ -1251,22 +1245,40 @@ $
 	x	1191	19
 	y	254	15
 
-> /storage/sdcard0/2020/dogger/src/dropbox.py
-	*	1611679333	0
-	"	1	7
-	^	90	0
-	.	83	29
-	+	4	29
-	+	28	28
-	+	44	27
-	+	62	19
-	+	83	29
+> /storage/sdcard0/2020/dogger/src/simple_dog.py
+	*	1612523013	0
+	"	32	4
+	^	174	32
+	.	32	0
+	+	207	15
+	+	207	0
+	+	183	0
+	+	194	0
+	+	172	36
+	+	171	73
+	+	171	93
+	+	173	74
+	+	171	57
+	+	172	0
+	+	171	53
+	+	178	63
+	+	179	0
+	+	178	68
+	+	179	0
+	+	176	0
+	+	177	0
+	+	179	0
+	+	174	32
+	+	174	29
+	+	175	0
+	+	173	80
+	+	32	0
+	z	171	34
 
 > /storage/sdcard0/2020/dogger/src/libdogs.py
-	*	1611700821	0
-	"	1025	25
-	^	1022	43
-	.	1022	43
+	*	1612523466	0
+	"	48	0
+	.	49	0
 	+	1665	0
 	+	1666	36
 	+	1669	0
@@ -1296,42 +1308,15 @@ $
 	+	1023	78
 	+	1024	29
 	+	1022	43
+	+	1335	0
+	+	968	0
+	+	49	0
 	y	1023	15
 
 > /storage/sdcard0/2020/dogger/src/setups/update.py
-	*	1611676575	0
+	*	1612523014	0
 	"	75	0
 
 > /storage/sdcard0/2020/chrome/webdriver/base/logging.h
-	*	1611676575	0
+	*	1612523014	0
 	"	593	0
-
-> /storage/sdcard0/2020/dogger/src/simple_dog.py
-	*	1611700840	0
-	"	32	4
-	^	174	32
-	.	32	0
-	+	207	15
-	+	207	0
-	+	183	0
-	+	194	0
-	+	172	36
-	+	171	73
-	+	171	93
-	+	173	74
-	+	171	57
-	+	172	0
-	+	171	53
-	+	178	63
-	+	179	0
-	+	178	68
-	+	179	0
-	+	176	0
-	+	177	0
-	+	179	0
-	+	174	32
-	+	174	29
-	+	175	0
-	+	173	80
-	+	32	0
-	z	171	34
