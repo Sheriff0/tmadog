@@ -46,7 +46,7 @@ def getkey(retry = False):
     ts = None;
     win = None;
     ret = CHK_FAIL;
-    msg = "Please input your key" if not retry else "Invalid or expired key.  Please try again.";
+    msg = "Please input your key" if not retry else "Invalid or expired key. Please input a key.";
 
     def _quit():
         nonlocal ret, win;
@@ -111,6 +111,7 @@ def getkey(retry = False):
         ts = dropbox.alloc_key(user_key);
     except KeyboardInterrupt:
         ts = None;
+        ret = CHK_QUIT;
 
     if win:
         win.destroy();
@@ -168,32 +169,40 @@ def read_keyfile(fi, base = 8):
 
     return st;
 
+def key_init(pkg_name, retry = False):
+
+    pkg_dir = pathlib.Path(pkg_name).parent;
+    keyf = pkg_dir.joinpath(".dogger");
+    kt = getkey(retry);
+
+    if not kt:
+        return kt;
+
+    kfile = pkg_dir.joinpath("." + str(kt));
+    write_keyfile(str(kfile), json.dumps(kt));
+    write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
+    return kt;
+
 def checks(pkg_name, retry = False):
     pkg_dir = pathlib.Path(pkg_name).parent;
-
     keyf = pkg_dir.joinpath(".dogger");
 
     if not keyf.exists():
-        kt = getkey(retry);
-
-        if not kt:
-            return kt;
-
-        kfile = pkg_dir.joinpath("." + str(kt));
-        write_keyfile(str(kfile), json.dumps(kt));
-        write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
-        return kt;
+        return key_init(pkg_name, retry);
 
     else:
         kfile = read_keyfile(str(keyf));
+        
+        kres = CHK_FAIL;
 
         try:
             lparam = json.loads(read_keyfile(kfile));
             key = pathlib.Path(kfile).stem[1:];
-            return dropbox.KeyInfo(key, lparam);
+            kres = dropbox.KeyInfo(key, lparam);
         except BaseException:
             print("invalid key file");
-            return CHK_QUIT;
+
+        return key_init(pkg_name, retry = True) if kres != CHK_SUCCESS else kres;
 
 
 
