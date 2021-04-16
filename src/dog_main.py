@@ -198,11 +198,11 @@ def checks(pkg_name, retry = False):
         try:
             lparam = json.loads(read_keyfile(kfile));
             key = pathlib.Path(kfile).stem[1:];
-            kres = dropbox.KeyInfo(key, lparam);
+            return dropbox.KeyInfo(key, lparam);
         except BaseException:
             print("invalid key file");
 
-        return key_init(pkg_name, retry = True) if kres != CHK_SUCCESS else kres;
+            return key_init(pkg_name, retry = True) if kres != CHK_SUCCESS else kres;
 
 
 
