@@ -9,7 +9,6 @@ SRC = src
 SHELL := $(shell which bash)
 
 M4_DEPS = ansm.m4 \
-	   cookie_parse.m4 \
 	   dbm.m4 \
 	   navigation.m4 \
 	   scrm.m4 \
@@ -22,6 +21,7 @@ PY_DEPS = dog_main.py \
 	  submit.py \
 	  tasker.py \
 	  dropbox.py \
+	  cookie_parse.py \
 
 
 M4FLAGS = -I $(SRC) -I .

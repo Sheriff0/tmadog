@@ -29,6 +29,7 @@ import status
 import logging
 import chardet
 import urllib3
+import time
 
 copy = copy.copy if sys.implementation.version.minor < 7 else copy.deepcopy 
 
@@ -1108,7 +1109,11 @@ def read_file_text(fi):
     return fbin.decode(encoding = enc["encoding"]);
 
 def session_from_cookies (url, cookie_file):
-    fi = pathlib.Path(cookie_file);
+    # use a unique string else 'fi' defaults to the current dir which always
+    # exists.
+
+    fi = pathlib.Path(cookie_file if cookie_file else str(time.time()));
+
     if fi.exists():
         logger.info("reading cookie file %s" % (cookie_file,));
         cookie_str = read_file_text(cookie_file);
@@ -1117,32 +1122,35 @@ def session_from_cookies (url, cookie_file):
         
 
     else:
-        cookie_str = cookie_file;
+        cookie_str = str(cookie_file);
 
-    cookt = cookie_parse.bake_cookies (cookie_str, url);
+    oheaders = [
+            "User-Agent",
+            "Accept",
+            "Accept-Language",
+            "Accept-Encoding",
+            "Connection",
+            "Upgrade-Insecure-Requests",
+            ];  
+
+    session = requests.Session ()
+
+    cookt = cookie_parse.bake_cookies (cookie_str, url, others = oheaders);
 
     if not cookt:
-        logger.info("no cookies found... really hungry");
-        return status.Status(status.S_ERROR, "no cookies", cookt);
+        logger.info("no cookies found...");
+        session.headers = cloudscraper.user_agent.User_Agent().headers;
 
-    logger.info("got cookies created by %s", cookt [0]['User-Agent']);
-    session = requests.Session ()
-    session.headers = requests.structures.OrderedDict(
-            (
-                ("Host", None),
-                ("Connection", "keep-alive"),
-                ("Upgrade-Insecure-Requests", "1"),
-                ("User-Agent", cookt [0]['User-Agent']),
-                (
-                    "Accept",
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                    ),
-                ("Accept-Language", "en-US,en;q=0.9"),
-                ("Accept-Encoding", "gzip, deflate"),
-                )
-            )
+    else:
+        logger.info("got cookies created by %s", cookt [0]['User-Agent']);
 
-    session.cookies = cookt [1]
+        session.headers = requests.structures.OrderedDict();
+        
+        for hdr in oheaders:
+            if hdr in cookt[0]:
+                session.headers[hdr] = cookt[0][hdr];
+
+        session.cookies = cookt [1]
 
 
     return session

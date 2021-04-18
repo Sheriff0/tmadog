@@ -23,7 +23,8 @@ def bake_cookies (
         f_or_str,
         url,
         targets = [r'.*?'],
-        method = 'GET'
+	others = [],
+        method = 'GET',
         ):
 
     def info ():
@@ -39,9 +40,10 @@ def bake_cookies (
     headers = parse_cook (f_or_str, targets.copy ())
 
     if headers:
-        m = re.search (r'(?<![_-])(user-agent\b)[^-_]*?(?::|=|\n.*?[:|=])\W*([^"\'\n\\]+)', f_or_str, re.I)
-        if m:
-            headers [m.group (1)] = m.group (2)
+        for other in others:
+            m = re.search (r'(?<![_-])(' + other + r'\b)[^-_]*?(?::|=|\n.*?[:|=])\W*([^"\'\n\\]+)', f_or_str, re.I)
+            if m:
+                headers [m.group (1)] = m.group (2)
 
         req = urllib.request.Request (url.geturl (), origin_req_host = url.hostname,
                 method = method)
