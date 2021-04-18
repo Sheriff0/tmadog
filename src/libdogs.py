@@ -644,7 +644,7 @@ def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
 
     while retry:
         try:
-            lreq, fro = nav("tma_page")[:-1];
+            lreq, fro = nav("profile_page")[:-1];
             referer = fro.url;
 
             kwargs.setdefault (
@@ -655,8 +655,11 @@ def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
             lres = nav.session.request(**lreq , **kwargs)
             lres.raise_for_status();
             ## will raise if not logged-in
+            nav.cache["profile_page"] = lres;
+            # to be sure we're truly logged-in
+            nav("logout_page")[:-1];
+
             logger.info("lazy_login(): sucessfully logged-in %s", nav.keys[P_USR]);
-            nav.cache["tma_page"] = lres;
             return nav;
 
         except (DogTypeError, requests.HTTPError) as err:
@@ -1641,13 +1644,13 @@ def cache_put(data, page, sl = None):
         fro_page = cdir.joinpath(page + "%s.html" % (sl,));
 
         if not target.exists() or not fro_page.exists() or CACHE_OVERWRITE:
-            cont = {
-                    "to": data[0],
-                    };
+            cont = requests.structures.OrderedDict(
+                    ("to", data[0]),
+                    );
 
-            fro = {};
-            fro["content"] = str(fro_page);
+            fro = requests.structures.OrderedDict();
             fro["url"] = data[1].url;
+            fro["content"] = str(data[1].text);
             cont["fro"] = fro;
 
             target.write_text(json.dumps(cont, default = dict, indent = 4));
@@ -1666,14 +1669,16 @@ def cache_get(page, sl = None):
 
     if not target.exists():
         return None;
+    
+    # res is initialized based on its implementation on the 'requests' library,
+    # this ain't sustainable
 
     res = requests.Response();
     res.status_code = 200;
     res.reason = "OK";
 
     if sl == None:
-        res.content = target.read_bytes();
-        res.text = read_file_text(target);
+        res._content = target.read_bytes();
         res.request = requests.Request();
         return res;
 
@@ -1684,11 +1689,10 @@ def cache_get(page, sl = None):
 
         res.url = data["fro"]["url"];
 
-        if "content" in data["fro"] and data["fro"]["content"].startswith(page):
-            fro_page = cdir.joinpath(data["fro"]["content"]);
-            if fro_page.exists():
-                res.content = fro_page.read_bytes();
-                res.text = read_file_text(fro_page);
+        if "content" in data["fro"]:
+            # too general encoding
+            res._content = bytes(data["fro"]["content"], encoding = "utf-8");
+
         return [data["to"], res];
 
 
