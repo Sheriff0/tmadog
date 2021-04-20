@@ -614,7 +614,7 @@ def gf(eprof, win, cb = None):
 
 def gui_get_argv(pscr, parser, *pargs):
 
-    import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font
+    import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
 
     psr = libdogs.DogCmdParser ();
 
@@ -631,6 +631,20 @@ def gui_get_argv(pscr, parser, *pargs):
     arr = [];
 
     scr = tkinter.ttk.Frame(pscr);
+    
+    pscr.option_add('*tearOff', tkinter.FALSE);
+    menu = tkinter.Menu(pscr);
+    elp = tkinter.Menu(menu);
+    elp.add_command(label = 'Cookie file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    elp.add_command(label = 'TMA file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!"));
+    elp.add_command(label = 'WEBSITE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    elp.add_command(label = 'TMA NO', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    elp.add_command(label = 'COURSE CODE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    
+    menu.add_cascade(menu = elp, label = "Help");
+
+    pscr["menu"] = menu;
+
     scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
 
     ready = ARG_INCOMPLETE;
@@ -651,7 +665,7 @@ def gui_get_argv(pscr, parser, *pargs):
                     continue;
 
                 v = a["val"].get();
-                if v == a.get("hint", ""):
+                if a.get("ign_hint", True) == False and v == a.get("hint", ""):
                     ready_btn["state"] = "disabled";
                     return;
 
@@ -720,14 +734,14 @@ def gui_get_argv(pscr, parser, *pargs):
             "hint": "file downloaded from a browser",
             "val": tkinter.StringVar(),
             "name": "COOKIE FILE",
-            "ign_hint": False
+            "ign_hint": True
             };
 
     cookies["val"].set(cookies["hint"] if not args.cookies else args.cookies);
 
-    cookies["wgt"] = tkinter.Entry(argv_frame, textvariable = cookies["val"], validate = "key", validatecommand = (scr.register(validate_entry(cookies)), '%P'));
+    cookies["wgt"] = tkinter.Entry(argv_frame, textvariable = cookies["val"]);
     #cookies["wgt"].bind("<FocusOut>", hinter(cookies, check));
-    cookies["wgt"].bind("<FocusIn>", gf(cookies, scr, check));
+    cookies["wgt"].bind("<FocusIn>", gf(cookies, scr));
 
     tma = {
             "val": tkinter.StringVar(),
@@ -1009,7 +1023,8 @@ def prep_hypen(args, idx):
 
     return argr;
 
-def gui_start(parser, pkg_name, logger, wlist_h, *argv, **kwargs):
+def gui_start(parser, pkg_name, logger, *argv, **kwargs):
+    wlist_h = kwargs.pop("wlist_h", None);
     if wlist_h and not dropbox.fetch_keyinfo(str(wlist_h)):
         print("Please renew your package as the current package has expired");
         return False;
