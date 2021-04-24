@@ -30,6 +30,7 @@ import nourc
 
 import uuid
 import dropbox
+import threading
 
 VERSION = 1.00;
 GEOMETRY = '400x400+100+100';
@@ -39,6 +40,30 @@ CANONICAL_URL = "https://www.nouonline.net";
 CHK_QUIT = False;
 CHK_FAIL = None;
 CHK_SUCCESS = dropbox.KeyInfo;
+
+class DummyQueue:
+    def __init__(self, *tasks):
+        self._queue = [];
+        self._queue.extend(tasks);
+
+    def pop(self, tcount = 1):
+        lres = None;
+
+        while tcount > 0:
+            # Perharps, to make atomic the checking of the queue and popping of a task.
+            try:
+                tcall = self._queue.pop();
+                lres = tcall();
+            except IndexError:
+                pass;
+
+            tcount -= 1;
+        
+        return lres;
+
+    def put(self, task, *pargs, **kwargs):
+        return task();
+
 
 def getkey(retry = False):
 
@@ -88,7 +113,7 @@ def getkey(retry = False):
         win.mainloop();
         user_key = ukey.get();
 
-        dropbox.libdogs.init_hooks(err_hook = unknown_err_handler);
+        dropbox.libdogs.init_hooks(err_hook = unknown_err_handler());
 
         win = tkinter.Tk();
         win.withdraw();
@@ -612,6 +637,32 @@ def gf(eprof, win, cb = None):
     return _gf;
 
 
+class Gui_Argv:
+    def __init__(self, pscr, *pargs):
+        import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
+
+        self.psr = libdogs.DogCmdParser ();
+
+        self.psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
+
+        self.psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
+
+        self.psr.add_argument ('--cookies');
+
+        self.psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
+
+        arr = [];
+
+        scr = tkinter.ttk.Frame(pscr);
+        
+        scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
+
+        ready = ARG_INCOMPLETE;
+
+        ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
+
+
+
 def gui_get_argv(pscr, parser, *pargs):
 
     import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
@@ -915,21 +966,25 @@ def GuiLogger(scr, logger, cb = None, height = 30, width = 100):
     return _Logger();
 
 
-def gui_getcookie(default = None, attr = None, cb = None):
+def gui_getcookie(default = None, attr = None, queue = DummyQueue(), cb = None):
 
     import tkinter.messagebox, tkinter.filedialog
 
     def _getcookie(nav):
         print("\n\nCookies have expired. Check the main screen to resolve this.\n\n");
-        res = tkinter.messagebox.askyesnocancel(title = "Cookie File",
+
+        task = Task(tkinter.messagebox.askyesnocancel, title = "Cookie File",
                 icon = "question", message = "Cookies needed. Do you want to continue with your previous cookie file", detail = "click no to choose a file, click yes to use previous file. click cancel to exit the program");
 
+        queue.put(task);
+        res = task.wait();
 
         if res == None:
             raise KeyboardInterrupt();
 
         if not res:
-            res = tkinter.filedialog.askopenfilename(title = "Cookie File");
+            task = Task(tkinter.filedialog.askopenfilename, title = "Cookie File");
+            res = task.wait();
 
         if not res or res == True:
             if default and not isinstance(default, str) and attr:
@@ -958,20 +1013,25 @@ def gui_getcookie(default = None, attr = None, cb = None):
     return _getcookie
 
 
-def unknown_err_handler(err, *pargs):
-    import tkinter.messagebox, tkinter.filedialog
+def unknown_err_handler(queue = DummyQueue()):
+    def _unknown_err_handler(err, *pargs):
+        import tkinter.messagebox, tkinter.filedialog
 
-    print("\n\nAn unknown, possibly network, error occured. Check the main screen to resolve this.\n\n");
+        print("\n\nAn unknown, possibly network, error occured. Check the main screen to resolve this.\n\n");
+        
+        task = Task(tkinter.messagebox.askretrycancel, title = "Error",
+                icon = "error", message = "An error occured", detail = "%s" % (err,));
 
-    res = tkinter.messagebox.askretrycancel(title = "Error",
-            icon = "error", message = "An error occured", detail = "%s" % (err,));
+        queue.put(task);
+        res = task.wait();
 
 
-    if res:
-        return status.Status(status.S_OK, "continue action", err);
-    else:
-        raise KeyboardInterrupt();
-
+        if res:
+            return status.Status(status.S_OK, "continue action", err);
+        else:
+            raise KeyboardInterrupt();
+    
+    return _unknown_err_handler;
 
 
 def iter_file_argv(argf):
@@ -1025,9 +1085,11 @@ def prep_hypen(args, idx):
 
 def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     wlist_h = kwargs.pop("wlist_h", None);
-    if wlist_h and not dropbox.fetch_keyinfo(str(wlist_h)):
-        print("Please renew your package as the current package has expired");
-        return False;
+    queue = kwargs.pop("queue", None);
+
+    #if wlist_h and not dropbox.fetch_keyinfo(str(wlist_h)):
+    #    print("Please renew your package as the current package has expired");
+    #    return False;
 
     pkg_name = pathlib.Path(pkg_name);
 
@@ -1181,9 +1243,9 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     task = dog._InternalTask(cmd = None, args = args);
     stime = time.time();
 
-    getcookie = gui_getcookie(default = args, attr = "cookies", cb = update_cookie);
+    getcookie = gui_getcookie(default = args, attr = "cookies", queue = queue, cb = update_cookie);
 
-    err_handle = unknown_err_handler;
+    err_handle = unknown_err_handler(queue = queue);
 
     libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
 
@@ -1207,9 +1269,39 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     return (dog, args, argv);
 
 
+class RNone:
+    def __init__(self):
+        pass;
+
+class Task:
+    def __init__(self, tcall, *pargs, **kwargs):
+        self.tcall = tcall;
+        self.pargs = pargs;
+        self.kwargs = kwargs;
+        self.result = RNone();
+
+    def __call__(self):
+        if not self:
+            self.result = self.tcall(*self.pargs, **self.kwargs);
+
+        return self.result;
+
+    def __bool__(self):
+        return not isinstance(self.result, RNone);
+
+    def wait(self):
+        while not self:
+            pass;
+
+        return self.result;
+
+
+
+
 def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
+    import queue;
 
 
     pkg_name = pathlib.Path(pkg_name);
@@ -1245,20 +1337,19 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     args = None;
     dog = None;
     frame = None;
-
+    rez = None;
+    
     stdscr = tkinter.Tk();
     stdscr.geometry(GEOMETRY);
     stdscr.title("TMADOG version %s" % (VERSION,));
+    
+    sig = tkinter.StringVar();
+    tqueue = queue.Queue();
 
-    while True:
-        if frame:
-            frame.destroy();
-        argv, frame = gui_get_argv(stdscr, parser, *argv);
-        if not argv:
-            break;
-
+    def runner():
+        nonlocal rez, argv, dog, args;
         rez = gui_start(parser, pkg_name, logger, *argv, dog = dog,
-                wlist_h = wlist_h);
+                wlist_h = wlist_h, queue = tqueue);
         if rez:
             dog, args, argv = rez;
 
@@ -1268,6 +1359,43 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
             if stat_tab:
                 write_stat_raw(stat_tab, args.stats);
+
+        sig.set("Done");
+    
+
+    class _XQueue:
+        def __call__(self):
+            return self.clear_queue();
+        
+        @property
+        def __name__(self):
+            return self.clear_queue.__name__;
+
+        def clear_queue(self):
+            try:
+                print("clearing tasks");
+                task = tqueue.get(block = False);
+                task();
+                print("task cleared");
+                tqueue.task_done();
+            except queue.Empty:
+                pass;
+                print("no task");
+    
+            stdscr.after(5000, self.clear_queue);
+
+    stdscr.after(5000, _XQueue());
+
+    while True:
+        if frame:
+            frame.destroy();
+        argv, frame = gui_get_argv(stdscr, parser, *argv);
+        if not argv:
+            break;
+        
+        th = threading.Thread(target = runner, daemon = True);
+        th.start();
+        stdscr.wait_variable(sig); 
 
     stdscr.destroy();
 
