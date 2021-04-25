@@ -106,30 +106,18 @@ def get_local_file(iF, win, cb = None):
 
 ## Factory functions for the various interface types
 
-def create_file_if(stdscr, name, options, default = 0, hint = None):
-    class _SIF(Interface):
-        def __init__(self, widget, var, name = None, ready = False):
-        
-            self.widget = widget;
-            self.ready = ready;
-            self.var = var;
-            self.name = name;
-
-        def get_value(self):
-            return self.var.get();
-
-        def set_value(self, value):
-            return self.var.set(str(value));
-    var = tkinter.StringVar();
+def create_file_if(stdscr, name, options, default = None, hint = None,
+        def_on_empty = False):
     
-    name_w = IfName(name, stdscr); #justify = tkinter.LEFT;
-    
-    widget = tkinter.Entry(stdscr, textvariable = var);
+    iF = create_string_if(
+            stdscr,
+            name,
+            default = default,
+            hint = hint,
+            def_on_empty = def_on_empty,
+            );
 
-
-    iF = _SIF(widget, var, name_w, False);
-
-    widget.bind("<FocusIn>", get_local_file(iF, stdscr));
+    iF.widget.bind("<FocusIn>", get_local_file(iF, stdscr));
 
     return iF;
 
@@ -226,10 +214,15 @@ def create_string_m_if():
 
 
 class Gui2Argv:
+    IDX_IF = 0;
+    IDX_PTR = 1;
+
     def __init__(self, stdscr, *ifds):
         self.ifds = ifds;
         self.ifs = [];
+        self._ready = False;
         self.destroyed = False;
+        self.no_required = True;
         self.frame = tkinter.ttk.Frame(stdscr);
 
         #to enable fast scan of required inputs,
@@ -243,7 +236,8 @@ class Gui2Argv:
                 chk = self.check(ifd.get("check", False));
                 iF = create_string_if(
                         stdscr,
-                        ifd.get("name"),
+                        ## name can be an empty string
+                        ifd.get("name", ""),
                         ifd.get("default", None),
                         ifd.get("hint", None),
                         chk,
@@ -253,25 +247,34 @@ class Gui2Argv:
             elif typ == IF_SPEC_FILE or typ == IF_FILE:
                 iF = create_file_if(
                         stdscr,
-                        ifd.get("name"),
+                        ## name can be an empty string
+                        ifd.get("name", ""),
                         ifd.get("default", None),
                         ifd.get("hint", None),
+                        ifd.get("default", None) and ifd.get("required", False),
                         );
 
             elif typ == IF_OPTIONS:
                 iF = create_options_if(
                         stdscr,
-                        ifd.get("name"),
+                        ## name can be an empty string
+                        ifd.get("name", ""),
                         ifd.get("choices"),
                         ifd.get("default", None),
                         ifd.get("hint", None),
                         );
 
             if ifd.get("required", False):
-                ifs[rptr][1] = ptr;
+                ifs[rptr][IDX_PTR] = ptr;
                 rptr = ptr;
 
-            self.ifs.append([iF, ptr]);
+            if ifd.get("required", False):
+                self.no_required = False;
+
+            tup = [0, 0];
+            tup[IDX_PTR] = ptr;
+            tup[IDX_IF] = iF;
+            self.ifs.append(tup);
 
     def show(self):
         if not self.destroyed:
@@ -287,12 +290,12 @@ class Gui2Argv:
     
     def hide(self):
         if not self.destroyed:
-            raise KeyError("This instance has be destroyed and unusable");
+            raise KeyError("This instance has been destroyed and unusable");
         return self.frame.place_forget();
 
     def destroy(self):
         if not self.destroyed:
-            raise KeyError("This instance has be destroyed and unusable");
+            raise KeyError("This instance has been destroyed and unusable");
         
         self.destroyed = True;
         return self.frame.destroy();
@@ -305,31 +308,76 @@ class Gui2Argv:
         pass;
 
     def get_cmdline(self):
-        pass;
+        cmdline = "";
+
+        for idx, ifd in enumerate(self.ifds):
+            if not self.ifs[idx][IDX_IF].ready:
+                continue;
+
+            cmdline += "{prefix}{name}{value}{suffix} ".format(
+                    prefix = ifd.get("prefix", ""),
+                    name = ifd.get("name", ""),
+                    value = self.ifs[idx][IDX_IF].get_value(),
+                    ifd.get("suffix", ""),
+                    );
+
+        return cmdline[:-1];
+
+    def get_argv(self):
+        return self.get_cmdline().split();
+    
+    
+    def _chk_ready(self):
+        for i, if_ptr_tup in enumerate(self.ifs):
+            ifd_cur = self.ifds[i];
+            if not ifd_cur.get("required", False):
+                continue;
+
+
+            ptr_cur = i;
+            ptr_nxt = if_ptr_tup[IDX_PTR];
+
+            while True:
+                if not self.ifs[ptr_cur][IDX_IF].ready or not self.ifs[ptr_nxt][IDX_IF].ready:
+                    self._ready = False;
+                    return self._ready;
+                
+                if ptr_cur == ptr_nxt:
+                    return self._ready;
+
+                ## because we move two steps(check two interfaces) in any one pass
+                ptr_cur = self.ifs[ptr_nxt][IDX_PTR];
+                ptr_nxt = self.ifs[ptr_cur][IDX_PTR];
+            
+            #finally, after all interface(s) checked
+            self._ready = True;
+
+        return self._ready;
+    
+    @property
+    def ready(self):
+        return self._chk_ready();
 
     def check(self, chk = False, *pargs, **kwargs):
         def _chk(iF, value):
             if callable(chk):
                 iF.ready = chk(value);
 
-            else:
+            elif chk:
                 iF.ready = bool(value);
 
+
             if not iF.ready:
-                self.ready = False;
+                self._ready = False;
                 return False;
             
+            elif self.no_required:
+                self._ready = True;
+                return iF.ready;
             
-            ## if the first ifd is required, account for it
-
-            ready = (self.ifds[0].get("required", False) and self.ifs[0].ready) or self.ifs[0].ready;
-
-            if not ready:
-                self.ready = False;
-            for i, ptr in self.ifs:
-                ifd = self.ifds[ptr];
-                if not ifd.get("required", False):
-                    continue;
+            self._chk_ready();
+            
+            return iF.ready;
 
 
         return _chk;
