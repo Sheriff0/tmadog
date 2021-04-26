@@ -22,6 +22,7 @@ PY_DEPS = dog_main.py \
 	  tasker.py \
 	  dropbox.py \
 	  cookie_parse.py \
+	  dog_idl.py \
 
 
 M4FLAGS = -I $(SRC) -I .

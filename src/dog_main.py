@@ -654,18 +654,27 @@ def mkmenu(pscr):
 
 def factory_gui2argv(pscr, parser, *pargs):
     import dog_idl
-    
+   
+    FROM_TMAFILE = "From TMA file";
+    FROM_CMDLINE = "From Command line";
+
+    pseudo_values = {
+            FROM_CMDLINE: None,
+            FROM_TMAFILE: None,
+            };
+
     psr = libdogs.DogCmdParser ();
 
-    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
+    psr.add_argument ('--tma', action = libdogs.AppendList, default = ["1"]);
 
-    psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
+    psr.add_argument ('--url', action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
 
     psr.add_argument ('--cookies');
 
-    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
+    psr.add_argument ('--crscode', action = libdogs.AppendList);
 
     arg0, rest0 = psr.parse_known_args(pargs);
+
 
     ## to grab '@ '-prefixed tma files
     # NOTE: this is an argparse hack, things could break in future versions of
@@ -683,54 +692,94 @@ def factory_gui2argv(pscr, parser, *pargs):
         if not af.startswith(parser.fromfile_prefix_chars):
             rest2.append(af);
             continue;
+        if not isinstance(argf.tmafile, list):
+            argf.tmafile = [];
+
         argf.tmafile.append(af[1:]);
 
+    # IF_OPTIONS-typed inputs are positioned at an odd index(i.e (index%2) ==1).
+    # this is to ease some sort of future processing.
 
     ifds = [
             {
-                "default": arg0.url.pop(0),
-                "name": "WEBSITE",
-                "required": True,
-                "prefix": "--url ",
+                dog_idl.IFD_DEFAULT: arg0.url,
+                dog_idl.IFD_NAME: "WEBSITE",
+                dog_idl.IFD_REQUIRED: True,
+                dog_idl.IFD_PREFIX: "--url ",
                 },
 
             {
-                "name": "COURSE-CODE",
-                "choices": ("All", "From TMA file"),
-                "required": True,
-                "prefix": "--crscode ",
-                "type": dog_idl.IF_OPTIONS,
+                dog_idl.IFD_DEFAULT: arg0.crscode,
+                dog_idl.IFD_NAME: "COURSE-CODE",
+                dog_idl.IFD_CHOICES: ("All", FROM_TMAFILE, FROM_CMDLINE),
+                dog_idl.IFD_REQUIRED: True,
+                dog_idl.IFD_PREFIX: "--crscode ",
+                dog_idl.IFD_TYPE: dog_idl.IF_OPTIONS,
+                dog_idl.IFD_PSEUDOS: pseudo_values,
                 },
 
             ## tmafile
             {
-                "name": "TMA File",
-                "hint": "File containing matric numbers and passwords",
-                "required": True,
-                "prefix": parser.fromfile_prefix_chars,
-                "type": dog_idl.IF_FILE,
+                dog_idl.IFD_DEFAULT: argf.tmafile,
+                dog_idl.IFD_NAME: "TMA File",
+                dog_idl.IFD_HINT: "File containing matric numbers and passwords",
+                dog_idl.IFD_REQUIRED: True,
+                dog_idl.IFD_PREFIX: parser.fromfile_prefix_chars,
+                dog_idl.IFD_TYPE: dog_idl.IF_FILE,
                 },
 
             {
-                "hint": "file downloaded from a browser",
-                "name": "COOKIE-FILE",
-                "prefix": "--cookies ",
-                "type": dog_idl.IF_FILE,
+                dog_idl.IFD_DEFAULT: arg0.tma,
+                dog_idl.IFD_CHOICES: ("1", "2", "3", FROM_TMAFILE, FROM_CMDLINE),
+                dog_idl.IFD_NAME: "TMA NO.",
+                dog_idl.IFD_REQUIRED: True,
+                dog_idl.IFD_PREFIX: "--tma ",
+                dog_idl.IFD_TYPE: dog_idl.IF_OPTIONS,
+                dog_idl.IFD_PSEUDOS: pseudo_values,
                 },
 
             {
-                "default": arg0.tma.pop(0),
-                "choices": ("1", "2", "3", "From TMA file"),
-                "name": "TMA NO.",
-                "required": True,
-                "prefix": "--tma ",
-                "type": dog_idl.IF_OPTIONS,
-                };
+                dog_idl.IFD_DEFAULT: arg0.cookies,
+                dog_idl.IFD_HINT: "file downloaded from a browser",
+                dog_idl.IFD_NAME: "COOKIE-FILE",
+                dog_idl.IFD_PREFIX: "--cookies ",
+                dog_idl.IFD_TYPE: dog_idl.IF_FILE,
+                },
+
             ];
 
 
-    #ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
 
+    ifdlen = len(ifds); 
+    gui2argv = dog_idl.Gui2Argv(pscr, *ifds);
+    
+    cmdline_used = False;
+
+    class _GuiProxy:
+        def __getattribute__(self, name):
+            nonlocal cmdline_used;
+            if name == "get_argv":
+                if not cmdline_used:
+                    cmdline_used = True;
+                    return gui2argv.get_argv_with_all_defaults;
+
+                else:
+                    return gui2argv.get_argv;
+
+            elif name == "get_cmdline":
+                if not cmdline_used:
+                    cmdline_used = True;
+                    return gui2argv.get_cmdline_with_all_defaults;
+
+                else:
+                    return gui2argv.get_cmdline;
+
+            else:
+                return getattr(gui2argv, name);
+
+    return _GuiProxy();
+
+    #ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
 
 
 
@@ -1227,22 +1276,47 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     sig = tkinter.StringVar();
     tqueue = queue.Queue();
 
-    def runner():
-        nonlocal rez, argv, dog, args;
-        rez = gui_start(parser, pkg_name, logger, *argv, dog = dog,
-                wlist_h = wlist_h, queue = tqueue);
-        if rez:
-            dog, args, argv = rez;
+    #def runner():
+    #    nonlocal rez, argv, dog, args;
+    #    rez = gui_start(parser, pkg_name, logger, *argv, dog = dog,
+    #            wlist_h = wlist_h, queue = tqueue);
+    #    if rez:
+    #        dog, args, argv = rez;
 
-            stat_tab.update(
-                    mkstat_tab(dog)
-                    );
+    #        stat_tab.update(
+    #                mkstat_tab(dog)
+    #                );
 
-            if stat_tab:
-                write_stat_raw(stat_tab, args.stats);
+    #        if stat_tab:
+    #            write_stat_raw(stat_tab, args.stats);
 
-        sig.set("Done");
-    
+    #    sig.set("Done");
+    #
+
+    #class _XQueue:
+    #    def __call__(self):
+    #        return self.clear_queue();
+    #    
+    #    @property
+    #    def __name__(self):
+    #        return self.clear_queue.__name__;
+
+    #    def clear_queue(self):
+    #        try:
+    #            print("clearing tasks");
+    #            task = tqueue.get(block = False);
+    #            task();
+    #            print("task cleared");
+    #            tqueue.task_done();
+    #        except queue.Empty:
+    #            pass;
+    #            print("no task");
+    #
+    #        stdscr.after(5000, self.clear_queue);
+
+    ui = factory_gui2argv(stdscr, parser, *argv);
+
+    ui.show();
 
     class _XQueue:
         def __call__(self):
@@ -1253,32 +1327,25 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
             return self.clear_queue.__name__;
 
         def clear_queue(self):
-            try:
-                print("clearing tasks");
-                task = tqueue.get(block = False);
-                task();
-                print("task cleared");
-                tqueue.task_done();
-            except queue.Empty:
-                pass;
-                print("no task");
-    
+            print(ui.ready, ui.get_cmdline(), "\n\n");
             stdscr.after(5000, self.clear_queue);
 
     stdscr.after(5000, _XQueue());
 
-    while True:
-        if frame:
-            frame.destroy();
-        argv, frame = factory_gui2argv(stdscr, parser, *argv);
-        if not argv:
-            break;
-        
-        th = threading.Thread(target = runner, daemon = True);
-        th.start();
-        stdscr.wait_variable(sig); 
+    stdscr.mainloop();
 
-    stdscr.destroy();
+    #while True:
+    #    if frame:
+    #        frame.destroy();
+    #    argv, frame = factory_gui2argv(stdscr, parser, *argv);
+    #    if not argv:
+    #        break;
+    #    
+    #    th = threading.Thread(target = runner, daemon = True);
+    #    th.start();
+    #    stdscr.wait_variable(sig); 
+
+    #stdscr.destroy();
 
 
 

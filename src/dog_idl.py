@@ -13,7 +13,14 @@ if = {
     "prefix": "@",
     "suffix": None,
     "required": True,
+    
+    # this is to enable value translation in commandline generation. keys with a
+    # boolean-false value are removed from the output commandline
 
+    "pseudos": {
+        "from-file": None,
+        "everything" "all",
+    },
     ## Depending on the type of interface, some checks can be performed on the
     ## user input; e.g checking if a file is non-empty. To customize the check,
     ## assign to a callable that returns True when input checks and False
@@ -27,7 +34,20 @@ if = {
 }
 """
 
-import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox, tkinter.Label
+import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
+
+IFD_TYPE = "type";
+IFD_COUNT = "count";
+IFD_NAME = "name";
+IFD_CHOICES = "choices";
+IFD_PREFIX = "prefix";
+IFD_SUFFIX = "suffix"; 
+IFD_REQUIRED = "required";
+IFD_PSEUDOS = "pseudos";
+IFD_CHECK = "check"; 
+IFD_HINT = "hint";
+IFD_DEFAULT = "default";
+
 
 IF_FILE = 0;
 IF_SPEC_FILE = 1;
@@ -38,6 +58,10 @@ IF_FILE_M = 0 | ord('m');
 IF_SPEC_FILE_M = 1 | ord('m');
 IF_OPTIONS_M = 2 | ord('m');
 IF_STRING_M = 3 | ord('m');
+
+
+# is this reasonable?
+MAX_DEFAULT_SIZE = 1000000
 
 ## Abstract Interface Class(AIC)
 
@@ -94,9 +118,8 @@ def get_local_file(iF, win, cb = None):
         win.focus();
         v = tkinter.filedialog.askopenfilename(master = win, title = str(iF.name));
 
-        if v:
-            iF.set_value(v);
-            iF.ready = True;
+        # there can be no file too. 
+        iF.set_value(v);
 
         if cb and callable(cb):
             return cb(iF, v);
@@ -106,7 +129,7 @@ def get_local_file(iF, win, cb = None):
 
 ## Factory functions for the various interface types
 
-def create_file_if(stdscr, name, options, default = None, hint = None,
+def create_file_if(stdscr, name, default = None, hint = None, check = False,
         def_on_empty = False):
     
     iF = create_string_if(
@@ -114,6 +137,7 @@ def create_file_if(stdscr, name, options, default = None, hint = None,
             name,
             default = default,
             hint = hint,
+            check = check,
             def_on_empty = def_on_empty,
             );
 
@@ -143,7 +167,7 @@ def create_options_if(stdscr, name , options, default = 0, hint = None):
 
     var = tkinter.StringVar();
     
-    name_w = IfName(name, stdscr); #justify = tkinter.LEFT;
+    name_w = IfName(name, stdscr, text = name); #justify = tkinter.LEFT;
     
     widget = tkinter.ttk.Combobox(stdscr, textvariable = var, values = opts, state = "readonly");
 
@@ -180,7 +204,7 @@ def create_string_if(stdscr, name, default = None, hint = None, check = False,
     var = tkinter.StringVar(value = default);
     widget = tkinter.Entry(stdscr, textvariable = var);
 
-    name_w = IfName(name, stdscr); #justify = tkinter.LEFT;
+    name_w = IfName(name, stdscr, text = name); #justify = tkinter.LEFT;
 
     iF = _SIF(widget, var, name_w, True if default else False);
     
@@ -212,10 +236,10 @@ def create_string_m_if():
     pass;
 
 
+IDX_IF = 0;
+IDX_PTR = 1;
 
 class Gui2Argv:
-    IDX_IF = 0;
-    IDX_PTR = 1;
 
     def __init__(self, stdscr, *ifds):
         self.ifds = ifds;
@@ -230,45 +254,62 @@ class Gui2Argv:
         rptr = 0;
 
         for ptr, ifd in enumerate(self.ifds):
-            typ = ifd.get("type", IF_STRING);
+            typ = ifd.get(IFD_TYPE, IF_STRING);
             iF = None;
+
+            # handle defaults
+
+            default = ifd.get(IFD_DEFAULT, None);
+            if isinstance(default, list):
+                if default:
+                    default = default.pop(0);
+                # else, we can't trust that interfaces' factories can handle empty
+                # default lists appriopriately
+                else:
+                    default = None;
+
+            # there will always be checks on all inputs except options, though customizable.
+            chk = self.check(ifd.get(IFD_CHECK, False));
+
             if typ == IF_STRING:
-                chk = self.check(ifd.get("check", False));
                 iF = create_string_if(
-                        stdscr,
+                        self.frame,
                         ## name can be an empty string
-                        ifd.get("name", ""),
-                        ifd.get("default", None),
-                        ifd.get("hint", None),
+                        ifd.get(IFD_NAME, ""),
+                        default,
+                        ifd.get(IFD_HINT, None),
                         chk,
-                        ifd.get("default", None) and ifd.get("required", False),
+                        default and ifd.get(IFD_REQUIRED, False),
                         );
 
             elif typ == IF_SPEC_FILE or typ == IF_FILE:
                 iF = create_file_if(
-                        stdscr,
+                        self.frame,
                         ## name can be an empty string
-                        ifd.get("name", ""),
-                        ifd.get("default", None),
-                        ifd.get("hint", None),
-                        ifd.get("default", None) and ifd.get("required", False),
+                        ifd.get(IFD_NAME, ""),
+                        default,
+                        ifd.get(IFD_HINT, None),
+                        chk,
+                        default and ifd.get(IFD_REQUIRED, False),
                         );
 
             elif typ == IF_OPTIONS:
                 iF = create_options_if(
-                        stdscr,
+                        self.frame,
                         ## name can be an empty string
-                        ifd.get("name", ""),
-                        ifd.get("choices"),
-                        ifd.get("default", None),
-                        ifd.get("hint", None),
+                        ifd.get(IFD_NAME, ""),
+                        ifd.get(IFD_CHOICES),
+                        default,
+                        ifd.get(IFD_HINT, None),
                         );
 
-            if ifd.get("required", False):
-                ifs[rptr][IDX_PTR] = ptr;
-                rptr = ptr;
+            if ifd.get(IFD_REQUIRED, False):
+                # to prevent index error on the very fisrt pass on the loop.
+                if self.ifs:
+                    self.ifs[rptr][IDX_PTR] = ptr;
+                    rptr = ptr;
 
-            if ifd.get("required", False):
+            if ifd.get(IFD_REQUIRED, False):
                 self.no_required = False;
 
             tup = [0, 0];
@@ -276,25 +317,31 @@ class Gui2Argv:
             tup[IDX_IF] = iF;
             self.ifs.append(tup);
 
+    # for access to the positional underlying Interface object
+
+    def __getitem__ (self, idx):
+        return self.ifs[idx];
+
     def show(self):
-        if not self.destroyed:
+        if self.destroyed:
             raise KeyError("This instance has be destroyed and unusable");
 
         self.frame.place(x = 0, y = 0, relheight = 1, relwidth = 1);
+        alen = len(self.ifs);
         for ia, ar in enumerate(self.ifs):
-            ar.name.place(relx = 0, rely = ia/alen, relwidth = 1/4);
-            ar.widget.place(relx = 1/4, rely = ia/alen, relwidth = 3/4);
+            ar[IDX_IF].name.place(relx = 0, rely = ia/alen, relwidth = 1/4);
+            ar[IDX_IF].widget.place(relx = 1/4, rely = ia/alen, relwidth = 3/4);
 
         return True;
 
     
     def hide(self):
-        if not self.destroyed:
+        if self.destroyed:
             raise KeyError("This instance has been destroyed and unusable");
         return self.frame.place_forget();
 
     def destroy(self):
-        if not self.destroyed:
+        if self.destroyed:
             raise KeyError("This instance has been destroyed and unusable");
         
         self.destroyed = True;
@@ -307,17 +354,82 @@ class Gui2Argv:
     def pop_interface(self, idx):
         pass;
 
+    def get_argv_with_all_defaults(self, mx = MAX_DEFAULT_SIZE):
+        return self.get_cmdline_with_all_defaults(mx).split();
+
+    def get_cmdline_with_all_defaults(self, mx = MAX_DEFAULT_SIZE):
+        cmdline = "";
+        value = "";
+
+        for idx, ifd in enumerate(self.ifds):
+            # make the conditionals independent.
+
+            # for defaults
+            if isinstance(ifd[IFD_DEFAULT], list):
+                for ix in range(mx):
+                    try:
+                        value = ifd[IFD_DEFAULT][ix];
+                        if IFD_PSEUDOS in ifd and value in ifd[IFD_PSEUDOS] and not ifd[IFD_PSEUDOS].get(value):
+                            continue;
+                        
+                        if IFD_PSEUDOS in ifd and value in ifd[IFD_PSEUDOS]:
+                            value = ifd[IFD_PSEUDOS].get(value);
+
+                        cmdline += "{prefix}{value}{suffix} ".format(
+                                prefix = ifd.get(IFD_PREFIX, ""),
+                                value = value,
+                                suffix = ifd.get(IFD_SUFFIX, ""),
+                                );
+
+                    except IndexError:
+                        break;
+
+            
+            if not self.ifs[idx][IDX_IF].ready:
+                continue;
+
+            if IFD_PSEUDOS in ifd and self.ifs[idx][IDX_IF].get_value() in ifd[IFD_PSEUDOS] and not ifd[IFD_PSEUDOS].get(self.ifs[idx][IDX_IF].get_value()):
+                continue;
+
+
+
+            if IFD_PSEUDOS in ifd and self.ifs[idx][IDX_IF].get_value() in ifd[IFD_PSEUDOS]:
+                value = ifd[IFD_PSEUDOS].get(self.ifs[idx][IDX_IF].get_value());
+
+            else:
+                value = self.ifs[idx][IDX_IF].get_value();
+
+            cmdline += "{prefix}{value}{suffix} ".format(
+                    prefix = ifd.get(IFD_PREFIX, ""),
+                    value = value,
+                    suffix = ifd.get(IFD_SUFFIX, ""),
+                    );
+
+        return cmdline[:-1];
+
+
     def get_cmdline(self):
         cmdline = "";
+        value = "";
 
         for idx, ifd in enumerate(self.ifds):
             if not self.ifs[idx][IDX_IF].ready:
                 continue;
 
+            elif IFD_PSEUDOS in ifd and self.ifs[idx][IDX_IF].get_value() in ifd[IFD_PSEUDOS] and not ifd[IFD_PSEUDOS].get(self.ifs[idx][IDX_IF].get_value()):
+                continue;
+
+            
+            if IFD_PSEUDOS in ifd and self.ifs[idx][IDX_IF].get_value() in ifd[IFD_PSEUDOS]:
+                value = ifd[IFD_PSEUDOS].get(self.ifs[idx][IDX_IF].get_value());
+
+            else:
+                value = self.ifs[idx][IDX_IF].get_value();
+
             cmdline += "{prefix}{value}{suffix} ".format(
-                    prefix = ifd.get("prefix", ""),
-                    value = self.ifs[idx][IDX_IF].get_value(),
-                    suffix = ifd.get("suffix", ""),
+                    prefix = ifd.get(IFD_PREFIX, ""),
+                    value = value,
+                    suffix = ifd.get(IFD_SUFFIX, ""),
                     );
 
         return cmdline[:-1];
@@ -329,7 +441,7 @@ class Gui2Argv:
     def _chk_ready(self):
         for i, if_ptr_tup in enumerate(self.ifs):
             ifd_cur = self.ifds[i];
-            if not ifd_cur.get("required", False):
+            if not ifd_cur.get(IFD_REQUIRED, False):
                 continue;
 
 
@@ -341,6 +453,9 @@ class Gui2Argv:
                     self._ready = False;
                     return self._ready;
                 
+                # kinda wierd assignment
+                self._ready = True;
+
                 if ptr_cur == ptr_nxt:
                     return self._ready;
 
@@ -348,8 +463,6 @@ class Gui2Argv:
                 ptr_cur = self.ifs[ptr_nxt][IDX_PTR];
                 ptr_nxt = self.ifs[ptr_cur][IDX_PTR];
             
-            #finally, after all interface(s) checked
-            self._ready = True;
 
         return self._ready;
     
@@ -380,4 +493,3 @@ class Gui2Argv:
 
 
         return _chk;
-
