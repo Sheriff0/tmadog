@@ -637,52 +637,7 @@ def gf(eprof, win, cb = None):
     return _gf;
 
 
-class Gui_Argv:
-    def __init__(self, pscr, *pargs):
-        import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
-
-        self.psr = libdogs.DogCmdParser ();
-
-        self.psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
-
-        self.psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
-
-        self.psr.add_argument ('--cookies');
-
-        self.psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
-
-        arr = [];
-
-        scr = tkinter.ttk.Frame(pscr);
-        
-        scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
-
-        ready = ARG_INCOMPLETE;
-
-        ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
-
-
-
-def gui_get_argv(pscr, parser, *pargs):
-
-    import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox
-
-    psr = libdogs.DogCmdParser ();
-
-    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
-
-    psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
-
-    psr.add_argument ('--cookies');
-
-    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
-
-    exit = tkinter.StringVar();
-
-    arr = [];
-
-    scr = tkinter.ttk.Frame(pscr);
-    
+def mkmenu(pscr):
     pscr.option_add('*tearOff', tkinter.FALSE);
     menu = tkinter.Menu(pscr);
     elp = tkinter.Menu(menu);
@@ -696,163 +651,87 @@ def gui_get_argv(pscr, parser, *pargs):
 
     pscr["menu"] = menu;
 
-    scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
 
-    ready = ARG_INCOMPLETE;
+def factory_gui2argv(pscr, parser, *pargs):
+    import dog_idl
+    
+    psr = libdogs.DogCmdParser ();
 
-    ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
+    psr.add_argument ('--tma', nargs = "+", action = libdogs.AppendList, default = ["1"]);
 
-    def check(pro, v = None):
-        nonlocal arr, ready, ready_btn, scr;
-        v = pro["val"].get() if v == None else v;
+    psr.add_argument ('--url', nargs = "+", action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
 
-        if not v or v == pro.get("hint", ""):
-            ready_btn["state"] = "disabled";
-            return;
+    psr.add_argument ('--cookies');
 
-        if arr:
-            for a in arr:
-                if a is pro:
-                    continue;
+    psr.add_argument ('--crscode', nargs = "+", action = libdogs.AppendList);
 
-                v = a["val"].get();
-                if a.get("ign_hint", True) == False and v == a.get("hint", ""):
-                    ready_btn["state"] = "disabled";
-                    return;
+    arg0, rest0 = psr.parse_known_args(pargs);
 
-            ready_btn["state"] = "normal";
+    ## to grab '@ '-prefixed tma files
+    # NOTE: this is an argparse hack, things could break in future versions of
+    # the library.
 
+    psr = libdogs.DogCmdParser(prefix_chars = parser.fromfile_prefix_chars);
+    
+    psr.add_argument (parser.fromfile_prefix_chars, action = libdogs.AppendList, dest = "tmafile");
+    argf, rest1 = psr.parse_known_args(rest0);
 
-    def nop():
-        nonlocal ready, scr;
-        ready = ARG_QUIT;
-        pscr.protocol("WM_DELETE_WINDOW");
-        exit.set("ok");
-
-    args, rest = psr.parse_known_args(pargs);
-
-    argv_frame = tkinter.ttk.Frame(scr);
-    argv_frame.place(x = 0, y = 0, relheight = 3/4, relwidth = 1);
-
-    url = {
-            "def": args.url[-1],
-            "val": tkinter.StringVar(value = args.url[-1]),
-            "name": "WEBSITE"
-            };
-
-    url["wgt"] = tkinter.Entry(argv_frame, textvariable = url["val"], validate =
-            "key", validatecommand = (scr.register(validate_entry(url, check)), '%P'));
-    #url["wgt"].bind("<FocusIn>", unhint(url));
-    url["wgt"].bind("<FocusOut>", lambda e: url["val"].set(url["def"]) if not
-            url["val"].get() else None);
-
-    crscode = {
-            "val": tkinter.StringVar(),
-            "name": "COURSE CODE",
-            "list": ("all", "From TMA file"),
-            };
-
-    crscode["wgt"] = tkinter.ttk.Combobox(argv_frame, textvariable = crscode["val"], values = crscode["list"], state = "readonly");
-    crscode["wgt"].current(0);
-
-    arr.extend([url, crscode]);
-
-    f_args = {
-            "def": None,
-            "val": tkinter.StringVar(),
-            "name": "TMAFILE",
-            "hint": "File containing matric numbers and passwords",
-            "ign_hint": False,
-            };
-
-    f_args["val"].set(f_args["hint"]);
-
-    f_args["wgt"] = tkinter.Entry(argv_frame, textvariable =
-            f_args["val"], validate = "key", validatecommand =
-            (scr.register(validate_entry(f_args)), '%P'));
-    #f_args["wgt"].bind("<FocusOut>", hinter(cookies));
-    f_args["wgt"].bind("<FocusIn>", gf(f_args, scr, check));
-
-    for ia, arg in enumerate(rest):
-        if parser.fromfile_prefix_chars and arg.startswith(parser.fromfile_prefix_chars):
-            f_args["def"] = rest.pop(ia)[1:];
-            f_args["val"].set(f_args["def"]);
-            break;
-
-    arr.append(f_args);
-
-    cookies = {
-            "hint": "file downloaded from a browser",
-            "val": tkinter.StringVar(),
-            "name": "COOKIE FILE",
-            "ign_hint": True
-            };
-
-    cookies["val"].set(cookies["hint"] if not args.cookies else args.cookies);
-
-    cookies["wgt"] = tkinter.Entry(argv_frame, textvariable = cookies["val"]);
-    #cookies["wgt"].bind("<FocusOut>", hinter(cookies, check));
-    cookies["wgt"].bind("<FocusIn>", gf(cookies, scr));
-
-    tma = {
-            "val": tkinter.StringVar(),
-            "list": ("1", "2", "3", "From TMA file"),
-            "name": "TMA No"
-            };
-
-    tma["wgt"] = tkinter.ttk.Combobox(argv_frame, values = tma["list"], textvariable = tma["val"], state = "readonly");
-    n = tma["list"].index(args.tma[-1]);
-
-    n = 0 if n == -1 else n;
-    tma["wgt"].current(n);
+    ## to grab '@'-prefixed tma files
+    
+    rest2 = [];
+    for af in rest1:
+        if not af.startswith(parser.fromfile_prefix_chars):
+            rest2.append(af);
+            continue;
+        argf.tmafile.append(af[1:]);
 
 
-    arr.extend([cookies, tma]);
+    ifds = [
+            {
+                "default": arg0.url.pop(0),
+                "name": "WEBSITE",
+                "required": True,
+                "prefix": "--url ",
+                },
 
-    alen = len(arr);
+            {
+                "name": "COURSE-CODE",
+                "choices": ("All", "From TMA file"),
+                "required": True,
+                "prefix": "--crscode ",
+                "type": dog_idl.IF_OPTIONS,
+                },
 
-    for ia, ar in enumerate(arr):
-        tkinter.Label(argv_frame, text = ar["name"], justify = tkinter.LEFT).place(relx = 0, rely = ia/alen,
-                relwidth = 1/4);
-        ar["wgt"].place(relx = 1/4, rely = ia/alen, relwidth = 3/4);
+            ## tmafile
+            {
+                "name": "TMA File",
+                "hint": "File containing matric numbers and passwords",
+                "required": True,
+                "prefix": parser.fromfile_prefix_chars,
+                "type": dog_idl.IF_FILE,
+                },
 
+            {
+                "hint": "file downloaded from a browser",
+                "name": "COOKIE-FILE",
+                "prefix": "--cookies ",
+                "type": dog_idl.IF_FILE,
+                },
 
-    def _ready():
-        nonlocal ready, scr;
-        argrv = ["--url", url["val"].get()];
-
-        if tma["val"].get() != tma["list"][-1]:
-            argrv.extend(["--tma", tma["val"].get()]);
-
-        if crscode["val"].get() != crscode["list"][-1]:
-            argrv.extend(["--crscode", crscode["val"].get()]);
-        else:
-            if args.crscode:
-                argrv.extend(["--crscode"]);
-                argrv.extend(args.crscode);
-
-        argrv.extend(["--cookies", cookies["val"].get()]);
-
-        argrv.append("%s%s" % (parser.fromfile_prefix_chars, f_args["val"].get()));
-        rest.extend(argrv);
-        ready = rest;
-        pscr.protocol("WM_DELETE_WINDOW");
-        exit.set("ok");
-
-
-
-    pscr.protocol("WM_DELETE_WINDOW", nop);
-
-    check(arr[0]);
-    ready_btn["command"] = _ready;
-    ready_btn.place(relheight = 1/4, rely = 3/4, x = 0, relwidth = 1);
+            {
+                "default": arg0.tma.pop(0),
+                "choices": ("1", "2", "3", "From TMA file"),
+                "name": "TMA NO.",
+                "required": True,
+                "prefix": "--tma ",
+                "type": dog_idl.IF_OPTIONS,
+                };
+            ];
 
 
-    pscr.wait_variable(exit);
-    ready_btn["state"] = "disabled";
-    pscr.update();
+    #ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
 
-    return (ready, scr);
+
 
 
 def gui_getfile(cb, title = None):
@@ -1034,13 +913,15 @@ def unknown_err_handler(queue = DummyQueue()):
     return _unknown_err_handler;
 
 
-def iter_file_argv(argf):
-    args = libdogs.read_file_text(argf);
-    for arg_line in args.split("\n"):
-        if not re.match(r'^\s*#.*', arg_line):
-            ar = arg_line.split();
-            for a1 in ar:
-                yield a1;
+def iter_file_argv(*argfl):
+    
+    for argf in argfl:
+        args = libdogs.read_file_text(argf);
+        for arg_line in args.split("\n"):
+            if not re.match(r'^\s*#.*', arg_line):
+                ar = arg_line.split();
+                for a1 in ar:
+                    yield a1;
 
 
 
@@ -1389,7 +1270,7 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     while True:
         if frame:
             frame.destroy();
-        argv, frame = gui_get_argv(stdscr, parser, *argv);
+        argv, frame = factory_gui2argv(stdscr, parser, *argv);
         if not argv:
             break;
         

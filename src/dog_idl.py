@@ -27,7 +27,7 @@ if = {
 }
 """
 
-import tkinter, tkinter.Label
+import tkinter, tkinter.ttk, tkinter.filedialog, tkinter.font, tkinter.messagebox, tkinter.Label
 
 IF_FILE = 0;
 IF_SPEC_FILE = 1;
@@ -314,11 +314,10 @@ class Gui2Argv:
             if not self.ifs[idx][IDX_IF].ready:
                 continue;
 
-            cmdline += "{prefix}{name}{value}{suffix} ".format(
+            cmdline += "{prefix}{value}{suffix} ".format(
                     prefix = ifd.get("prefix", ""),
-                    name = ifd.get("name", ""),
                     value = self.ifs[idx][IDX_IF].get_value(),
-                    ifd.get("suffix", ""),
+                    suffix = ifd.get("suffix", ""),
                     );
 
         return cmdline[:-1];
