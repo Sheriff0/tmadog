@@ -119,7 +119,7 @@ def get_local_file(iF, win, cb = None):
         v = tkinter.filedialog.askopenfilename(master = win, title = str(iF.name));
 
         # there can be no file too. 
-        iF.set_value(v);
+        iF.set_value(v if v else "");
 
         if cb and callable(cb):
             return cb(iF, v);
@@ -244,9 +244,7 @@ class Gui2Argv:
     def __init__(self, stdscr, *ifds):
         self.ifds = ifds;
         self.ifs = [];
-        self._ready = False;
         self.destroyed = False;
-        self.no_required = True;
         self.frame = tkinter.ttk.Frame(stdscr);
 
         #to enable fast scan of required inputs,
@@ -304,13 +302,10 @@ class Gui2Argv:
                         );
 
             if ifd.get(IFD_REQUIRED, False):
-                # to prevent index error on the very fisrt pass on the loop.
+                # to prevent index error on the very first pass on the loop.
                 if self.ifs:
                     self.ifs[rptr][IDX_PTR] = ptr;
                     rptr = ptr;
-
-            if ifd.get(IFD_REQUIRED, False):
-                self.no_required = False;
 
             tup = [0, 0];
             tup[IDX_PTR] = ptr;
@@ -439,6 +434,7 @@ class Gui2Argv:
     
     
     def _chk_ready(self):
+
         for i, if_ptr_tup in enumerate(self.ifs):
             ifd_cur = self.ifds[i];
             if not ifd_cur.get(IFD_REQUIRED, False):
@@ -450,21 +446,20 @@ class Gui2Argv:
 
             while True:
                 if not self.ifs[ptr_cur][IDX_IF].ready or not self.ifs[ptr_nxt][IDX_IF].ready:
-                    self._ready = False;
-                    return self._ready;
+                    return False;
                 
-                # kinda wierd assignment
-                self._ready = True;
-
+                # end of list
                 if ptr_cur == ptr_nxt:
-                    return self._ready;
+                    break;
 
                 ## because we move two steps(check two interfaces) in any one pass
                 ptr_cur = self.ifs[ptr_nxt][IDX_PTR];
                 ptr_nxt = self.ifs[ptr_cur][IDX_PTR];
+
+            # because any unready input causes a return, otherwise a break
+            return True;
             
 
-        return self._ready;
     
     @property
     def ready(self):
@@ -474,22 +469,17 @@ class Gui2Argv:
         def _chk(iF, value):
             if callable(chk):
                 iF.ready = chk(value);
-
-            elif chk:
+            
+            # remember, always check.
+            else:
                 iF.ready = bool(value);
 
-
-            if not iF.ready:
-                self._ready = False;
-                return False;
-            
-            elif self.no_required:
-                self._ready = True;
-                return iF.ready;
-            
-            self._chk_ready();
-            
-            return iF.ready;
+            # null input should be visibilile to the user. 
+            return True;
 
 
         return _chk;
+
+class Dashboard:
+    def __init__(self):
+        pass;
