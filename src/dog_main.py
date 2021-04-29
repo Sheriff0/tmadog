@@ -1272,6 +1272,7 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     
     sig = tkinter.StringVar();
     tqueue = dog_idl.PQueue();
+    objs = [];
 
     #def runner():
     #    nonlocal rez, argv, dog, args;
@@ -1290,28 +1291,36 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     #    sig.set("Done");
     #
 
-    #class _XQueue:
-    #    def __call__(self):
-    #        return self.clear_queue();
-    #    
-    #    @property
-    #    def __name__(self):
-    #        return self.clear_queue.__name__;
+    class _XQueue:
+        def __call__(self):
+            return self.clear_queue();
+        
+        @property
+        def __name__(self):
+            return self.clear_queue.__name__;
 
-    #    def clear_queue(self):
-    #        try:
-    #            print("clearing tasks");
-    #            task = tqueue.get(block = False);
-    #            task();
-    #            print("task cleared");
-    #            tqueue.task_done();
-    #        except queue.Empty:
-    #            pass;
-    #            print("no task");
-    #
-    #        stdscr.after(5000, self.clear_queue);
+        def clear_queue(self):
+            try:
+                task = tqueue.get(block = False);
+                if isinstance(task.signum, int) and task.signum >= 0:
+                    signum = 0xff & task.signum;
+                    if signum < len(objs) and callable(objs[signum]):
+                        task.signum = task.signum >> 8;
+                        objs[signum](task);
+                    else:
+                        task();
+                else:
+                    task();
+
+                tqueue.task_done();
+            except queue.Empty:
+                pass;
+    
+            stdscr.after(1000, self.clear_queue);
 
     ui = factory_gui2argv(argv_frame, parser, *argv);
+
+    objs.append();
 
     ui.show();
 
@@ -1324,7 +1333,9 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     dashpad = tkinter.Frame(stdscr);
     dashpad.place(x = 0, rely = 1/3 + 1/8, relheight = 1 - (1/3 + 1/8), relwidth = 1);
 
-    dashboard = dog_idl.Dashboard(dashpad, s_gran, pqueue = tqueue);
+    dashboard = dog_idl.Dashboard(dashpad, s_gran, pqueue = tqueue, signum = len(objs), sigbits = 8);
+
+    objs.append(dashboard);
     dashboard.show();
 
     #stdscr.after(5000, _XQueue());

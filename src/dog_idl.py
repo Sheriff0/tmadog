@@ -496,6 +496,91 @@ MAX_LOG_SIZE = 50;
 SIG_CMD_EQUALS = 0;
 SIG_CMD_CONTAINS = 1;
 
+# maximum number of widgets (for now, only buttons) that can be used to resolve
+# an activities errors
+
+RESOLVER_MAX_KEYS = 4;
+
+# this can only be played in the gui thread
+class Resolver:
+    def __init__(self, stdscr, keys, commands, task = None, cb = None):
+        self.frame = tkinter.ttk.Frame(stdscr);
+        self.stdscr = stdscr;
+        self.task = task;
+        self.commands = commands;
+        self.keys = keys;
+        self.cb = cb;
+        for idx in range(RESOLVER_MAX_KEYS):
+            try:
+                key = self.keys[idx];
+                command = self.commands[idx];
+                tkinter.Button(
+                        self.frame,
+                        text=str(key),
+                        background = "green",
+                        state = "normal",
+                        command = self.wrap(command)
+                        ).place(
+                                y = 0,
+                                relx = idx/RESOLVER_MAX_KEYS
+                                relwidth = 1/RESOLVER_MAX_KEYS
+                                relheight = 2/3
+                                );
+
+            except IndexError:
+                break;
+
+
+    def remove(self):
+        return self.frame.place_forget();
+
+    def show(self):
+        self.frame.place(x = 0, y = 0, relheight = 1, relwidth = 1);
+    
+    def wrap(self, cb):
+        def _wrap():
+            res = None;
+            if callable(cb):
+                res = cb();
+            
+            # as a dummy task
+            self.task(res);
+            
+            if callable(self.cb):
+                self.cb();
+
+            return res;
+
+        return _wrap;
+
+
+class Reporter:
+    def __init__(self, stdscr, total):
+        self.pcur = tkinter.StringVar();
+        self.ptotal = total;
+        self.stdscr = stdscr;
+        self.frame = tkinter.ttk.Frame(stdscr);
+        self.pbar = tkinter.ttk.Progressbar(self.frame,
+                orient=tkinter.HORIZONTAL, mode='determinate', variable =
+                self.pcur, maximum = total);
+    
+
+    def remove(self):
+        return self.frame.place_forget();
+
+    def show(self):
+        self.frame.place(relheight = 1, relwidth = 1, x = 0, y = 0);
+        self.pbar.place(x = 0, y = 0, relwidth = 1, relheight = 1);
+        return True;
+
+    def progress(self, cur):
+        self.pcur.set(str(cur));
+
+class RNone:
+    def __init__(self):
+        pass;
+
+
 class Task:
     def __init__(self, tcall, *pargs, **kwargs):
         self.tcall = tcall;
@@ -505,9 +590,13 @@ class Task:
         self.kwargs = kwargs;
         self.result = RNone();
 
-    def __call__(self):
-        if not self:
+    def __call__(self, result = RNone):
+        # to allow for dummy task
+        if not self and not isinstance(result, RNone):
+            self.result = result;
+        elif not self and callable(self.tcall):
             self.result = self.tcall(*self.pargs, **self.kwargs);
+
 
         return self.result;
 
@@ -530,11 +619,24 @@ class PQueue(queue.PriorityQueue):
         priority = self.PRIORITY_NORMAL if not priority else priority;
         return super().put((priority, item), *pargs, **kwargs);
 
+    def get(self, *pargs, **kwargs):
+        tup = super().get(*pargs, **kwargs);
+        return tup[1];
+
 class Activity:
-    def __init__(self, size = 30):
+    def __init__(self, size = 30, regsize = 1):
         self.logs = collections.deque(size);
         self.size = size;
-        self.lk = threading.Lock();
+        # these are meant for user-defined internal processing.
+        self.register = threading.Queue(regsize);
+        self.error = None;
+        self.warning = None;
+        
+        # this can be assigned only once.
+        self.reporter = None;
+
+        #this is can be reassigned
+        self.resolver = None;
 
     def append_log(self, log):
         self.logs.append(log);
@@ -550,8 +652,9 @@ class Activity:
 
 class Dashboard:
     NO_ID = -1;
-    ACTIVITY = "activity";
-    REAL_ID = "real_id";
+    ACTIVITY = 0;
+    REAL_ID = 1;
+    VID = 2;
 
     def __init__(
             self,
@@ -602,25 +705,107 @@ class Dashboard:
         self.log = tkinter.Text(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
         self.logger = self.Logger(self, self.log);
 
+        self.resolution_scr = tkinter.ttk.Frame(self.frame);
+        self.status_scr = tkinter.ttk.Frame(self.frame);
+
     def __call__(self, task):
         #this a signum runner intended for the gui thread.
         # After identification with the object's signum, the thread should call the object.
         # it passes the task, with its signum modified for the object's command domain.
-        if task.signum == SIG_CMD_CONTAINS and task.sigargs and task.sigargs[0] in self.ddata and self.ddata[task.sigargs[0]][REAL_ID]:
+
+        # this help dropping expired tasks or tasks which, intitially could run
+        # on a thread, can no longer run when the task had its turn to run on
+        # the thread.
+
+        if task.signum == SIG_CMD_CONTAINS and task.sigargs and self.is_real(task.sigargs[0]):
             task();
 
-        elif self.id == self.NO_ID or (task.signum == SIG_CMD_EQUALS and task.sigargs and task.sigargs[0] == self.id):
+        elif self.id == self.NO_ID or (task.signum == SIG_CMD_EQUALS and task.sigargs and self.is_real(task.sigargs[0]) and task.sigargs[0] == self.id):
             task();
 
         else:
             return False;
+    
+
+    def register_error(self, keys, commands, aid = None):
+        # return a task for the caller to wait on for resolution
+        aid = threading.get_ident() if not aid else aid;
+        task = Task(None);
+        act = self.get_activity(aid);
+        cb = Task(self.de_register_error, aid);
+        act.register.put(
+                Resolver(
+                    self.resolution_scr,
+                    keys,
+                    commands,
+                    task,
+                    cb
+                    ),
+                );
+        
+        return task;
+
+    def de_register_error(self, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+        act = self.get_activity(aid);
+
+        # for the gui thread
+        act.resolver.remove();
+        act.resolver = None;
+    
+    
+    def send_task(self, tk, cmdnum = SIG_CMD_CONTAINS, sigargs = [], priority = self.PRIORITY_NORMAL):
+
+        tk.signum = cmdnum;
+
+        if isinstance(self.signum, int) and self.signum >= 0:
+            tk.signum = (tk.signum << self.sigbits) | self.signum;
+
+        tk.sigargs = sigargs;
+
+        self.pqueue.put(
+                tk,
+                priority 
+                );
+
+        return True;
+
+    def register_progress(self, cur, total, aid):
+        pass;
+
+    def is_current(self, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+
+        return self.id == self.get_vid_of(aid);
+
+    def scroll(self):
+        ids = self.items_listbox.curselection();
+        if not ids:
+            return;
+
+        return self.setcurrent(self.get_vid_of(ids[0]));
+
+    def get_vid_of(self, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+        if not self.is_real(aid):
+            return False;
+        act = self.get_activity(aid);
+        return act[self.VID];
 
     def show(self):
+        # omo these fractions dey fear me o. I nogo fit reason am again, i
+        # swear.
+
         self.frame.place(x = 0, y = 0, relwidth = 1, relheight = 1);
         self.vscrollbar.place(x = 0, y = 0, relheight = 1, relwidth = 1/40);
         self.items_listbox.place(relx = 1/40, y = 0, relwidth = 1/3, relheight = 1);
+        self.items_listbox.bind("<<ListboxSelect>>", self.scroll);
 
         self.log.place(relx = 1/3 + 1/25, y = 0, relheight = 9/10, relwidth = 1 - (1/3 + 1/20));
+        self.resolution_scr.place(relx = 1/3 + 1/25, rely = 9/10, relwidth = 1/2 * (1 - (1/3 + 1/20), relheight = 1/10));
+
+        self.status_scr.place(relx = (1/3 + 1/25)+(1/2 * (1 - (1/3 + 1/20)), rely = 9/10, relwidth = 1/2
+                * (1 - (1/3 + 1/20), relheight = 1/10));
         self.is_live = True;
 
     def get_activity(self, realid = None):
@@ -634,25 +819,27 @@ class Dashboard:
     def alloc(self, aid = None):
         # a thread should call this at the start of its activity
         aid = threading.get_ident() if not aid else aid;
-        if not aid in self.ddata:
+        if not self.is_real(aid):
             #add first.
             aid = self.add();
 
-        elif self.ddata[aid][self.REAL_ID]:
-            return self.ddata[aid];
+        else:
+            return self.get_activity(aid);
 
         # remove the cookie.
         info = self.ddata.pop(aid);
+        vid = threading.get_ident();
+        info[self.VID] = vid;
         self.a_lock.acquire();
         info[self.REAL_ID] = len(self.dlist);
         self.dlist.append(str(aid));
         # for activity threads
-        self.ddata[threading.get_ident()] = info;
+        self.ddata[vid] = info;
         # for scrolls
         self.ddata[info[self.REAL_ID]] = info;
         self.a_lock.release();
 
-        return info;
+        return info[self.ACTIVITY];
 
     def add(self, aid = None):
         # calling, without an 'aid', this before 'alloc' returns a cookie-ish id. This intended for
@@ -675,13 +862,44 @@ class Dashboard:
 
         return aid;
         
-    def getcurrent(self):
+    def getcurrent_id(self):
         return self.id;
+    
+    def is_real(self, aid):
+        return aid in self.ddata and self.ddata[aid][REAL_ID] != None;
 
     def setcurrent(self, realid):
         # this should only be called in gui thread
+        if not self.is_real(realid):
+            return False;
+
+        old_act = self.get_activity(self.id);
         self.id = realid;
-        self.logger.write_log(self.get_activity(realid));
+        act = self.get_activity(realid);
+
+        if old_act.reporter:
+            old_act.reporter.remove();
+
+        if old_act.resolver:
+            old_act.resolver.remove();
+
+        self.logger.write_log(act);
+
+        if act.reporter:
+            act.reporter.show();
+
+        if act.resolver:
+            act.resolver.show();
+
+        else:
+            try:
+                r = act.register.get(block = False);
+                act.register.task_done();
+                act.resolver = r;
+                r.show();
+            except queue.Empty:
+                pass;
+
         return True;
 
     
@@ -723,6 +941,9 @@ class Dashboard:
             return self.parent.mlogger.fatal(msg, *pargs, **kwargs);
 
         def info(self, msg, *pargs, **kwargs):
+            # for now, we want to show info log. this might be configurable in
+            # the future
+
             aid = threading.get_ident();
 
             self.parent.mlogger.info(msg, *pargs, **kwargs);
@@ -732,28 +953,22 @@ class Dashboard:
             if not act:
                 return False;
 
-            cur = self.parent.getcurrent();
+            act.append_log(msg);
+
+            cur = self.parent.getcurrent_id();
 
             if cur == self.parent.NO_ID:
                 # special case, this should be done once for a programs lifetime
                 tk = Task(self.parent.setcurrent, aid);
-                if isinstance(self.parent.signum, int) and self.parent.signum >= 0:
-                    tk.signum = (SIG_CMD_EQUALS << self.parent.sigbits) | self.parent.signum;
-                    tk.sigargs = [aid];
-
-                self.parent.pqueue.put(
-                        tk,
-                        self.PRIORITY_WRITELOG
-                        );
-
             elif cur == aid:
                 tk = Task(self.append_log, msg);
-                if isinstance(self.parent.signum, int) and self.parent.signum >= 0:
-                    tk.signum = (SIG_CMD_EQUALS << self.parent.sigbits) | self.parent.signum;
-                    tk.sigargs = [aid];
+            else:
+                return False;
 
-                self.parent.pqueue.put(
-                        tk,
-                        self.PRIORITY_WRITELOG
-                        );
+            self.parent.send_task(
+                    tk,
+                    SIG_CMD_EQUALS,
+                    [aid],
 
+                    self.PRIORITY_WRITELOG
+                    );
