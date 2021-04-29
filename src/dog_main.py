@@ -32,6 +32,8 @@ import uuid
 import dropbox
 import threading
 
+import dog_idl
+
 VERSION = 1.00;
 GEOMETRY = '400x400+100+100';
 
@@ -665,9 +667,9 @@ def factory_gui2argv(pscr, parser, *pargs):
 
     psr = libdogs.DogCmdParser ();
 
-    psr.add_argument ('--tma', action = libdogs.AppendList, default = ["1"]);
+    psr.add_argument ('--tma', action = libdogs.AppendList);
 
-    psr.add_argument ('--url', action = libdogs.AppendList, default = ["https://www.nouonline.net"]);
+    psr.add_argument ('--url', action = libdogs.AppendList);
 
     psr.add_argument ('--cookies');
 
@@ -675,6 +677,11 @@ def factory_gui2argv(pscr, parser, *pargs):
 
     arg0, rest0 = psr.parse_known_args(pargs);
 
+    if not arg0.url:
+        arg0.url = "https://www.nouonline.net";
+
+    if not arg0.tma:
+        arg0.tma = "1";
 
     ## to grab '@ '-prefixed tma files
     # NOTE: this is an argparse hack, things could break in future versions of
@@ -685,6 +692,9 @@ def factory_gui2argv(pscr, parser, *pargs):
     psr.add_argument (parser.fromfile_prefix_chars, action = libdogs.AppendList, dest = "tmafile");
     argf, rest1 = psr.parse_known_args(rest0);
 
+    if not argf.tmafile:
+        argf.tmafile = [];
+
     ## to grab '@'-prefixed tma files
     
     rest2 = [];
@@ -692,8 +702,6 @@ def factory_gui2argv(pscr, parser, *pargs):
         if not af.startswith(parser.fromfile_prefix_chars):
             rest2.append(af);
             continue;
-        if not isinstance(argf.tmafile, list):
-            argf.tmafile = [];
 
         argf.tmafile.append(af[1:]);
 
@@ -749,7 +757,6 @@ def factory_gui2argv(pscr, parser, *pargs):
             ];
 
 
-
     ifdlen = len(ifds); 
     gui2argv = dog_idl.Gui2Argv(pscr, *ifds);
     
@@ -778,9 +785,6 @@ def factory_gui2argv(pscr, parser, *pargs):
                 return getattr(gui2argv, name);
 
     return _GuiProxy();
-
-    #ready_btn = tkinter.Button(scr, text="Run Dog", font = tkinter.font.Font(family="Arial", size = 40, weight = "bold"), background = "green", state = "disabled");
-
 
 
 def gui_getfile(cb, title = None):
@@ -901,7 +905,7 @@ def gui_getcookie(default = None, attr = None, queue = DummyQueue(), cb = None):
     def _getcookie(nav):
         print("\n\nCookies have expired. Check the main screen to resolve this.\n\n");
 
-        task = Task(tkinter.messagebox.askyesnocancel, title = "Cookie File",
+        task = dog_idl.Task(tkinter.messagebox.askyesnocancel, title = "Cookie File",
                 icon = "question", message = "Cookies needed. Do you want to continue with your previous cookie file", detail = "click no to choose a file, click yes to use previous file. click cancel to exit the program");
 
         queue.put(task);
@@ -911,7 +915,7 @@ def gui_getcookie(default = None, attr = None, queue = DummyQueue(), cb = None):
             raise KeyboardInterrupt();
 
         if not res:
-            task = Task(tkinter.filedialog.askopenfilename, title = "Cookie File");
+            task = dog_idl.Task(tkinter.filedialog.askopenfilename, title = "Cookie File");
             res = task.wait();
 
         if not res or res == True:
@@ -947,7 +951,7 @@ def unknown_err_handler(queue = DummyQueue()):
 
         print("\n\nAn unknown, possibly network, error occured. Check the main screen to resolve this.\n\n");
         
-        task = Task(tkinter.messagebox.askretrycancel, title = "Error",
+        task = dog_idl.Task(tkinter.messagebox.askretrycancel, title = "Error",
                 icon = "error", message = "An error occured", detail = "%s" % (err,));
 
         queue.put(task);
@@ -1203,27 +1207,16 @@ class RNone:
     def __init__(self):
         pass;
 
-class Task:
-    def __init__(self, tcall, *pargs, **kwargs):
-        self.tcall = tcall;
-        self.pargs = pargs;
-        self.kwargs = kwargs;
-        self.result = RNone();
-
-    def __call__(self):
-        if not self:
-            self.result = self.tcall(*self.pargs, **self.kwargs);
-
-        return self.result;
-
-    def __bool__(self):
-        return not isinstance(self.result, RNone);
-
-    def wait(self):
-        while not self:
+class Scheduler:
+    class Group:
+        def __init__(self, parser, pkg_name, logger, *argv, **kwargs):
             pass;
 
-        return self.result;
+    def spawn(self):
+        pass;
+
+    def configure(self, *argv):
+        pass;
 
 
 
@@ -1238,7 +1231,7 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
-    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
+    #wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
 
 
     logger = logging.getLogger('tmadog');
@@ -1272,9 +1265,13 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     stdscr = tkinter.Tk();
     stdscr.geometry(GEOMETRY);
     stdscr.title("TMADOG version %s" % (VERSION,));
+    s_gran = 120 if stdscr.tk.call('tk', 'windowingsystem').startswith("win") else 1;
+
+    argv_frame = tkinter.Frame(stdscr);
+    argv_frame.place(x = 0, y = 0, relwidth = 1, relheight = 1/3);
     
     sig = tkinter.StringVar();
-    tqueue = queue.Queue();
+    tqueue = dog_idl.PQueue();
 
     #def runner():
     #    nonlocal rez, argv, dog, args;
@@ -1314,23 +1311,24 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     #
     #        stdscr.after(5000, self.clear_queue);
 
-    ui = factory_gui2argv(stdscr, parser, *argv);
+    ui = factory_gui2argv(argv_frame, parser, *argv);
 
     ui.show();
 
-    class _XQueue:
-        def __call__(self):
-            return self.clear_queue();
-        
-        @property
-        def __name__(self):
-            return self.clear_queue.__name__;
+    ready_btn = tkinter.Button(stdscr, text="Run Dog", font =
+            tkinter.font.Font(family="Arial", size = 30, weight = "bold"),
+            background = "green", state = "normal", command = lambda : print(ui.ready, ui.get_cmdline(), "\n\n"));
 
-        def clear_queue(self):
-            print(ui.ready, ui.get_cmdline(), "\n\n");
-            stdscr.after(5000, self.clear_queue);
+    ready_btn.place(rely = 1/3, x = 0, relheight = 1/8, relwidth = 1);
 
-    stdscr.after(5000, _XQueue());
+    dashpad = tkinter.Frame(stdscr);
+    dashpad.place(x = 0, rely = 1/3 + 1/8, relheight = 1 - (1/3 + 1/8), relwidth = 1);
+
+    dashboard = dog_idl.Dashboard(dashpad, s_gran, pqueue = tqueue);
+    dashboard.show();
+
+    #stdscr.after(5000, _XQueue());
+
 
     stdscr.mainloop();
 
@@ -1351,6 +1349,10 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
 
 if __name__ == '__main__':
+
+    pkg_name = pathlib.Path(sys.argv[0]);
+
+    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
     parser = libdogs.DogCmdParser (fromfile_prefix_chars='@');
 
@@ -1373,7 +1375,8 @@ if __name__ == '__main__':
 
     parser.add_argument ('--qstdump', default = 'dumpqst.json', help = 'The dump file for questions')
 
-    parser.add_argument ('--database', '-db', help = 'The database to use')
+    parser.add_argument ('--database', '-db', default =
+            str(pkg_dir.joinpath("noudb")), help = 'The database to use')
 
     parser.add_argument ('--noupdatedb', '-nodb', action = 'store_false', dest = 'updatedb', default = True, help = 'Update the database in use')
 
@@ -1382,12 +1385,14 @@ if __name__ == '__main__':
 
     parser.add_argument ('--cookies', help = 'Website cookies');
 
-    parser.add_argument ('--output', help = "output file format");
+    parser.add_argument ('--output', help = "output file format",
+            default = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt")));
 
-    parser.add_argument ('--stats', '--summary', help = 'where to write a summary of a run to', dest = "stats");
+    parser.add_argument ('--stats', '--summary', help = 'where to write a summary of a run to', dest = "stats"
+        , default = str(pkg_dir.joinpath("dog.stat.txt")));
 
     parser.add_argument ('--page-cache', help = 'where to write cached pages',
-            dest = "cache");
+            dest = "cache", default = str(pkg_dir.joinpath("dog_cache")));
 
     parser.add_argument("--overwrite", action = "store_true", help = "always update cached pages");
 
@@ -1402,29 +1407,28 @@ if __name__ == '__main__':
     qk_psr.add_argument("--no-gui", action = "store_const", const = main,
             default = gui_main, dest = "main");
 
-    pkg_path = sys.argv[0];
 
     args, rest = qk_psr.parse_known_args(sys.argv);
 
-    if pkg_path == rest[0]:
+    if str(pkg_name) == rest[0]:
         rest.pop(0);
 
-    r = -1;
+    #r = -1;
 
-    while True:
-        r = checks(pkg_path, retry = True if r != -1 else False);
+    #while True:
+    #    r = checks(pkg_name, retry = True if r != -1 else False);
 
-        if r == CHK_QUIT:
-            sys.exit(1);
-        elif isinstance(r, CHK_SUCCESS):
-            break;
+    #    if r == CHK_QUIT:
+    #        sys.exit(1);
+    #    elif isinstance(r, CHK_SUCCESS):
+    #        break;
 
 
     try:
-        args.main(parser, pkg_path, rest, r);
+        args.main(parser, pkg_name, rest);
 
     except ModuleNotFoundError:
-        main(parser, pkg_path, rest, r);
+        main(parser, pkg_name, rest);
 
     except BaseException as err:
         import traceback

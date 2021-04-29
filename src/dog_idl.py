@@ -480,6 +480,280 @@ class Gui2Argv:
 
         return _chk;
 
+import threading
+import collections
+import queue;
+
+ACTIVITY_REPORT = 0;
+ACTIVITY_LOGGER = 1;
+
+MAX_LOG_SIZE = 50;
+
+#this should be 8-bits.
+#to post tasks with signums, these are bitwise Or'ed with a bitwise-right-shifted dashboard-identifying signum.
+# this is to allow a variable-length commands for a dashboard for example.
+
+SIG_CMD_EQUALS = 0;
+SIG_CMD_CONTAINS = 1;
+
+class Task:
+    def __init__(self, tcall, *pargs, **kwargs):
+        self.tcall = tcall;
+        self.signum = None;
+        self.sigargs = [];
+        self.pargs = pargs;
+        self.kwargs = kwargs;
+        self.result = RNone();
+
+    def __call__(self):
+        if not self:
+            self.result = self.tcall(*self.pargs, **self.kwargs);
+
+        return self.result;
+
+    def __bool__(self):
+        return not isinstance(self.result, RNone);
+
+    def wait(self):
+        while not self:
+            pass;
+
+        return self.result;
+
+
+
+class PQueue(queue.PriorityQueue):
+    PRIORITY_WRITELOG = 0;
+    PRIORITY_STATUS = 1;
+    PRIORITY_NORMAL = 2; 
+    def put(self, item, priority = None, *pargs, **kwargs):
+        priority = self.PRIORITY_NORMAL if not priority else priority;
+        return super().put((priority, item), *pargs, **kwargs);
+
+class Activity:
+    def __init__(self, size = 30):
+        self.logs = collections.deque(size);
+        self.size = size;
+        self.lk = threading.Lock();
+
+    def append_log(self, log):
+        self.logs.append(log);
+
+    def lock(self):
+        return self.lk.acquire();
+
+    def release(self):
+        return self.lk.release();
+
+    def __iter__(self):
+        yield from iter(self.log);
+
 class Dashboard:
-    def __init__(self):
-        pass;
+    NO_ID = -1;
+    ACTIVITY = "activity";
+    REAL_ID = "real_id";
+
+    def __init__(
+            self,
+            stdscr,
+            scroll_granularity,
+            pqueue,
+            signum = None,
+            sigbits = 8,
+            activity_pauser = None,
+            activity_player = None,
+            mlogger = None,
+            logsize = MAX_LOG_SIZE,
+            ):
+        self.stdscr = stdscr;
+        self.scroll_granularity = scroll_granularity;
+        self.dlist = [];
+        self.ddata = {};
+        self.counter = 0;
+        self.signum = signum;
+        self.sigbits = sigbits;
+        self.pqueue = pqueue;
+        self.mlogger = mlogger;
+        self.logsize = logsize;
+        self.activity_pauser = activity_pauser;
+        self.activity_player = activity_player;
+        self.id = self.NO_ID;
+        self.c_lock = threading.Lock();
+        self.a_lock = threading.Lock();
+        self.is_live = False;
+        self.items_var = tkinter.StringVar(value = self.dlist);
+        self.frame = tkinter.ttk.Frame(stdscr);
+        self.items_listbox = tkinter.Listbox(self.frame, listvariable = self.items_var);
+
+        #hscrollbar = tkinter.Scrollbar(frame, orient = tkinter.HORIZONTAL, command =
+        #        self.items_listbox.xview);
+
+        self.vscrollbar = tkinter.Scrollbar(self.frame, orient = tkinter.VERTICAL, command =
+                self.items_listbox.yview);
+
+        #hscrollbar.place(x = 0, y = 0, relheight = 1/8, relwidth = 1);
+
+
+        self.items_listbox.configure(yscrollcommand = self.vscrollbar.set);
+
+        #items_listbox.configure(xscrollcommand = hscrollbar.set);
+
+        #self.log = tkinter.scrolledtext.ScrolledText(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
+        self.log = tkinter.Text(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
+        self.logger = self.Logger(self, self.log);
+
+    def __call__(self, task):
+        #this a signum runner intended for the gui thread.
+        # After identification with the object's signum, the thread should call the object.
+        # it passes the task, with its signum modified for the object's command domain.
+        if task.signum == SIG_CMD_CONTAINS and task.sigargs and task.sigargs[0] in self.ddata and self.ddata[task.sigargs[0]][REAL_ID]:
+            task();
+
+        elif self.id == self.NO_ID or (task.signum == SIG_CMD_EQUALS and task.sigargs and task.sigargs[0] == self.id):
+            task();
+
+        else:
+            return False;
+
+    def show(self):
+        self.frame.place(x = 0, y = 0, relwidth = 1, relheight = 1);
+        self.vscrollbar.place(x = 0, y = 0, relheight = 1, relwidth = 1/40);
+        self.items_listbox.place(relx = 1/40, y = 0, relwidth = 1/3, relheight = 1);
+
+        self.log.place(relx = 1/3 + 1/25, y = 0, relheight = 9/10, relwidth = 1 - (1/3 + 1/20));
+        self.is_live = True;
+
+    def get_activity(self, realid = None):
+        realid = threading.get_ident() if not realid else realid;
+        if not realid in self.ddata:
+            return None;
+
+        return self.ddata[realid][self.ACTIVITY];
+
+
+    def alloc(self, aid = None):
+        # a thread should call this at the start of its activity
+        aid = threading.get_ident() if not aid else aid;
+        if not aid in self.ddata:
+            #add first.
+            aid = self.add();
+
+        elif self.ddata[aid][self.REAL_ID]:
+            return self.ddata[aid];
+
+        # remove the cookie.
+        info = self.ddata.pop(aid);
+        self.a_lock.acquire();
+        info[self.REAL_ID] = len(self.dlist);
+        self.dlist.append(str(aid));
+        # for activity threads
+        self.ddata[threading.get_ident()] = info;
+        # for scrolls
+        self.ddata[info[self.REAL_ID]] = info;
+        self.a_lock.release();
+
+        return info;
+
+    def add(self, aid = None):
+        # calling, without an 'aid', this before 'alloc' returns a cookie-ish id. This intended for
+        # when an activity object is created and allocated later, 'alloc' replaces
+        # the return cookie during allocation proper.
+
+        if not aid:
+            # for thread-safety, we lock the counter
+            self.c_lock.acquire();
+            aid = self.counter;
+            self.counter += 1;
+            self.c_lock.release();
+
+        ac = Activity(size = self.logsize);
+
+        self.ddata[aid] = {
+                self.REAL_ID: None,
+                self.ACTIVITY: ac,
+                };
+
+        return aid;
+        
+    def getcurrent(self):
+        return self.id;
+
+    def setcurrent(self, realid):
+        # this should only be called in gui thread
+        self.id = realid;
+        self.logger.write_log(self.get_activity(realid));
+        return True;
+
+    
+    # extends the parent class and does actual logging
+    class Logger:
+        def __init__(self, parent, log):
+            self.log = log;
+        
+        def write_log(self, activity):
+            self.log['state'] = 'normal';
+            for msg in activity:
+
+                if self.log.index('end-1c') != '1.0':
+                    self.log.insert('end', '\n');
+
+                self.log.insert('end', msg);
+
+            self.log['state'] = 'disabled';
+
+            #self.log.see("end-1c linestart");
+
+
+        def append_log(self, msg):
+
+            self.log['state'] = 'normal';
+
+            if self.log.index('end-1c') != '1.0':
+                self.log.insert('end', '\n');
+
+            self.log.insert('end', msg);
+            self.log['state'] = 'disabled';
+            #self.log.see("end-1c linestart");
+
+        
+        def debug(self, msg, *pargs, **kwargs):
+            return self.parent.mlogger.debug(msg, *pargs, **kwargs);
+
+        def fatal(self, msg, *pargs, **kwargs):
+            return self.parent.mlogger.fatal(msg, *pargs, **kwargs);
+
+        def info(self, msg, *pargs, **kwargs):
+            aid = threading.get_ident();
+
+            self.parent.mlogger.info(msg, *pargs, **kwargs);
+
+            act = self.parent.get_activity(aid);
+
+            if not act:
+                return False;
+
+            cur = self.parent.getcurrent();
+
+            if cur == self.parent.NO_ID:
+                # special case, this should be done once for a programs lifetime
+                tk = Task(self.parent.setcurrent, aid);
+                if isinstance(self.parent.signum, int) and self.parent.signum >= 0:
+                    tk.signum = (SIG_CMD_EQUALS << self.parent.sigbits) | self.parent.signum;
+                    tk.sigargs = [aid];
+
+                self.parent.pqueue.put(
+                        tk,
+                        self.PRIORITY_WRITELOG
+                        );
+
+            elif cur == aid:
+                tk = Task(self.append_log, msg);
+                if isinstance(self.parent.signum, int) and self.parent.signum >= 0:
+                    tk.signum = (SIG_CMD_EQUALS << self.parent.sigbits) | self.parent.signum;
+                    tk.sigargs = [aid];
+
+                self.parent.pqueue.put(
+                        tk,
+                        self.PRIORITY_WRITELOG
+                        );
+
