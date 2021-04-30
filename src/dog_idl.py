@@ -500,6 +500,7 @@ SIG_CMD_CONTAINS = 1;
 # an activities errors
 
 RESOLVER_MAX_KEYS = 4;
+RESOLVER_ERROR = RNone();
 
 # this can only be played in the gui thread
 class Resolver:
@@ -510,33 +511,30 @@ class Resolver:
         self.commands = commands;
         self.keys = keys;
         self.cb = cb;
-        for idx in range(RESOLVER_MAX_KEYS):
-            try:
-                key = self.keys[idx];
-                command = self.commands[idx];
-                tkinter.Button(
-                        self.frame,
-                        text=str(key),
-                        background = "green",
-                        state = "normal",
-                        command = self.wrap(command)
-                        ).place(
-                                y = 0,
-                                relx = idx/RESOLVER_MAX_KEYS
-                                relwidth = 1/RESOLVER_MAX_KEYS
-                                relheight = 2/3
-                                );
-
-            except IndexError:
-                break;
-
 
     def remove(self):
         return self.frame.place_forget();
 
     def show(self):
         self.frame.place(x = 0, y = 0, relheight = 1, relwidth = 1);
-    
+        le = min(RESOLVER_MAX_KEYS, len(self.keys));
+        for idx in range(le):
+            key = self.keys[idx];
+            command = self.commands[idx];
+            tkinter.Button(
+                    self.frame,
+                    text=str(key),
+                    background = "green",
+                    state = "normal",
+                    command = self.wrap(command)
+                    ).place(
+                            y = 0,
+                            relx = idx/le,
+                            relwidth = 1/le,
+                            relheight = 2/3,
+                            );
+
+
     def wrap(self, cb):
         def _wrap():
             res = None;
@@ -546,7 +544,8 @@ class Resolver:
             # as a dummy task
             self.task(res);
             
-            if callable(self.cb):
+            # the issue is actually resolved;
+            if self.task and callable(self.cb):
                 self.cb();
 
             return res;
@@ -590,7 +589,7 @@ class Task:
         self.kwargs = kwargs;
         self.result = RNone();
 
-    def __call__(self, result = RNone):
+    def __call__(self, result = RNone()):
         # to allow for dummy task
         if not self and not isinstance(result, RNone):
             self.result = result;
@@ -609,26 +608,40 @@ class Task:
 
         return self.result;
 
+PRIORITY_WRITELOG = 0;
+PRIORITY_STATUS = 1;
+PRIORITY_NORMAL = 2; 
 
+from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass(order=True)
+class PrioritizedItem:
+    priority: int
+    item: Any=field(compare=False)
 
 class PQueue(queue.PriorityQueue):
-    PRIORITY_WRITELOG = 0;
-    PRIORITY_STATUS = 1;
-    PRIORITY_NORMAL = 2; 
+    PRIORITY_WRITELOG = PRIORITY_WRITELOG;
+    PRIORITY_STATUS = PRIORITY_STATUS;
+    PRIORITY_NORMAL = PRIORITY_NORMAL; 
     def put(self, item, priority = None, *pargs, **kwargs):
         priority = self.PRIORITY_NORMAL if not priority else priority;
-        return super().put((priority, item), *pargs, **kwargs);
+        return super().put(
+                (priority, PrioritizedItem(priority, item)),
+                *pargs,
+                **kwargs
+                );
 
     def get(self, *pargs, **kwargs):
         tup = super().get(*pargs, **kwargs);
-        return tup[1];
+        return tup[1].item;
 
 class Activity:
     def __init__(self, size = 30, regsize = 1):
-        self.logs = collections.deque(size);
+        self.logs = collections.deque([], size);
         self.size = size;
         # these are meant for user-defined internal processing.
-        self.register = threading.Queue(regsize);
+        self.register = queue.Queue(regsize);
         self.error = None;
         self.warning = None;
         
@@ -648,7 +661,9 @@ class Activity:
         return self.lk.release();
 
     def __iter__(self):
-        yield from iter(self.log);
+        yield from iter(self.logs);
+
+import pdb
 
 class Dashboard:
     NO_ID = -1;
@@ -686,7 +701,7 @@ class Dashboard:
         self.is_live = False;
         self.items_var = tkinter.StringVar(value = self.dlist);
         self.frame = tkinter.ttk.Frame(stdscr);
-        self.items_listbox = tkinter.Listbox(self.frame, listvariable = self.items_var);
+        self.items_listbox = tkinter.Listbox(self.frame, listvariable = self.items_var, selectmode = "browse");
 
         #hscrollbar = tkinter.Scrollbar(frame, orient = tkinter.HORIZONTAL, command =
         #        self.items_listbox.xview);
@@ -701,8 +716,10 @@ class Dashboard:
 
         #items_listbox.configure(xscrollcommand = hscrollbar.set);
 
-        #self.log = tkinter.scrolledtext.ScrolledText(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
-        self.log = tkinter.Text(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
+        self.log = tkinter.scrolledtext.ScrolledText(self.frame, background =
+                "black", foreground = "white", state='disabled', wrap = "word",
+                height = logsize);
+        #self.log = tkinter.Text(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
         self.logger = self.Logger(self, self.log);
 
         self.resolution_scr = tkinter.ttk.Frame(self.frame);
@@ -751,11 +768,13 @@ class Dashboard:
 
         # for the gui thread
         act.resolver.remove();
+        act.register.task_done();
         act.resolver = None;
     
     
-    def send_task(self, tk, cmdnum = SIG_CMD_CONTAINS, sigargs = [], priority = self.PRIORITY_NORMAL):
-
+    def send_task(self, tk, cmdnum = SIG_CMD_CONTAINS, sigargs = [], priority = None):
+        global PRIORITY_WRITELOG;
+        priority = PRIORITY_NORMAL if not priority else priority;
         tk.signum = cmdnum;
 
         if isinstance(self.signum, int) and self.signum >= 0:
@@ -770,17 +789,28 @@ class Dashboard:
 
         return True;
 
-    def register_progress(self, cur, total, aid):
-        pass;
+    def register_progress(self, cur, total, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+        act = self.get_activity(aid);
+        if not act:
+            return False;
+
+        if not act.reporter:
+            act.reporter = Reporter(self.status_scr, total);
+            if self.get_vid_of(aid) == self.id:
+                act.reporter.show();
+
+        act.reporter.progress(cur);
+
 
     def is_current(self, aid = None):
         aid = threading.get_ident() if not aid else aid;
 
         return self.id == self.get_vid_of(aid);
 
-    def scroll(self):
+    def scroll(self, e):
         ids = self.items_listbox.curselection();
-        if not ids:
+        if not ids or self.is_current(ids[0]):
             return;
 
         return self.setcurrent(self.get_vid_of(ids[0]));
@@ -789,8 +819,8 @@ class Dashboard:
         aid = threading.get_ident() if not aid else aid;
         if not self.is_real(aid):
             return False;
-        act = self.get_activity(aid);
-        return act[self.VID];
+        info = self.get_info(aid);
+        return info[self.VID];
 
     def show(self):
         # omo these fractions dey fear me o. I nogo fit reason am again, i
@@ -802,10 +832,12 @@ class Dashboard:
         self.items_listbox.bind("<<ListboxSelect>>", self.scroll);
 
         self.log.place(relx = 1/3 + 1/25, y = 0, relheight = 9/10, relwidth = 1 - (1/3 + 1/20));
-        self.resolution_scr.place(relx = 1/3 + 1/25, rely = 9/10, relwidth = 1/2 * (1 - (1/3 + 1/20), relheight = 1/10));
+        self.resolution_scr.place(relx = 1/3 + 1/25, rely = 9/10, relwidth = 3/10, relheight = 1/10);
 
-        self.status_scr.place(relx = (1/3 + 1/25)+(1/2 * (1 - (1/3 + 1/20)), rely = 9/10, relwidth = 1/2
-                * (1 - (1/3 + 1/20), relheight = 1/10));
+        self.status_scr.place(relx = (1/3 + 1/25)+(1/2 * (1 - (1/3 + 1/20))), rely = 9/10, relwidth = 3/10, relheight = 1/10);
+        
+        #tkinter.Button(self.status_scr, text = "STATUS", background = "yellow").place(x = 0, y = 0, relheight = 1, relwidth = 1);
+        #tkinter.Button(self.resolution_scr, text = "RESOLUTION").place(x = 0, y = 0, relheight = 1, relwidth = 1);
         self.is_live = True;
 
     def get_activity(self, realid = None):
@@ -815,9 +847,17 @@ class Dashboard:
 
         return self.ddata[realid][self.ACTIVITY];
 
+    def get_info(self, realid = None):
+        realid = threading.get_ident() if not realid else realid;
+        if not realid in self.ddata:
+            return None;
+
+        return self.ddata[realid];
+
 
     def alloc(self, aid = None):
         # a thread should call this at the start of its activity
+        #pdb.set_trace();
         aid = threading.get_ident() if not aid else aid;
         if not self.is_real(aid):
             #add first.
@@ -833,6 +873,7 @@ class Dashboard:
         self.a_lock.acquire();
         info[self.REAL_ID] = len(self.dlist);
         self.dlist.append(str(aid));
+        self.items_listbox.insert("end", str(aid));
         # for activity threads
         self.ddata[vid] = info;
         # for scrolls
@@ -866,22 +907,27 @@ class Dashboard:
         return self.id;
     
     def is_real(self, aid):
-        return aid in self.ddata and self.ddata[aid][REAL_ID] != None;
+        return aid in self.ddata and self.ddata[aid][self.REAL_ID] != None;
 
     def setcurrent(self, realid):
         # this should only be called in gui thread
         if not self.is_real(realid):
             return False;
 
-        old_act = self.get_activity(self.id);
-        self.id = realid;
         act = self.get_activity(realid);
 
-        if old_act.reporter:
-            old_act.reporter.remove();
+        if not act:
+            return False;
 
-        if old_act.resolver:
-            old_act.resolver.remove();
+        if self.id != self.NO_ID:
+            old_act = self.get_activity(self.id);
+            if old_act.reporter:
+                old_act.reporter.remove();
+
+            if old_act.resolver:
+                old_act.resolver.remove();
+
+        self.id = realid;
 
         self.logger.write_log(act);
 
@@ -894,7 +940,7 @@ class Dashboard:
         else:
             try:
                 r = act.register.get(block = False);
-                act.register.task_done();
+                #act.register.task_done();
                 act.resolver = r;
                 r.show();
             except queue.Empty:
@@ -907,31 +953,34 @@ class Dashboard:
     class Logger:
         def __init__(self, parent, log):
             self.log = log;
+            self.parent = parent;
         
         def write_log(self, activity):
-            self.log['state'] = 'normal';
+            self.log.configure(state = 'normal');
+            self.log.delete("1.0", tkinter.END);
             for msg in activity:
 
+                self.log.insert('end', msg);
                 if self.log.index('end-1c') != '1.0':
                     self.log.insert('end', '\n');
 
-                self.log.insert('end', msg);
 
-            self.log['state'] = 'disabled';
+            self.log.configure(state = 'disabled');
 
-            #self.log.see("end-1c linestart");
+            self.log.yview(tkinter.END);
 
 
         def append_log(self, msg):
 
-            self.log['state'] = 'normal';
+            self.log.configure(state = 'normal');
+
+            self.log.insert('end', msg);
 
             if self.log.index('end-1c') != '1.0':
                 self.log.insert('end', '\n');
 
-            self.log.insert('end', msg);
-            self.log['state'] = 'disabled';
-            #self.log.see("end-1c linestart");
+            self.log.configure(state = 'disabled');
+            self.log.yview(tkinter.END);
 
         
         def debug(self, msg, *pargs, **kwargs):
@@ -941,6 +990,7 @@ class Dashboard:
             return self.parent.mlogger.fatal(msg, *pargs, **kwargs);
 
         def info(self, msg, *pargs, **kwargs):
+            global PRIORITY_WRITELOG
             # for now, we want to show info log. this might be configurable in
             # the future
 
@@ -969,6 +1019,5 @@ class Dashboard:
                     tk,
                     SIG_CMD_EQUALS,
                     [aid],
-
-                    self.PRIORITY_WRITELOG
+                    PRIORITY_WRITELOG
                     );
