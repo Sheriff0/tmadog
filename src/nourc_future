@@ -3,10 +3,14 @@ rumbu = tqatri
 xstore = trextri
 
 [events]
+crs_skip = GST
+page_skip = not\W+yet\W+ready\W+for,Contact\W+\[email\Wprotected\]
+traps = not\W+ready\W+for\W+now 
 on_qst_submit = mark\W+for\W+question
 on_complete = You\W+have\W+already\W+complete
 on_cookie = Checking\W+your\W+browser
 on_login_needed = login\W+first
+on_incorrect_login = incor?rect\W+username\W+or\W+pas?sword,not\W+allowed
 
 [describe]
 crscode = (?P<cs>[A-Za-z]{3})\d{3}(?!\d+)
@@ -40,11 +44,11 @@ volatile =
 [qst_page]
 path = TMA[1-3]
 indices = 0
-requires = profile_page
+requires = tma_page
 volatile = logout_page
 
 [tma_page]
-path = 2020/2 TMA[1-3]
+path = Take TMA
 indices = 0
 volatile = logout_page
 requires = profile_page
