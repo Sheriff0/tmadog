@@ -37,7 +37,7 @@ def dog_submit_stat(dog):
 
 class SimpleDog:
 
-    def __init__ (self, usrs, amgr, get_nav, outfile = None):
+    def __init__ (self, usrs, amgr, get_nav, outfile = None, **req_args):
         self.arg_gens = [];
         self.prep_argv = [];
         self.prep_argc = 0;
@@ -49,6 +49,7 @@ class SimpleDog:
         self.nav = None;
         self.get_nav = get_nav;
         self.outfile = outfile;
+        self.req_args = req_args;
 
 
     def _alloc(self, task = None):
@@ -232,8 +233,8 @@ class SimpleDog:
 
 
 
-        for ftype in libdogs.fetch_all(nav, arg):
-            if not ftype:
+        for ftype in libdogs.fetch_all(nav, arg, **self.req_args):
+            if not ftype or isinstance(ftype, status.Status):
                 st = ftype;
                 break;
 
@@ -242,7 +243,8 @@ class SimpleDog:
                 line = "%s" % ("=" * len(arg[libdogs.P_CRSCODE]),);
                 fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
 
-            st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp);
+            st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp,
+                    **self.req_args);
 
 
             if not st:

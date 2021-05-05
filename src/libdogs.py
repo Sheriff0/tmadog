@@ -30,12 +30,13 @@ import logging
 import chardet
 import urllib3
 import time
+import random
 
 copy = copy.copy if sys.implementation.version.minor < 7 else copy.deepcopy 
 
 logger = logging.getLogger('tmadog.libdog');
 
-MAX_RETRIES = 10;
+MAX_RETRIES = 5;
 
 P_PWD = "pwd";
 P_USR = "matno";
@@ -632,17 +633,36 @@ def lazy_logout(nav, retry = 3, **kwargs):
     return lazy_nav_reconf(nav, nav.keys);
 
 
+def is_incorrect_login(nav, qres):
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
+    for tr in nav.webmap["events"]["on_incorrect_login"].strip().split(","):
+        mt = re.search(
+                tr.strip(),
+                lxml.html.fromstring(html = qres.text).text_content(),
+                re.I
+                );
+        if mt:
+            logger.debug("it's incorrect, please handle");
+            return mt;
+
+    logger.debug("No incorrect login detected found");
+    return False;
+
+
 
 def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
     global LOGIN_BLACKLIST;
 
     retry += 1;
+    err_log_fmt = "==LOGIN===\n%s\n=====";
 
     logger.info("lazy_login(): preparing to login %s", nav.keys[P_USR]);
 
     lres = False;
 
-    while retry:
+    while True:
         try:
             lreq, fro = nav("profile_page")[:-1];
             referer = fro.url;
@@ -669,19 +689,22 @@ def lazy_login(nav, retry = MAX_RETRIES, **kwargs):
             if not isinstance(lres, requests.Response):
                 lres = nav.session.get(nav.keys[P_URL]);
 
-            if isinstance(err, DogTypeError):
+            if isinstance(err, DogTypeError) and is_incorrect_login(nav, lres):
                 LOGIN_BLACKLIST.append(nav.keys);
+                logger.debug(err_log_fmt % (lres.text,));
                 return status.Status(status.S_ERROR, "cant' login %s" %
                         (nav.keys[P_USR],), nav.keys);
 
             elif need_cookies(nav, lres):
                 st = cookie_hook(nav);
                 if not st:
+                    logger.debug(err_log_fmt % (lres.text,));
                     return status.Status(status.S_ERROR, "can't login, no cookies in navigator", lres);
 
             logger.info("retrying" if retry > 1 else "not retrying");
 
             retry -= 1;
+            time.sleep(random.random());
 
 
         except requests.RequestException as err:
@@ -846,6 +869,12 @@ def discover_by_quizlist(usr, nav, retry = 3):
     else:
 
         retry += 1
+
+        lg = lazy_login(nav);
+
+        if not lg:
+            yield lg;
+            return;
 
         st = goto_page(nav, "qst_page", -1, login = True);
 
@@ -1105,11 +1134,15 @@ def read_file_text(fi):
 
     enc = chardet.detect(fbin);
 
-    if not enc:
+    if not enc or not enc["encoding"]:
         logger.info("cannot read file!!!");
         return status.Status(status.S_ERROR, "no text", (enc,));
     
     return fbin.decode(encoding = enc["encoding"]);
+
+import user_agents
+
+ua_gen = iter(user_agents.UA_Header_Generator());
 
 def session_from_cookies (url, cookie_file):
     # use a unique string else 'fi' defaults to the current dir which always
@@ -1131,7 +1164,6 @@ def session_from_cookies (url, cookie_file):
             "User-Agent",
             "Accept",
             "Accept-Language",
-            "Accept-Encoding",
             "Connection",
             "Upgrade-Insecure-Requests",
             ];  
@@ -1142,7 +1174,7 @@ def session_from_cookies (url, cookie_file):
 
     if not cookt:
         logger.info("no cookies found...");
-        session.headers = cloudscraper.user_agent.User_Agent().headers;
+        session.headers = next(ua_gen);
 
     else:
         logger.info("got cookies created by %s", cookt [0]['User-Agent']);
@@ -1216,13 +1248,24 @@ def submit(nav, sreq, **kwargs):
     logger.info("libdog.submit(): preparing to submit quiz");
     res = None;
 
-    while not res:
+    while True:
         res = goto_page2(nav = nav, req = sreq, login = True, **kwargs);
 
+        if not res:
+            continue;
 
-    logger.info("libdogs.submit(): submit sucessful, checking result...");
 
-    return is_correct_ans(nav, res);
+        xt = is_correct_ans(nav, res);
+        logger.info("libdogs.submit(): submit sucessful, checking result...");
+
+        if not isinstance(xt, status.Status):
+            logger.info("libdogs.submit(): checking result successful, retrying...");
+
+            return xt;
+        else:
+            logger.info("libdogs.submit(): checking result failed, retrying...");
+
+
 
 
 def transform_req (req, usr):
@@ -1251,6 +1294,51 @@ def transform_req (req, usr):
                     copycase(tma), req[F_QKEY][k], flags = re.IGNORECASE)
 
     return req;
+
+
+
+def is_skippable(nav, usr, qres):
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
+    if usr:
+        for tr in nav.webmap["events"]["crs_skip"].strip().split(","):
+            mt = re.match(tr.strip(), usr[P_CRSCODE], re.I);
+            if mt:
+                logger.debug("you can skip please...");
+                return mt;
+
+    for tr in nav.webmap["events"]["page_skip"].strip().split(","):
+        mt = re.search(
+                tr.strip(),
+                lxml.html.fromstring(html = qres.text).text_content(),
+                re.I
+                );
+        if mt:
+            logger.debug("you can skip please...");
+            return mt;
+
+    logger.debug("no skippables found...");
+    return False;
+
+
+
+def is_trap(nav, qres):
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
+    for tr in nav.webmap["events"]["traps"].strip().split(","):
+        mt = re.search(
+                tr.strip(),
+                lxml.html.fromstring(html = qres.text).text_content(),
+                re.I
+                );
+        if mt:
+            logger.debug("it's a trap, please handle");
+            return mt;
+
+    logger.debug("No traps found");
+    return False;
 
 
 def can_retry_page(nav, qres, logi = False):
@@ -1284,6 +1372,10 @@ def can_retry_page(nav, qres, logi = False):
         return status.Status(status.S_ERROR, "login err",
                         (qres.request, qres, st));
 
+    
+    elif is_trap(nav, qres):
+        return status.Status(status.S_OK, "can retry", qres);
+
     else:
         return status.Status(status.S_ERROR, "can't retry",
                     (qres.request, qres));
@@ -1291,7 +1383,14 @@ def can_retry_page(nav, qres, logi = False):
 
 
 def login_needed(nav, qres):
-    return re.search(nav.webmap["events"]["on_login_needed"].strip(), qres.text, re.I);
+    if not isinstance(qres, requests.Response):
+        qres = nav.session.get(nav.keys[P_URL]);
+
+    return re.search(
+            nav.webmap["events"]["on_login_needed"].strip(),
+            lxml.html.fromstring(html = qres.text).text_content(),
+            re.I
+            );
 
 def can_retry_fetch(nav, qres):
     if not isinstance(qres, requests.Response):
@@ -1330,6 +1429,9 @@ def can_retry_fetch(nav, qres):
         return status.Status(status.S_OK, "can retry",
                 qres);
 
+    elif is_trap(nav, qres):
+        return status.Status(status.S_OK, "can retry", qres);
+
     else:
         return status.Status(status.S_ERROR, "can't retry",
                         (qres.request, qres));
@@ -1337,7 +1439,6 @@ def can_retry_fetch(nav, qres):
 
 def fetch_all(nav, usr, **kwargs):
     global F_LAST_FETCH, F_QFMT, F_NEXT;
-
     #find an alt
     #if not F_QFMT:
     if CACHE_CACHE_FIRST:
@@ -1418,11 +1519,13 @@ def fetch_all(nav, usr, **kwargs):
             logger.info("fetch_all(): fetch unsucessful");
 
             st = can_retry_fetch(nav, qres);
-            if not st:
-                if st.code == status.S_NULL:
-                    logger.info("nothing to fetch");
+            if st.code == status.S_NULL or is_skippable(nav, usr, qres):
+                logger.info("nothing to fetch");
                 done = True;
                 yield st;
+
+            else:
+                time.sleep(random.random());
             
 
 
@@ -1494,15 +1597,21 @@ def fetch_allq(nav, usr, **kwargs):
 
         except DogTypeError as err:
             st = can_retry_fetch(nav, qres);
-            if not st:
+            if st.code == status.S_NULL or is_skippable(nav, usr, qres):
+                logger.info("nothing to fetch");
                 done = True;
                 yield st;
 
+            else:
+                time.sleep(random.random());
+        
+            
 
-def brute_safe(nav, usr, qst):
+
+def brute_safe(nav, usr, qst, **kwargs):
     global F_NEXT;
 
-    fe = next(iter(fetch_allq(nav, usr)));
+    fe = next(iter(fetch_allq(nav, usr, **kwargs)));
 
     if isinstance(fe, status.Status) and re.search(r'no\s+more\s+question',
             fe.msg, re.I):
@@ -1578,7 +1687,7 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, fp = None, **kwargs):
             else:
                 return x;
 
-        elif not brute_safe(nav, usr, qst):
+        elif not brute_safe(nav, usr, qst, **kwargs):
             return status.Status(status.S_FATAL, "unable to brute for the answers from the server", qst);
 
 

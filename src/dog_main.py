@@ -36,6 +36,8 @@ GEOMETRY = '400x400+100+100';
 
 CANONICAL_URL = "https://www.nouonline.net";
 
+REQUEST_TIMEOUT = 10;
+
 CHK_QUIT = False;
 CHK_FAIL = None;
 CHK_SUCCESS = dropbox.KeyInfo;
@@ -234,7 +236,10 @@ def write_stat_raw(itr, fi):
                 arg[libdogs.P_CRSCODE] = "nil";
             line += "--matno %s --pwd %s --crscode %s --tma %s --url %s\n" % (arg[libdogs.P_USR], arg[libdogs.P_PWD], arg[libdogs.P_CRSCODE], arg[libdogs.P_TMA], arg[libdogs.P_URL]);
 
-            line += "# %s\n\n" % (st[simple_dog.STAT_ST].msg,);
+            for msg_line in str(st[simple_dog.STAT_ST].msg).split("\n"):
+                line += "# %s\n\n" % (msg_line,);
+
+            line += "\n\n";
             sta += line;
 
             if st[simple_dog.STAT_ST].code >= status.S_INT:
@@ -249,15 +254,15 @@ def write_stat_raw(itr, fi):
 
         ok_str += "\n\n#total submitted: %s\n\n" % (ok,);
         not_ok_str += "\n\n#total not submitted: %s\n\n" % (not_ok,);
-        tfp = open(
-                str(pathlib.Path(fi).parent.joinpath("stat-%s.txt" %
-                    (math.trunc(time.time()),)).resolve()),
-                "w"
-                );
-        tfp.write(ok_str);
-        tfp.write(not_ok_str);
-        tfp.write(sta);
-        tfp.close();
+        #tfp = open(
+        #        str(pathlib.Path(fi).parent.joinpath("stat-%s.txt" %
+        #            (math.trunc(time.time()),)).resolve()),
+        #        "w"
+        #        );
+        #tfp.write(ok_str);
+        #tfp.write(not_ok_str);
+        #tfp.write(sta);
+        #tfp.close();
         fp.write(ok_str);
         fp.write(not_ok_str);
         fp.write(sta);
@@ -424,7 +429,8 @@ Please input a cookie file (e.g from the browser)--> """));
                 nav = dog.nav;
                 dog.nav = libdogs.lazy_nav_reconf(nav, cli);
         else:
-            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
+            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP],
+                    cli, timeout = REQUEST_TIMEOUT);
             nav = getcookie(nav);
             dog.nav = nav;
 
@@ -532,7 +538,8 @@ Please input a cookie file (e.g from the browser)--> """));
                 ),
             ansmgr,
             get_nav,
-            outfile = args.output
+            outfile = args.output,
+            timeout = REQUEST_TIMEOUT,
             );
 
     try:
@@ -1054,7 +1061,8 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
                 nav = dog.nav;
                 dog.nav = libdogs.lazy_nav_reconf(nav, cli);
         else:
-            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
+            nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP],
+                    cli, timeout = REQUEST_TIMEOUT);
             session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], args.cookies);
             if session:
                 nav.session = session;
@@ -1171,7 +1179,8 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
                 ),
             ansmgr,
             get_nav,
-            outfile = args.output
+            outfile = args.output,
+            timeout = REQUEST_TIMEOUT,
             );
 
     if dog:
