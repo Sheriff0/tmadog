@@ -33,6 +33,7 @@ import dropbox
 import threading
 
 import dog_idl
+import random
 
 VERSION = 1.00;
 GEOMETRY = '400x400+100+100';
@@ -1207,16 +1208,288 @@ class RNone:
     def __init__(self):
         pass;
 
+
+import tkinter.messagebox
+
+class XScheduler:
+    class Group:
+        def __init__(self, parser, pkg_name, logger, *argv, **kwargs):
+            pass;
+
+    def __init__(self, logger, reporter):
+        self.reporter = reporter;
+        self.logger = logger;
+    
+    def holla(self):
+        return tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx");
+
+    def para(self):
+        return tkinter.messagebox.showinfo(title = "Para",
+                message = "I just want attention!", detail = "xxx");
+
+    def runner(self, argv):
+        self.logger.alloc();
+        self.logger.logger.info("got %s" % (argv));
+        err = math.trunc(random.random() * 100)
+        self.logger.append_reporter(
+                dog_idl.Resolver(
+                    ["hello"],
+                    [self.holla],
+                    )
+                );
+        res = dog_idl.Reporter(100);
+        self.logger.append_reporter(res);
+        for a in range(100):
+            time.sleep(3);
+            self.logger.logger.info("I just did %s out of 100" % (a,));
+            res.progress(a);
+
+    def configure(self, argv):
+        threading.Thread(target = self.runner, args = (argv,), daemon = True).start(); 
+
+
+
 class Scheduler:
     class Group:
         def __init__(self, parser, pkg_name, logger, *argv, **kwargs):
             pass;
 
-    def spawn(self):
-        pass;
+    def __init__(self, logger, resolver, reporter):
+        self.reporter = reporter;
+        self.logger = logger;
+        self.resolver = resolver;
+        self.navs = {};
+    
+    # NOTE Refactor
+    def register_error(self, keys, commands, aid = None):
+        # return a task for the caller to wait on for resolution
+        aid = threading.get_ident() if not aid else aid;
+        task = Task(None);
+        act = self.get_activity(aid);
+        cb = Task(self.de_register_error, aid);
+        act.register.put(
+                Resolver(
+                    self.resolution_scr,
+                    keys,
+                    commands,
+                    task,
+                    cb
+                    ),
+                );
+        
+        return task;
 
-    def configure(self, *argv):
-        pass;
+    def register_progress(self, cur, total, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+        act = self.get_activity(aid);
+        if not act:
+            return False;
+
+        if not act.reporters:
+            act.reporters.append(Reporter(self.status_scr, total));
+            if self.get_vid_of(aid) == self.id:
+                act.reporters.place();
+
+        act.reporters.progress(cur);
+
+
+    def configure(parser, pkg_name, argv, kinfo = None):
+
+        if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
+            print("Please renew your package as the current package has expired");
+            return False;
+
+        pkg_name = pathlib.Path(pkg_name);
+
+        pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
+
+        wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
+
+        logger = logging.getLogger('tmadog');
+
+        logger.setLevel(logging.DEBUG);
+        # create file handler which logs even debug messages
+        dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
+        dfh.setLevel(logging.DEBUG);
+
+        fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = "w");
+        fatal.setLevel(logging.CRITICAL);
+
+        stdout = logging.StreamHandler();
+        stdout.setLevel(logging.INFO);
+
+        dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));
+
+        stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));
+
+        # add the handlers to the logger
+        logger.addHandler(dfh);
+        logger.addHandler(fatal);
+        logger.addHandler(stdout);
+
+        argv, rest = collapse_file_argv(parser, argv, prep_hypen);
+        argv.extend(rest);
+
+        args = parser.parse_args(argv);
+
+        lastcookie = args.cookies;
+
+        def getcookie(nav):
+
+            if not args.cookies:
+                fi = pathlib.Path(input("""
+
+    Please input a cookie file (e.g from the browser)--> """));
+
+                if not isinstance(fi, str) or re.match(r'\s*', fi):
+                    if not lastcookie:
+                        return nav;
+
+                    fi = lastcookie;
+
+
+            else:
+                fi = pathlib.Path(args.cookies);
+                args.cookies = None;
+
+            session = libdogs.session_from_cookies(nav.keys[libdogs.P_URL], str(fi));
+            if session:
+                nav.session = session;
+            return nav;
+
+
+        def get_nav(cli):
+            nonlocal dog;
+            if dog.nav:
+                if not re.match(dog.nav.keys[libdogs.P_USR], cli[libdogs.P_USR], re.I):
+                    nav = dog.nav;
+                    dog.nav = libdogs.lazy_nav_reconf(nav, cli);
+            else:
+                nav = navigation.Navigator(cli[libdogs.P_URL], cli[libdogs.P_WMAP], cli);
+                nav = getcookie(nav);
+                dog.nav = nav;
+
+            return dog.nav;
+
+        def cleanup():
+            nonlocal stime;
+
+            f = open (args.qstdump, 'w') if args.debug else None
+
+            crsreg = mkstat(dog, args.stats);
+
+            if args.updatedb:
+                dbm.update_hacktab (args.database, ansmgr.iter_cache (),
+                        ansmgr.qmap, fp = f);
+            #if args.debug or args.output:
+            #    arr = []
+            #    for qst in ansmgr.iter_cache ():
+            #       arr.append (qst)
+
+            #    if args.debug:
+            #        json.dump (arr, f)
+
+                #if args.output:
+                #    qstwriter.fromlist(arr, ansmgr.qmap, qstwriter.writeqst(args.output, crsreg));
+
+            if f:
+                f.close ()
+
+            if ansmgr._cur:
+                ansmgr.close ()
+
+
+            etime = time.time();
+            diff = etime - stime;
+            hr,diff = divmod(diff, 60*60);
+            mn,diff = divmod(diff, 60);
+
+
+            print("\n\nfinished job in %s hour(s), %s min(s) and %s sec(s)" %
+                    (
+                       math.trunc(hr),
+                       math.trunc(mn),
+                       math.trunc(diff),
+                        )
+                    );
+
+        logger.info("Welcome to tmadog version %s\n" % (VERSION,));
+
+        if not getattr(args, "stats"):
+            logger.info("no stat file given, setting default stat file");
+            setattr(args, "stats", str(pkg_dir.joinpath("dog.stat.txt")));
+
+
+        if not getattr(args, libdogs.P_WMAP):
+            logger.info("no config file given, setting default config file for webmap");
+            setattr(args, libdogs.P_WMAP, str(pkg_dir.joinpath("nourc")));
+
+        mp = configparser.ConfigParser (interpolation =
+            configparser.ExtendedInterpolation ())
+
+        logger.info("reading config file and initializing a webmap");
+        #mstr = libdogs.read_file_text(getattr(args, libdogs.P_WMAP));
+        mp.read_string (nourc.rc);
+
+        setattr(args, libdogs.P_WMAP, mp);
+
+        if not args.database:
+            logger.info("no database file given, setting default database file for webmap");
+            args.database = str(pkg_dir.joinpath("noudb"));
+
+        if not args.cache:
+            logger.info("no cache dir given, setting default cache directory for quiz");
+            args.cache = str(pkg_dir.joinpath("dog_cache"));
+
+        if not args.output:
+            logger.info("no output file given, setting default output file for quiz");
+
+            #NOTE the unix-style though.
+            args.output = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt"));
+
+        pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
+
+        logger.debug("initializing answer manager");
+        ansmgr = ansm.AnsMgr (
+                qmap = mp['qmap'],
+                database = args.database,
+                mode = ansm.ANS_MODE_NORM,
+                pseudo_ans = mp['qmap']['pseudo_ans'].split (','),
+                )
+
+        logger.debug("initializing a dog to run task");
+        libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
+
+        libdogs.CACHE_PAGE_CACHE = args.cache;
+        libdogs.CACHE_CACHE_FIRST = args.cache_first;
+        libdogs.CACHE_OVERWRITE = args.overwrite;
+        dog = simple_dog.SimpleDog(
+                libdogs.preprocess(
+                    args,
+                    args.exclude if args.exclude else [], # NOTE defaults like
+                    # this should be in config
+                    **wlist_h,
+                    wlist_cb = wlist_h,
+                    ),
+                ansmgr,
+                get_nav,
+                outfile = args.output
+                );
+
+        try:
+            task = dog._InternalTask(cmd = None, args = args);
+            stime = time.time();
+
+            dog.submit(task);
+            cleanup();
+
+        except KeyboardInterrupt:
+            cleanup();
+
+        except BaseException as err:
+            cleanup();
+            raise err;
+
 
 
 
@@ -1225,7 +1498,8 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
     import queue;
-
+    
+    AFTER_MS = 100;
 
     pkg_name = pathlib.Path(pkg_name);
 
@@ -1307,38 +1581,40 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
                     if signum < len(objs) and callable(objs[signum]):
                         task.signum = task.signum >> 8;
                         objs[signum](task);
+
                     else:
                         task();
                 else:
                     task();
-
                 tqueue.task_done();
             except queue.Empty:
                 pass;
     
-            stdscr.after(1000, self.clear_queue);
+            stdscr.after(AFTER_MS, self.clear_queue);
 
     ui = factory_gui2argv(argv_frame, parser, *argv);
 
-    objs.append();
+    objs.append(ui);
 
     ui.show();
-
-    ready_btn = tkinter.Button(stdscr, text="Run Dog", font =
-            tkinter.font.Font(family="Arial", size = 30, weight = "bold"),
-            background = "green", state = "normal", command = lambda : print(ui.ready, ui.get_cmdline(), "\n\n"));
-
-    ready_btn.place(rely = 1/3, x = 0, relheight = 1/8, relwidth = 1);
 
     dashpad = tkinter.Frame(stdscr);
     dashpad.place(x = 0, rely = 1/3 + 1/8, relheight = 1 - (1/3 + 1/8), relwidth = 1);
 
-    dashboard = dog_idl.Dashboard(dashpad, s_gran, pqueue = tqueue, signum = len(objs), sigbits = 8);
+    dashboard = dog_idl.Dashboard(dashpad, s_gran, pqueue = tqueue, signum = len(objs), sigbits = 8, mlogger = logger);
 
     objs.append(dashboard);
     dashboard.show();
+    
+    sch = XScheduler(dashboard, dashboard);
 
-    #stdscr.after(5000, _XQueue());
+    ready_btn = tkinter.Button(stdscr, text="Run Dog", font =
+            tkinter.font.Font(family="Arial", size = 30, weight = "bold"),
+            background = "green", state = "normal", command = lambda : sch.configure(ui.get_argv()));
+
+    ready_btn.place(rely = 1/3, x = 0, relheight = 1/8, relwidth = 1);
+
+    stdscr.after(AFTER_MS, _XQueue());
 
 
     stdscr.mainloop();

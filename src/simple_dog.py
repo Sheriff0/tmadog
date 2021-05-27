@@ -50,7 +50,7 @@ class SimpleDog:
         self.prep_argv = [];
         self.prep_argc = 0;
         self.status = status.Status();
-        self.ctrl = DOG_CTRL_RUNNABLE;
+        self.ctrl = DOG_CTRL_RUN_WAIT;
         self.ctrl_lock = threading.Lock();
         self.tasktab = [];
         self.tasktab_size = 0;
@@ -98,7 +98,9 @@ class SimpleDog:
                 sys.exit(0);
 
     def stop_wait(self):
+        self.ctrl_lock.acquire();
         self.ctrl = DOG_CTRL_STOP_WAIT;
+        self.ctrl_lock.release();
 
         while self.ctrl != DOG_CTRL_STOP:
             pass;

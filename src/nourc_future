@@ -40,11 +40,11 @@ volatile =
 [qst_page]
 path = TMA[1-3]
 indices = 0
-requires = profile_page
+requires = tma_page
 volatile = logout_page
 
 [tma_page]
-path = 2020/2 TMA[1-3]
+path = Take TMA
 indices = 0
 volatile = logout_page
 requires = profile_page

@@ -11,23 +11,165 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/ready
+~MSle0~/total
 
 # Last Substitute Search Pattern:
-~MSle0&"\(type\|type\|count\|name\|choices\|prefix\|suffix\|required\|pseudos\|check\|hint\|default\)"
+~MSle0&\.\zsresolver
 
 # Last Substitute String:
-$dog_idl.IFD_\U\1\E
+$\0s
 
 # Command Line History (newest to oldest):
 :qall
-|2,0,1619481570,,"qall"
+|2,0,1619825539,,"qall"
 :w
-|2,0,1619481554,,"w"
+|2,0,1619825518,,"w"
+:tabs
+|2,0,1619821755,,"tabs"
+:q
+|2,0,1619821659,,"q"
+:py3 print(collections.deque([1,3,5])[2])
+|2,0,1619799640,,"py3 print(collections.deque([1,3,5])[2])"
+:py3 print(collections.deque([1,3,5])[0])
+|2,0,1619799634,,"py3 print(collections.deque([1,3,5])[0])"
+:py3 print(collections.deque([1,3,5][0])
+|2,0,1619799627,,"py3 print(collections.deque([1,3,5][0])"
+:py3 print(len(collections.deque([1,3,5])))
+|2,0,1619799494,,"py3 print(len(collections.deque([1,3,5])))"
+:py3 print(collections.deque([1,3,5]).remove({"a": 5}))
+|2,0,1619798033,,"py3 print(collections.deque([1,3,5]).remove({\"a\": 5}))"
+:%s/\.\zsresolver/\0s/gc
+|2,0,1619797100,,"%s/\\.\\zsresolver/\\0s/gc"
+:py3 print(collections.deque([1,3,{"a": 5},5]).remove({"a": 5}))
+|2,0,1619797026,,"py3 print(collections.deque([1,3,{\"a\": 5},5]).remove({\"a\": 5}))"
+:py3 print(collections.deque([1,3,5]).remove({"a": 5})
+|2,0,1619796982,,"py3 print(collections.deque([1,3,5]).remove({\"a\": 5})"
+:py3 print(collections.deque([1,3,5]).pop(1))
+|2,0,1619796492,,"py3 print(collections.deque([1,3,5]).pop(1))"
+:py3 print(collections.deque([1,3,5]))
+|2,0,1619796477,,"py3 print(collections.deque([1,3,5]))"
+:py3 import collections
+|2,0,1619796448,,"py3 import collections"
+:%s/\.\i\+ers\?\.\zsshow/place/gc
+|2,0,1619794335,,"%s/\\.\\i\\+ers\\?\\.\\zsshow/place/gc"
+:%s/\.\i\+er\.\zsshow/place/gc
+|2,0,1619794310,,"%s/\\.\\i\\+er\\.\\zsshow/place/gc"
+:%s/\.\zsreporter/\0s/gc
+|2,0,1619793846,,"%s/\\.\\zsreporter/\\0s/gc"
+:!git status -uno
+|2,0,1619791963,,"!git status -uno"
+:!git add -- %
+|2,0,1619791943,,"!git add -- %"
+:-
+|2,0,1619791857,,"-"
+:py3 print(bool(set([5])))
+|2,0,1619791825,,"py3 print(bool(set([5])))"
+:py3 print(bool(set([])))
+|2,0,1619791819,,"py3 print(bool(set([])))"
+:py3 print(bool([1]))
+|2,0,1619790131,,"py3 print(bool([1]))"
+:py3 print(bool([]))
+|2,0,1619790126,,"py3 print(bool([]))"
+:py3 print(email.message.Message({"a": 4}))
+|2,0,1619788708,,"py3 print(email.message.Message({\"a\": 4}))"
+:py3 help(email.message.Message)
+|2,0,1619788667,,"py3 help(email.message.Message)"
+:py3 import email.message
+|2,0,1619788598,,"py3 import email.message"
+:split src/cookie_parse.py
+|2,0,1619788569,,"split src/cookie_parse.py"
+:py3 [].pop(0)
+|2,0,1619788193,,"py3 [].pop(0)"
+:py3 help(random)
+|2,0,1619787233,,"py3 help(random)"
+:py3 import random
+|2,0,1619787207,,"py3 import random"
+:py3 print({"hh":1}.keys())
+|2,0,1619785862,,"py3 print({\"hh\":1}.keys())"
+:%s/null\ze,/None/g
+|2,0,1619785615,,"%s/null\\ze,/None/g"
+:split
+|2,0,1619785490,,"split"
+:ed src/user_agents.py
+|2,0,1619784733,,"ed src/user_agents.py"
+:ed %:h
+|2,0,1619784713,,"ed %:h"
+:w! src/user_agents.py
+|2,0,1619784669,,"w! src/user_agents.py"
+:w src/user_agents.py
+|2,0,1619784664,,"w src/user_agents.py"
+:split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/
+|2,0,1619782616,,"split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/"
+:split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'
+|2,0,1619782527,,"split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'"
+:!pwd
+|2,0,1619782223,,"!pwd"
+:!git commit -sv -uno
+|2,0,1619781997,,"!git commit -sv -uno"
+:!git add -- % src/dog_idl.py
+|2,0,1619781977,,"!git add -- % src/dog_idl.py"
+:py3 help(sys.exit)
+|2,0,1619778721,,"py3 help(sys.exit)"
+:py3 import sys
+|2,0,1619778647,,"py3 import sys"
+:!git checkout -- %
+|2,0,1619776468,,"!git checkout -- %"
+:split src/simple_dog.py
+|2,0,1619751294,,"split src/simple_dog.py"
+:py3 print(random.random() * 10)
+|2,0,1619749595,,"py3 print(random.random() * 10)"
+:py3 import math
+|2,0,1619749556,,"py3 import math"
+:py3 print(sorted([(0, "sheriff"), (1, "esseson")]))
+|2,0,1619749547,,"py3 print(sorted([(0, \"sheriff\"), (1, \"esseson\")]))"
+:py3 print(random.random() * 2)
+|2,0,1619749525,,"py3 print(random.random() * 2)"
+:py3 print(random.random() * 1)
+|2,0,1619749514,,"py3 print(random.random() * 1)"
+:py3 print(random.random())
+|2,0,1619749486,,"py3 print(random.random())"
+:split ~/sdcard/console.py
+|2,0,1619747507,,"split ~/sdcard/console.py"
+:split ~/sdcard/
+|2,0,1619745788,,"split ~/sdcard/"
+:!git push nonlocal
+|2,0,1619724191,,"!git push nonlocal"
+:!git add -- % src/dog_main.py
+|2,0,1619723740,,"!git add -- % src/dog_main.py"
+:py3 print(sorted([(1, "sheriff"), (0, "esseson")]))
+|2,0,1619649834,,"py3 print(sorted([(1, \"sheriff\"), (0, \"esseson\")]))"
+:py3 print(sorted[(0, "sheriff"), (1, "esseson")])
+|2,0,1619649794,,"py3 print(sorted[(0, \"sheriff\"), (1, \"esseson\")])"
+:!git diff -- %
+|2,0,1619617808,,"!git diff -- %"
+:!git restore --staged %
+|2,0,1619617781,,"!git restore --staged %"
+:!pydoc3 threading.Lock.acquire
+|2,0,1619593124,,"!pydoc3 threading.Lock.acquire"
+:!pydoc3 threading.Lock
+|2,0,1619593020,,"!pydoc3 threading.Lock"
+:vsplit src/libdogs.py
+|2,0,1619573310,,"vsplit src/libdogs.py"
+:vsplit /media/sheriff/63A9-0A18/2020/legacy/simple_stupid/
+|2,0,1619566518,,"vsplit /media/sheriff/63A9-0A18/2020/legacy/simple_stupid/"
+:!git help checkout
+|2,0,1619564064,,"!git help checkout"
+:py3 print(1/3*10)
+|2,0,1619527692,,"py3 print(1/3*10)"
+:py3 print(1/3+1/6)
+|2,0,1619526605,,"py3 print(1/3+1/6)"
+:py3 print(2/3)
+|2,0,1619525674,,"py3 print(2/3)"
+:py3 print(1/2+1/6)
+|2,0,1619525665,,"py3 print(1/2+1/6)"
+:!git diff 2ef3070ea575654de1667c405e09e67dfb8 -- %
+|2,0,1619523067,,"!git diff 2ef3070ea575654de1667c405e09e67dfb8 -- %"
+:!git log
+|2,0,1619522383,,"!git log"
+:!git diff 907cb2f5bfa945652af9fb138830e2668de7abe3  -- %
+|2,0,1619522351,,"!git diff 907cb2f5bfa945652af9fb138830e2668de7abe3  -- %"
 :py3 print([][0])
 |2,0,1619471817,,"py3 print([][0])"
-:q
-|2,0,1619448855,,"q"
 :.,740s/"\(type\|type\|count\|name\|choices\|prefix\|suffix\|required\|pseudos\|check\|hint\|default\)"/dog_idl.IFD_\U\1\E/g
 |2,0,1619441828,,".,740s/\"\\(type\\|type\\|count\\|name\\|choices\\|prefix\\|suffix\\|required\\|pseudos\\|check\\|hint\\|default\\)\"/dog_idl.IFD_\\U\\1\\E/g"
 :.,$s/"\(type\|type\|count\|name\|choices\|prefix\|suffix\|required\|pseudos\|check\|hint\|default\)"/IFD_\U\1\E/gc
@@ -48,14 +190,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1619441048,,"let @a= \"\""
 :py3 help(dict)
 |2,0,1619431274,,"py3 help(dict)"
-:!git status -uno
-|2,0,1619429619,,"!git status -uno"
-:!git commit -sv -uno
-|2,0,1619397614,,"!git commit -sv -uno"
-:!git add -- %
-|2,0,1619397607,,"!git add -- %"
-:!git diff -- %
-|2,0,1619397586,,"!git diff -- %"
 :py3 print("wbc"[:-1])
 |2,0,1619363142,,"py3 print(\"wbc\"[:-1])"
 :py3 print("{ff}".format(ff = 1))
@@ -64,8 +198,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1619361866,,"split +1 %"
 :.,$s/self\.\zsready\>/_\0/gc
 |2,0,1619358886,,".,$s/self\\.\\zsready\\>/_\\0/gc"
-:!git push nonlocal
-|2,0,1619306361,,"!git push nonlocal"
 :!git add -- src/dog_main.py
 |2,0,1619306151,,"!git add -- src/dog_main.py"
 :!git add %
@@ -114,8 +246,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1619093553,,"split src/dog_idl.py"
 :ed src/idl.py
 |2,0,1619093255,,"ed src/idl.py"
-:tabs
-|2,0,1619093211,,"tabs"
 :sh
 |2,0,1618962363,,"sh"
 :py3 import queue
@@ -126,14 +256,8 @@ $dog_idl.IFD_\U\1\E
 |2,0,1618935015,,"split src/idl.py"
 :tabnew %
 |2,0,1618934960,,"tabnew %"
-:split
-|2,0,1618931842,,"split"
 :py3 print(isinstance(str,str))
 |2,0,1618922180,,"py3 print(isinstance(str,str))"
-:!pydoc3 threading.Lock
-|2,0,1618921619,,"!pydoc3 threading.Lock"
-:!pydoc3 threading.Lock.acquire
-|2,0,1618921613,,"!pydoc3 threading.Lock.acquire"
 :py3 help(print)
 |2,0,1618921218,,"py3 help(print)"
 :py3 print(time.sleep)
@@ -200,8 +324,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1618681763,,"split src/rc_fmt.rc"
 :split sr
 |2,0,1618681753,,"split sr"
-:split src/cookie_parse.py
-|2,0,1618678450,,"split src/cookie_parse.py"
 :split src/cookie_parse.m4
 |2,0,1618677917,,"split src/cookie_parse.m4"
 :py3 help(od.setdefault)
@@ -216,10 +338,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1618673501,,"!sdcv misc"
 :py3 print(time.time())
 |2,0,1618672365,,"py3 print(time.time())"
-:py3 print(random.random())
-|2,0,1618672301,,"py3 print(random.random())"
-:py3 import random
-|2,0,1618672275,,"py3 import random"
 :import random
 |2,0,1618672268,,"import random"
 :py3 print(pt)
@@ -242,8 +360,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1618670563,,"py3 import cloudscraper"
 :split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper
 |2,0,1618669456,,"split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper"
-:split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'
-|2,0,1618669421,,"split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'"
 :!git grep -nre hungry src/ 
 |2,0,1618669319,,"!git grep -nre hungry src/ "
 :!git grep -re hungry src/ 
@@ -256,8 +372,6 @@ $dog_idl.IFD_\U\1\E
 |2,0,1611699961,,"py3 help(time)"
 :py3 t,v,u = 1,2,3
 |2,0,1611697383,,"py3 t,v,u = 1,2,3"
-:split src/simple_dog.py
-|2,0,1611679523,,"split src/simple_dog.py"
 :py3 print(time.asctime())
 |2,0,1611677786,,"py3 print(time.asctime())"
 :py3 help(requests.request)
@@ -306,128 +420,154 @@ $dog_idl.IFD_\U\1\E
 |2,0,1607432134,,"ed src/dog_main.py"
 :ed src/simple_dog.py
 |2,0,1607429037,,"ed src/simple_dog.py"
-:split #
-|2,0,1607429014,,"split #"
-:py3 help(logging.warn)
-|2,0,1607276641,,"py3 help(logging.warn)"
-:py3 print(dir(logging))
-|2,0,1607276615,,"py3 print(dir(logging))"
-:py3 import logging
-|2,0,1607276596,,"py3 import logging"
-:py3 help(time.sleep)
-|2,0,1607272842,,"py3 help(time.sleep)"
-:py3 print(KeyboardInterrupt(55))
-|2,0,1607260333,,"py3 print(KeyboardInterrupt(55))"
-:py3 print(KeyboardInterrupt())
-|2,0,1607260326,,"py3 print(KeyboardInterrupt())"
-:py3 help(isinstance)
-|2,0,1607214169,,"py3 help(isinstance)"
-:%s/ger\.\i\+("\zs\\n//c
-|2,0,1607210699,,"%s/ger\\.\\i\\+(\"\\zs\\\\n//c"
-:%s/ger\.\i\+("\zs\\n//
-|2,0,1607210660,,"%s/ger\\.\\i\\+(\"\\zs\\\\n//"
-:py3 print(1+(60*30)+(60*60*6) - 2+(60*30)+(60*60*5), 60*59+59)
-|2,0,1607209400,,"py3 print(1+(60*30)+(60*60*6) - 2+(60*30)+(60*60*5), 60*59+59)"
-:py3 print(1+(60*30)+(60*60*6) - 2+(60*30)+(60*60*5))
-|2,0,1607209339,,"py3 print(1+(60*30)+(60*60*6) - 2+(60*30)+(60*60*5))"
-:py3 print(1+(60*30)+(60*60*6))
-|2,0,1607209256,,"py3 print(1+(60*30)+(60*60*6))"
-:py3 print
-|2,0,1607209155,,"py3 print"
-:wq
-|2,0,1607208065,,"wq"
-:py3 print(dir(f))
-|2,0,1607207844,,"py3 print(dir(f))"
-:py3 print(type(f.tm_min))
-|2,0,1607207444,,"py3 print(type(f.tm_min))"
-:py3 print(type(f))
-|2,0,1607207436,,"py3 print(type(f))"
-:py3 f = time.localtime()
-|2,0,1607207075,,"py3 f = time.localtime()"
-:py3 print(time.localtime())
-|2,0,1607207039,,"py3 print(time.localtime())"
-:py3 print(time.gmtime(0))
-|2,0,1607206953,,"py3 print(time.gmtime(0))"
-:py3 print(time.gmttime(0))
-|2,0,1607206946,,"py3 print(time.gmttime(0))"
-:py3 print(t.gmtime)
-|2,0,1607206793,,"py3 print(t.gmtime)"
-:py3 print(t.gmttime)
-|2,0,1607206788,,"py3 print(t.gmttime)"
-:py3 print(t)
-|2,0,1607206776,,"py3 print(t)"
-:py3 t = time.time()
-|2,0,1607206769,,"py3 t = time.time()"
-:py3 help(obj)
-|2,0,1607204056,,"py3 help(obj)"
-:py3 help(obj.set)
-|2,0,1607204047,,"py3 help(obj.set)"
-:py3 obj = {}
-|2,0,1607204034,,"py3 obj = {}"
-:split src/nourc_future
-|2,0,1607203855,,"split src/nourc_future"
-:read !pydoc3 requests.exceptions
-|2,0,1607186356,,"read !pydoc3 requests.exceptions"
-:windo set noscrollbind
-|2,0,1607184359,,"windo set noscrollbind"
-:windo set scrollbind
-|2,0,1607184335,,"windo set scrollbind"
-:let @a=@"
-|2,0,1607183790,,"let @a=@\""
-:ed src/navigation.m4
-|2,0,1607183393,,"ed src/navigation.m4"
-:py3 help(f)
-|2,0,1607182050,,"py3 help(f)"
-:py3 f = pathlib.Path("doc.txt")
-|2,0,1607182035,,"py3 f = pathlib.Path(\"doc.txt\")"
-:py3 f = None
-|2,0,1607181995,,"py3 f = None"
-:py3 help(f.write)
-|2,0,1607181770,,"py3 help(f.write)"
-:py3 f = open("doc.txt", "w")
-|2,0,1607181758,,"py3 f = open(\"doc.txt\", \"w\")"
-:split doc.txt
-|2,0,1607127841,,"split doc.txt"
-:w! doc.txt
-|2,0,1607127806,,"w! doc.txt"
-:w doc.txt
-|2,0,1607127799,,"w doc.txt"
-:enew
-|2,0,1607113242,,"enew"
-:split 
-|2,0,1607113239,,"split "
-:py3 help(requests.exceptions)
-|2,0,1607109670,,"py3 help(requests.exceptions)"
-:py3 help(requests)
-|2,0,1607109637,,"py3 help(requests)"
-:!git grep -Hne deepcopy src/
-|2,0,1607101051,,"!git grep -Hne deepcopy src/"
-:split src/ansm.m4
-|2,0,1607100707,,"split src/ansm.m4"
-:.,$s/copy\.\<deepcopy\>/copy/gc
-|2,0,1607100459,,".,$s/copy\\.\\<deepcopy\\>/copy/gc"
-:.,$s/copy\.\<deepcopy\>/copy/g
-|2,0,1607100381,,".,$s/copy\\.\\<deepcopy\\>/copy/g"
-:%s/copy\.\<deepcopy\>/copy/g
-|2,0,1607100371,,"%s/copy\\.\\<deepcopy\\>/copy/g"
-:tabdo %s/copy\.\ze\<deepcopy\>//ne
-|2,0,1607098952,,"tabdo %s/copy\\.\\ze\\<deepcopy\\>//ne"
-:tabdo %s/copy\.\ze\<deepcopy\>//le
-|2,0,1607098941,,"tabdo %s/copy\\.\\ze\\<deepcopy\\>//le"
-:help :substitute
-|2,0,1607098797,,"help :substitute"
-:tabdo %s/copy\.\ze\<deepcopy\>//ce
-|2,0,1607098778,,"tabdo %s/copy\\.\\ze\\<deepcopy\\>//ce"
-:%s/copy\.\ze\<deepcopy\>//g
-|2,0,1607098557,,"%s/copy\\.\\ze\\<deepcopy\\>//g"
-:tabdo %s/copy\.\ze\<deepcopy\>//g
-|2,0,1607098147,,"tabdo %s/copy\\.\\ze\\<deepcopy\\>//g"
 
 # Search String History (newest to oldest):
+?/total
+|2,1,1619822644,47,"total"
+??Rep
+|2,1,1619820416,63,"Rep"
+?/setc
+|2,1,1619807554,47,"setc"
+?/allo
+|2,1,1619802373,47,"allo"
+??appen
+|2,1,1619802336,63,"appen"
+?/Ac
+|2,1,1619801521,47,"Ac"
+?/set
+|2,1,1619798725,47,"set"
+?/append_re
+|2,1,1619797653,47,"append_re"
+?/\.\zsresolver
+|2,1,1619797148,47,"\\.\\zsresolver"
+? \.\zsresolver
+|2,1,1619797100,,"\\.\\zsresolver"
+??Ac
+|2,1,1619796310,63,"Ac"
+??Res
+|2,1,1619794899,63,"Res"
+?/Repor
+|2,1,1619794566,47,"Repor"
+?/regis
+|2,1,1619794527,47,"regis"
+?/report
+|2,1,1619794406,47,"report"
+? \.\i\+ers\?\.\zsshow
+|2,1,1619794335,,"\\.\\i\\+ers\\?\\.\\zsshow"
+? \.\i\+er\.\zsshow
+|2,1,1619794310,,"\\.\\i\\+er\\.\\zsshow"
+?/\.\i\+er\.\zsshow/place/g
+|2,1,1619794288,47,"\\.\\i\\+er\\.\\zsshow/place/g"
+? \.\zsreporter
+|2,1,1619793846,,"\\.\\zsreporter"
+?/show
+|2,1,1619793673,47,"show"
+? null\ze,
+|2,1,1619785615,,"null\\ze,"
+?/null\ze,/None/g
+|2,1,1619785582,47,"null\\ze,/None/g"
+? @$
+|2,1,1619784713,,"@$"
+?/jso
+|2,1,1619782586,47,"jso"
+??Sch
+|2,1,1619782257,63,"Sch"
+?/submit_m
+|2,1,1619781694,47,"submit_m"
+?/submit
+|2,1,1619781118,47,"submit"
+?/subm
+|2,1,1619753213,47,"subm"
+?/main
+|2,1,1619750971,47,"main"
+?/Task
+|2,1,1619750713,47,"Task"
+??Re
+|2,1,1619750340,63,"Re"
+?/register_e
+|2,1,1619749902,47,"register_e"
+?/register_
+|2,1,1619749899,47,"register_"
+?/menu
+|2,1,1619749782,47,"menu"
+??messa
+|2,1,1619749760,63,"messa"
+?/register_p
+|2,1,1619748688,47,"register_p"
+??regi
+|2,1,1619748678,63,"regi"
+??Scr
+|2,1,1619748010,63,"Scr"
+?/wri
+|2,1,1619747963,47,"wri"
+?/Scro
+|2,1,1619747711,47,"Scro"
+??see
+|2,1,1619746966,63,"see"
+?/Repo
+|2,1,1619746341,47,"Repo"
+?/Con
+|2,1,1619745825,47,"Con"
+?/info
+|2,1,1619715601,47,"info"
+?/remo
+|2,1,1619715295,47,"remo"
+?/status
+|2,1,1619715117,47,"status"
+?/blo
+|2,1,1619714523,47,"blo"
+??Act
+|2,1,1619713474,63,"Act"
+?/Ta
+|2,1,1619712150,47,"Ta"
+?/PQ
+|2,1,1619711730,47,"PQ"
+?/regi
+|2,1,1619707379,47,"regi"
+?/scroll
+|2,1,1619707229,47,"scroll"
+?/is_r
+|2,1,1619707152,47,"is_r"
+??RN
+|2,1,1619703798,63,"RN"
+??Task
+|2,1,1619703751,63,"Task"
+?/Gui
+|2,1,1619701806,47,"Gui"
+??show
+|2,1,1619701770,63,"show"
+?/Butt
+|2,1,1619701506,47,"Butt"
+??_Lo
+|2,1,1619690655,63,"_Lo"
+?/\<Task\>
+|2,1,1619650935,47,"\\<Task\\>"
+??Gui
+|2,1,1619617956,63,"Gui"
+?/^def
+|2,1,1619573861,47,"^def"
+?/logger
+|2,1,1619573405,47,"logger"
+?/\clist
+|2,1,1619566556,47,"\\clist"
+??Dumm
+|2,1,1619564440,63,"Dumm"
+?/mai
+|2,1,1619562621,47,"mai"
+?/pkg_p
+|2,1,1619562484,47,"pkg_p"
+??fac
+|2,1,1619562255,63,"fac"
+?/checks
+|2,1,1619562161,47,"checks"
+?/\<cache\>
+|2,1,1619539826,47,"\\<cache\\>"
+?/stat
+|2,1,1619539444,47,"stat"
+??gui_st
+|2,1,1619532456,63,"gui_st"
 ?/ready
 |2,1,1619478853,47,"ready"
-?/show
-|2,1,1619478178,47,"show"
 ?/Lab
 |2,1,1619478018,47,"Lab"
 ?/ifs
@@ -458,8 +598,6 @@ $dog_idl.IFD_\U\1\E
 |2,1,1619093609,63,"gui_get_"
 ?/check
 |2,1,1618957835,47,"check"
-? @$
-|2,1,1618936230,,"@$"
 ?/brut
 |2,1,1618936098,47,"brut"
 ??want
@@ -562,8 +700,6 @@ $dog_idl.IFD_\U\1\E
 |2,1,1607522433,47,"-->"
 ?/brute
 |2,1,1607517753,47,"brute"
-?/submit
-|2,1,1607517726,47,"submit"
 ?/lazy_l
 |2,1,1607462225,47,"lazy_l"
 ?/LOG
@@ -574,8 +710,6 @@ $dog_idl.IFD_\U\1\E
 |2,1,1607432198,47,"hoo"
 ?/t g
 |2,1,1607432121,47,"t g"
-?/stat
-|2,1,1607429003,47,"stat"
 ?/\<login\>
 |2,1,1607427948,47,"\\<login\\>"
 ?/retryi
@@ -584,8 +718,6 @@ $dog_idl.IFD_\U\1\E
 |2,1,1607214605,47,"goto"
 ?/done
 |2,1,1607212237,47,"done"
-?/info
-|2,1,1607211928,47,"info"
 ?/fetch_all
 |2,1,1607211785,47,"fetch_all"
 ? ger\.\i\+("\zs\\n
@@ -690,148 +822,8 @@ $dog_idl.IFD_\U\1\E
 |2,1,1605754450,47,"can't r"
 ?/submi
 |2,1,1605750222,47,"submi"
-?/subm
-|2,1,1605750146,47,"subm"
 ??quiz
 |2,1,1605746887,63,"quiz"
-?/dis
-|2,1,1605743878,47,"dis"
-?/froml
-|2,1,1605739630,47,"froml"
-??DogC
-|2,1,1605738894,63,"DogC"
-?/logger
-|2,1,1605736176,47,"logger"
-??lazy_
-|2,1,1605709170,63,"lazy_"
-?/F_
-|2,1,1605605132,47,"F_"
-?/reco
-|2,1,1605604461,47,"reco"
-?/y_page
-|2,1,1605603466,47,"y_page"
-?/\<can_retry_p
-|2,1,1605598433,47,"\\<can_retry_p"
-? \<can_retry\>
-|2,1,1605598373,,"\\<can_retry\\>"
-?/disco
-|2,1,1605597943,47,"disco"
-?/lazy_
-|2,1,1605597418,47,"lazy_"
-?/recon
-|2,1,1605597214,47,"recon"
-?/can_retry_
-|2,1,1605596952,47,"can_retry_"
-?/can_
-|2,1,1605593718,47,"can_"
-?/can_r
-|2,1,1605567205,47,"can_r"
-??cookie_
-|2,1,1605566205,63,"cookie_"
-?/nav\s*(
-|2,1,1605557673,47,"nav\\s*("
-?/got
-|2,1,1605545925,47,"got"
-?/nav\s*[
-|2,1,1605545541,47,"nav\\s*["
-?/mess
-|2,1,1605507298,47,"mess"
-?/can_ret
-|2,1,1605504041,47,"can_ret"
-??such b
-|2,1,1605503347,63,"such b"
-??subm
-|2,1,1605503226,63,"subm"
-?/rec
-|2,1,1605499890,47,"rec"
-?/\c\W\Wcookie
-|2,1,1605499060,47,"\\c\\W\\Wcookie"
-?/\ccookie
-|2,1,1605498889,47,"\\ccookie"
-?/no a
-|2,1,1605494445,47,"no a"
-?/spec
-|2,1,1605494396,47,"spec"
-?/messa
-|2,1,1605494186,47,"messa"
-?/App
-|2,1,1605493419,47,"App"
-??assi
-|2,1,1605490031,63,"assi"
-?/is
-|2,1,1605473021,47,"is"
-??retryi
-|2,1,1605472393,63,"retryi"
-?/ans
-|2,1,1605469825,47,"ans"
-?/pre
-|2,1,1605463441,47,"pre"
-?/\chandler
-|2,1,1605449024,47,"\\chandler"
-?/level
-|2,1,1605448211,47,"level"
-?/Dog
-|2,1,1605444957,47,"Dog"
-?/refer
-|2,1,1605444832,47,"refer"
-?/laz
-|2,1,1605444528,47,"laz"
-??is_a
-|2,1,1605443837,63,"is_a"
-?/Any
-|2,1,1605434312,47,"Any"
-??Any
-|2,1,1605433941,63,"Any"
-?/lax_l
-|2,1,1605425955,47,"lax_l"
-?/self
-|2,1,1605398573,47,"self"
-?/is_Firewall_Blocke
-|2,1,1605394060,47,"is_Firewall_Blocke"
-?/init_h
-|2,1,1605393049,47,"init_h"
-?/_I
-|2,1,1605386781,47,"_I"
-?/g e
-|2,1,1605371441,47,"g e"
-?/cook
-|2,1,1605369421,47,"cook"
-?/message)
-|2,1,1605368558,47,"message)"
-?/ST
-|2,1,1605363206,47,"ST"
-??message)
-|2,1,1605358147,63,"message)"
-?/tutor
-|2,1,1605353385,47,"tutor"
-??brut
-|2,1,1605311572,63,"brut"
-?/errno
-|2,1,1605311553,47,"errno"
-?/chec
-|2,1,1605310521,47,"chec"
-? \<dogs\>\.
-|2,1,1605304836,,"\\<dogs\\>\\."
-? \.\zswmap\>
-|2,1,1605304712,,"\\.\\zswmap\\>"
-?/\<dog
-|2,1,1605304411,47,"\\<dog"
-?/__
-|2,1,1605293488,47,"__"
-?/task\.
-|2,1,1605285248,47,"task\\."
-?/task\.[A-Z]\+
-|2,1,1605284337,47,"task\\.[A-Z]\\+"
-??def rl
-|2,1,1605271575,63,"def rl"
-?/\<logi
-|2,1,1605270539,47,"\\<logi"
-?/need
-|2,1,1605249892,47,"need"
-?/cac
-|2,1,1605249235,47,"cac"
-? F_REQ\i\+
-|2,1,1605225685,,"F_REQ\\i\\+"
 
 # Expression History (newest to oldest):
 =@"
@@ -857,75 +849,97 @@ $dog_idl.IFD_\U\1\E
 
 # Registers:
 "0	LINE	0
-	                dog_idl.IFD_CHECK: True,
-|3,0,0,1,1,0,1619481048,"                dog_idl.IFD_CHECK: True,"
+	                self.ctrl_lock.release();
+|3,0,0,1,1,0,1619821576,"                self.ctrl_lock.release();"
 ""1	LINE	0
-	
-|3,1,1,1,1,0,1619481550,""
+	        self.stdscr = stdscr;
+|3,1,1,1,1,0,1619822551,"        self.stdscr = stdscr;"
 "2	LINE	0
-	                chk = self.check(ifd.get(IFD_CHECK, False));
-|3,0,2,1,1,0,1619480684,"                chk = self.check(ifd.get(IFD_CHECK, False));"
+	                dog_idl.Resolver(
+	                    ["hello", "error"],
+	                    [self.holla, self.para],
+	                    )
+|3,0,2,1,4,0,1619822325,"                dog_idl.Resolver(","                    [\"hello\", \"error\"],","                    [self.holla, self.para],","                    )"
 "3	LINE	0
-	            #finally, after all interface(s) checked
-|3,0,3,1,1,0,1619479499,"            #finally, after all interface(s) checked"
+	            else:
+|3,0,3,1,1,0,1619822244,"            else:"
 "4	LINE	0
-	            self._ready = True;
-|3,0,4,1,1,0,1619479487,"            self._ready = True;"
+	                tk.wait();
+|3,0,4,1,1,0,1619822243,"                tk.wait();"
 "5	LINE	0
+	                tk = self.logger.append_reporter(
+	                        ["hello", "error"],
+	                        [self.holla, self.para],
+	                        );
 	
-|3,0,5,1,1,0,1619477850,""
+|3,0,5,1,5,0,1619822176,"                tk = self.logger.append_reporter(","                        [\"hello\", \"error\"],","                        [self.holla, self.para],","                        );",""
 "6	LINE	0
-	    print(ui.ready, ui.get_cmdline(), "\n\n");
-|3,0,6,1,1,0,1619477849,"    print(ui.ready, ui.get_cmdline(), \"\\n\\n\");"
+	            if a == err:
+|3,0,6,1,1,0,1619822169,"            if a == err:"
 "7	LINE	0
-	            try:
-	                print("clearing tasks");
-	                task = tqueue.get(block = False);
-	                task();
-	                print("task cleared");
-	                tqueue.task_done();
-	            except queue.Empty:
-	                pass;
-	                print("no task");
-	    
-|3,0,7,1,10,0,1619477796,"            try:","                print(\"clearing tasks\");","                task = tqueue.get(block = False);","                task();","                print(\"task cleared\");","                tqueue.task_done();","            except queue.Empty:","                pass;","                print(\"no task\");","    "
+	class RNone:
+	    def __init__(self):
+	        pass;
+	
+|3,0,7,1,4,0,1619821833,"class RNone:","    def __init__(self):","        pass;",""
 "8	LINE	0
-	    print(ui.ready, ui.get_cmdline(), "\n\n");
-|3,0,8,1,1,0,1619477760,"    print(ui.ready, ui.get_cmdline(), \"\\n\\n\");"
+	                        if r == False:
+|3,0,8,1,1,0,1619821718,"                        if r == False:"
 "9	LINE	0
-	    class _XQueue:
-	        def __call__(self):
-	            return self.clear_queue();
-	        
-	        @property
-	        def __name__(self):
-	            return self.clear_queue.__name__;
+	        self.frame = tkinter.ttk.Frame(stdscr);
+	        self.pbar = tkinter.ttk.Progressbar(self.frame,
+	                orient=tkinter.HORIZONTAL, mode='determinate', variable =
+	                self.pcur, maximum = total);
+	    
+|3,0,9,1,5,0,1619821114,"        self.frame = tkinter.ttk.Frame(stdscr);","        self.pbar = tkinter.ttk.Progressbar(self.frame,","                orient=tkinter.HORIZONTAL, mode='determinate', variable =","                self.pcur, maximum = total);","    "
+"a@	LINE	0
+	        # this should only be called in gui thread
+	        if not self.is_real(realid):
+	            return False;
 	
-	        def clear_queue(self):
+	        act = self.get_activity(realid);
+	
+	        if not act:
+	            return False;
+	
+	        if self.id != self.NO_ID:
+	            old_act = self.get_activity(self.id);
+	            for rep in old_act.reporters:
+	                rep.remove();
+	
+	            for rep in old_act.resolvers:
+	                rep.remove();
+	
+	        self.id = realid;
+	
+	        self.logger.write_log(act);
+	
+	        if act.reporters:
+	            act.reporters.place();
+	
+	        if act.resolvers:
+	            act.resolvers.place();
+	
+	        else:
 	            try:
-	                print("clearing tasks");
-	                task = tqueue.get(block = False);
-	                task();
-	                print("task cleared");
-	                tqueue.task_done();
+	                r = act.register.get(block = False);
+	                #act.register.task_done();
+	                act.resolvers = r;
+	                r.show();
 	            except queue.Empty:
 	                pass;
-	                print("no task");
-	    
-	            stdscr.after(5000, self.clear_queue);
-	    stdscr.after(5000, _XQueue());
 	
-|3,0,9,1,22,0,1619477725,"    class _XQueue:","        def __call__(self):","            return self.clear_queue();","        ","        @property","        def __name__(self):","            return self.clear_queue.__name__;","","        def clear_queue(self):","            try:","                print(\"clearing tasks\");","                task = tqueue.get(block = False);","                task();","                print(\"task cleared\");",>37
-|<"                tqueue.task_done();","            except queue.Empty:","                pass;","                print(\"no task\");","    ","            stdscr.after(5000, self.clear_queue);","    stdscr.after(5000, _XQueue());",""
-"a@	CHAR	0
-	 IFD_PSEUDOS in ifd and 
-|3,2,10,0,1,0,1619477203," IFD_PSEUDOS in ifd and "
-"b	CHAR	0
-	type\|type\|count\|name\|choices\|prefix\|suffix\|required\|pseudos\|check\|hint\|default\|
-|3,0,11,0,1,0,1619441306,"type\\|type\\|count\\|name\\|choices\\|prefix\\|suffix\\|required\\|pseudos\\|check\\|hint\\|default\\|"
+	        return True;
+	
+|3,2,10,1,38,0,1619808015,"        # this should only be called in gui thread","        if not self.is_real(realid):","            return False;","","        act = self.get_activity(realid);","","        if not act:","            return False;","","        if self.id != self.NO_ID:","            old_act = self.get_activity(self.id);","            for rep in old_act.reporters:","                rep.remove();","","            for rep in old_act.resolvers:",>31
+|<"                rep.remove();","","        self.id = realid;","","        self.logger.write_log(act);","","        if act.reporters:","            act.reporters.place();","","        if act.resolvers:","            act.resolvers.place();","","        else:","            try:","                r = act.register.get(block = False);","                #act.register.task_done();","                act.resolvers = r;","                r.show();","            except queue.Empty:",>23
+|<"                pass;","","        return True;",""
+"b	LINE	0
+	        self.ctrl_lock.release();
+|3,0,11,1,1,0,1619780245,"        self.ctrl_lock.release();"
 "c	LINE	0
-	                LOGIN_BLACKLIST.append(nav.keys);
-|3,0,12,1,1,0,1607440809,"                LOGIN_BLACKLIST.append(nav.keys);"
+	        self.wait_for(DOG_CTRL_RUNNABLE);
+|3,0,12,1,1,0,1619781196,"        self.wait_for(DOG_CTRL_RUNNABLE);"
 "e	LINE	0
 	        return status.Status(status.S_ERROR, "logout err", err);
 |3,0,14,1,1,0,1605218125,"        return status.Status(status.S_ERROR, \"logout err\", err);"
@@ -936,329 +950,279 @@ $dog_idl.IFD_\U\1\E
 	        return status.Status(status.S_OK);
 |3,0,24,1,1,0,1605218118,"        return status.Status(status.S_OK);"
 "-	CHAR	0
-	#
-|3,0,36,0,1,0,1619477652,"#"
+	*
+|3,0,36,0,1,0,1619820640,"*"
 
 # File marks:
-'0  495  8  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,48,495,8,1619481571,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
-'1  355  46  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,49,355,46,1619470103,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'2  704  4  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,50,704,4,1619397691,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'3  757  12  /storage/sdcard0/2020/dogger/src/dog_main.py
-|4,51,757,12,1619384639,"/storage/sdcard0/2020/dogger/src/dog_main.py"
-'4  3  30  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,52,3,30,1619346364,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'5  1  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,53,1,0,1619346351,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'6  335  34  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,54,335,34,1619306393,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
-'7  257  31  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,55,257,31,1619295740,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'8  1417  8  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-|4,56,1417,8,1619225119,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
-'9  1418  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-|4,57,1418,16,1618962927,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+'0  1248  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,48,1248,75,1619825540,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+'1  895  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,49,895,44,1619814551,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'2  7901  0  /storage/sdcard0/2020/dogger/src/user_agents.py
+|4,50,7901,0,1619787181,"/storage/sdcard0/2020/dogger/src/user_agents.py"
+'3  742  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,51,742,0,1619728549,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'4  628  39  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
+|4,52,628,39,1619658735,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
+'5  592  46  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,53,592,46,1619643226,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'6  604  14  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
+|4,54,604,14,1619574106,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
+'7  1631  8  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,55,1631,8,1619561523,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+'8  623  8  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
+|4,56,623,8,1619481571,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
+'9  350  46  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,57,350,46,1619470103,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
 
 # Jumplist (newest first):
--'  495  8  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,495,8,1619481571,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  271  55  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,271,55,1619481400,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  140  24  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,140,24,1619480892,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  286  32  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,286,32,1619480827,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  492  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,492,16,1619480235,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  466  18  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,466,18,1619479483,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  170  32  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,170,32,1619479481,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  460  33  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,460,33,1619478885,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  454  33  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,454,33,1619478885,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  453  26  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,453,26,1619478884,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  452  88  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,452,88,1619478883,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  441  13  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,441,13,1619478879,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  416  41  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,416,41,1619478878,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  388  41  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,388,41,1619478876,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  309  14  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,309,14,1619478875,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  223  11  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,223,11,1619478856,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  222  35  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,222,35,1619478854,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  194  25  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,194,25,1619478854,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  191  53  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,191,53,1619478854,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  207  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,207,16,1619478765,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  177  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,177,0,1619478749,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  70  24  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,70,24,1619478687,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  318  32  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,318,32,1619478335,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  423  37  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,423,37,1619478149,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  68  9  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,68,9,1619478058,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  1  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,1,0,1619478018,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  375  50  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,375,50,1619477153,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  321  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,321,0,1619477090,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  285  26  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,285,26,1619477079,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  132  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,132,16,1619476252,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  240  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,240,0,1619475245,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  307  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,307,75,1619474947,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  245  19  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,245,19,1619474666,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  246  20  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,246,20,1619474659,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  311  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,311,0,1619474658,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  243  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,243,0,1619474576,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  464  31  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,464,31,1619473984,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  463  31  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,463,31,1619473984,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  442  44  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,442,44,1619473981,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  427  29  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,427,29,1619473981,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  424  50  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,424,50,1619473980,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  419  128  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,419,128,1619473978,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  400  29  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,400,29,1619473975,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  397  50  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,397,50,1619473974,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  396  20  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,396,20,1619473973,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  391  126  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,391,126,1619473972,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  331  37  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,331,37,1619473968,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  323  20  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,323,20,1619473967,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  38  0  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,38,0,1619473675,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  443  11  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,443,11,1619473648,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  257  46  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,257,46,1619471048,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  365  46  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,39,365,46,1619470711,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
--'  704  12  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-|4,39,704,12,1619470710,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1248  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1248,75,1619825540,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1233  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1233,16,1619822412,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1234  16  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1234,16,1619822411,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1239  17  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1239,17,1619822409,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1245  12  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1245,12,1619822307,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1609  13  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1609,13,1619822055,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+-'  1214  4  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,39,1214,4,1619821694,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
 -'  1  49  /media/sheriff/63A9-0A18/2020/dogger/src/dog_help.py
-|4,39,1,49,1619470709,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_help.py"
+|4,39,1,49,1619820053,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_help.py"
+-'  47  14  /media/sheriff/63A9-0A18/2020/dogger/src/nourc_future
+|4,39,47,14,1619820053,"/media/sheriff/63A9-0A18/2020/dogger/src/nourc_future"
+-'  1  0  /media/sheriff/63A9-0A18/2020/dogger/src/tasker.py
+|4,39,1,0,1619820053,"/media/sheriff/63A9-0A18/2020/dogger/src/tasker.py"
+-'  15  48  /media/sheriff/63A9-0A18/2020/dogger/src/status.py
+|4,39,15,48,1619820053,"/media/sheriff/63A9-0A18/2020/dogger/src/status.py"
+-'  207  13  /media/sheriff/63A9-0A18/2020/dogger/src/ansm.m4
+|4,39,207,13,1619820052,"/media/sheriff/63A9-0A18/2020/dogger/src/ansm.m4"
+-'  157  0  /media/sheriff/63A9-0A18/2020/dogger/src/qstwriter.py
+|4,39,157,0,1619820052,"/media/sheriff/63A9-0A18/2020/dogger/src/qstwriter.py"
+-'  895  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,895,44,1619814551,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  898  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,898,0,1619808419,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  782  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,782,8,1619808007,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  729  7  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,729,7,1619807554,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  736  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,736,0,1619807481,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  757  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,757,0,1619807187,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  755  17  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,755,17,1619807185,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  846  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,846,0,1619803371,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  772  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,772,0,1619803368,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  845  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,845,0,1619803366,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  832  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,832,0,1619802336,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  646  4  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,646,4,1619802005,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  861  16  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,861,16,1619801838,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  1  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,1,0,1619801816,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  709  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,709,8,1619801529,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  805  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,805,8,1619801521,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  788  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,788,8,1619801292,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  722  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,722,0,1619799773,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  710  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,710,0,1619799763,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  648  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,648,0,1619799740,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  424  6  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,424,6,1619799710,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  669  28  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,669,28,1619799689,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  572  6  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,572,6,1619798990,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  889  22  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,889,22,1619798977,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  749  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,749,0,1619798500,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  644  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,644,8,1619797653,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  645  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,645,44,1619797100,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  541  24  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,541,24,1619795028,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  896  16  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,896,16,1619794414,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  888  23  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,888,23,1619794413,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  791  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,791,8,1619793680,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  522  8  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,522,8,1619793673,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  574  28  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,39,574,28,1619792870,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+-'  295  12  /storage/sdcard0/2020/dogger/src/simple_dog.py
+|4,39,295,12,1619787185,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
+-'  7901  0  /storage/sdcard0/2020/dogger/src/user_agents.py
+|4,39,7901,0,1619787184,"/storage/sdcard0/2020/dogger/src/user_agents.py"
+-'  20  19  /storage/sdcard0/2020/dogger/src/user_agents.py
+|4,39,20,19,1619787184,"/storage/sdcard0/2020/dogger/src/user_agents.py"
+-'  1247  0  /storage/sdcard0/2020/dogger/src/dog_main.py
+|4,39,1247,0,1619787184,"/storage/sdcard0/2020/dogger/src/dog_main.py"
+-'  1  49  /storage/sdcard0/2020/dogger/src/dog_help.py
+|4,39,1,49,1619787184,"/storage/sdcard0/2020/dogger/src/dog_help.py"
+-'  47  14  /storage/sdcard0/2020/dogger/src/nourc_future
+|4,39,47,14,1619787184,"/storage/sdcard0/2020/dogger/src/nourc_future"
+-'  1  0  /storage/sdcard0/2020/dogger/src/tasker.py
+|4,39,1,0,1619787184,"/storage/sdcard0/2020/dogger/src/tasker.py"
+-'  15  48  /storage/sdcard0/2020/dogger/src/status.py
+|4,39,15,48,1619787184,"/storage/sdcard0/2020/dogger/src/status.py"
+-'  207  13  /storage/sdcard0/2020/dogger/src/ansm.m4
+|4,39,207,13,1619787184,"/storage/sdcard0/2020/dogger/src/ansm.m4"
+-'  157  0  /storage/sdcard0/2020/dogger/src/qstwriter.py
+|4,39,157,0,1619787184,"/storage/sdcard0/2020/dogger/src/qstwriter.py"
 
 # History of marks within files (newest to oldest):
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/qstwriter.py
-	*	1619470708	0
+	*	1619820052	0
 	"	157	0
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/ansm.m4
-	*	1619470709	0
+	*	1619820052	0
 	"	207	13
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/status.py
-	*	1619470709	0
+	*	1619820053	0
 	"	15	48
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/tasker.py
-	*	1619470709	0
+	*	1619820053	0
 	"	1	0
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/nourc_future
-	*	1619470709	0
+	*	1619820053	0
 	"	47	14
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/dog_help.py
-	*	1619470709	0
+	*	1619820053	0
 	"	1	49
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-	*	1619481390	0
+	*	1619825519	0
 	"	717	0
-	.	709	0
-	+	668	0
-	+	687	0
-	+	705	45
-	+	712	48
-	+	723	49
-	+	732	45
-	+	753	0
-	+	757	0
-	+	756	24
-	+	766	23
-	+	769	0
-	+	764	62
-	+	766	0
-	+	765	0
-	+	768	0
-	+	767	26
-	+	763	39
-	+	767	44
-	+	770	0
-	+	772	64
-	+	775	46
-	+	781	0
-	+	784	0
-	+	1340	0
-	+	1317	0
-	+	1337	0
-	+	1338	0
-	+	1317	49
-	+	1335	21
-	+	1297	0
-	+	1280	0
-	+	678	0
-	+	1319	13
-	+	668	31
-	+	670	31
-	+	674	33
-	+	700	0
-	+	678	0
-	+	674	0
-	+	697	0
-	+	695	43
-	+	1337	19
-	+	760	33
-	+	1337	42
-	+	1337	0
-	+	1317	4
-	+	1317	0
-	+	1335	0
-	+	1337	0
-	+	1335	0
-	+	1337	0
-	+	729	0
-	+	709	0
-	x	655	7
-	y	1335	21
+	^	1248	76
+	.	1248	75
+	+	1585	0
+	+	1583	24
+	+	1245	0
+	+	1234	0
+	+	1239	32
+	+	1239	16
+	+	1234	8
+	+	1239	0
+	+	1245	0
+	+	1239	0
+	+	1234	13
+	+	1234	19
+	+	1234	28
+	+	1234	31
+	+	1235	0
+	+	1240	36
+	+	1241	40
+	+	1245	26
+	+	1236	28
+	+	1237	31
+	+	1212	24
+	+	1211	0
+	+	1213	0
+	+	1248	75
 
-> /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-	*	1619481567	0
-	"	495	8
-	^	344	10
-	.	496	0
-	+	365	34
-	+	366	0
-	+	391	12
-	+	396	12
-	+	368	17
-	+	394	0
-	+	368	48
-	+	360	28
-	+	368	50
-	+	370	0
-	+	369	21
-	+	372	167
-	+	372	54
-	+	372	112
-	+	376	33
-	+	374	24
-	+	375	52
-	+	387	28
-	+	376	61
-	+	387	0
-	+	386	0
-	+	378	0
-	+	377	0
-	+	378	0
-	+	385	29
-	+	367	25
-	+	357	64
-	+	358	60
-	+	422	12
-	+	37	81
-	+	309	20
-	+	245	29
-	+	245	25
-	+	245	0
-	+	308	27
-	+	309	0
-	+	307	75
-	+	243	0
-	+	239	0
-	+	240	0
-	+	326	11
-	+	332	21
-	+	333	21
-	+	332	54
-	+	330	18
-	+	132	33
-	+	376	0
-	+	375	49
-	+	396	37
-	+	423	37
-	+	170	56
-	+	207	0
-	+	170	0
-	+	276	33
-	+	287	33
-	+	298	33
-	+	207	44
-	+	170	44
-	+	466	0
-	+	457	0
-	+	466	0
-	+	458	0
-	+	456	39
-	+	275	0
-	+	272	0
-	+	273	0
-	+	271	72
-	+	132	75
-	+	140	24
-	+	292	27
-	+	271	0
-	+	339	11
-	+	344	10
-	+	496	0
-	a	492	16
-	x	286	29
-
-> /media/sheriff/63A9-0A18/2020/dogger/swin.py
-	*	1619470710	0
-	"	71	32
+> /media/sheriff/63A9-0A18/2020/dogger/src/user_agents.py
+	*	1619821656	0
+	"	22	0
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/simple_dog.py
-	*	1619470710	0
+	*	1619821659	0
 	"	32	4
+	^	53	37
+	.	53	36
+	+	102	0
+	+	101	0
+	+	103	0
+	+	53	36
+
+> /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
+	*	1619823091	0
+	"	520	28
+	^	553	29
+	.	553	0
+	+	901	25
+	+	900	56
+	+	901	26
+	+	902	85
+	+	575	35
+	+	581	40
+	+	523	0
+	+	526	0
+	+	511	23
+	+	512	0
+	+	516	25
+	+	523	27
+	+	524	42
+	+	519	22
+	+	520	38
+	+	521	29
+	+	569	0
+	+	565	23
+	+	524	32
+	+	523	28
+	+	568	0
+	+	576	0
+	+	575	27
+	+	579	41
+	+	902	56
+	+	736	12
+	+	589	0
+	+	63	0
+	+	658	26
+	+	568	0
+	+	579	42
+	+	552	24
+	+	553	0
+	x	902	85
+
+> /media/sheriff/63A9-0A18/console.py
+	*	1619820054	0
+	"	89	27
+
+> /media/sheriff/63A9-0A18/2020/legacy/simple_stupid/main.py
+	*	1619821433	0
+	"	55	18
+
+> /media/sheriff/63A9-0A18/2020/dogger/swin.py
+	*	1619820055	0
+	"	71	32
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/libdogs.py
-	*	1619470711	0
+	*	1619820055	0
 	"	1520	0
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/dropbox.py
-	*	1619470711	0
+	*	1619820055	0
 	"	278	0
 
 > /media/sheriff/63A9-0A18/2020/dogger/src/setups/update.py
-	*	1619470711	0
+	*	1619820056	0
 	"	75	0
 
 > /media/sheriff/63A9-0A18/2020/chrome/webdriver/base/logging.h
-	*	1619470711	0
+	*	1619820056	0
 	"	593	0

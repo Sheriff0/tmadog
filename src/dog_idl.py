@@ -60,6 +60,10 @@ IF_OPTIONS_M = 2 | ord('m');
 IF_STRING_M = 3 | ord('m');
 
 
+class RNone:
+    def __init__(self):
+        pass;
+
 # is this reasonable?
 MAX_DEFAULT_SIZE = 1000000
 
@@ -504,19 +508,22 @@ RESOLVER_ERROR = RNone();
 
 # this can only be played in the gui thread
 class Resolver:
-    def __init__(self, stdscr, keys, commands, task = None, cb = None):
-        self.frame = tkinter.ttk.Frame(stdscr);
-        self.stdscr = stdscr;
+    def __init__(self, keys, commands, task = None, success_cb = None):
         self.task = task;
         self.commands = commands;
         self.keys = keys;
-        self.cb = cb;
+        self.success_cb = success_cb;
+        self.frame = None;
 
     def remove(self):
-        return self.frame.place_forget();
+        if self.frame != None:
+            self.frame.place_forget();
+            self.frame = None;
 
-    def show(self):
-        self.frame.place(x = 0, y = 0, relheight = 1, relwidth = 1);
+    def place(self, stdscr, *pargs, **kwargs):
+        self.frame = tkinter.ttk.Frame(stdscr);
+        self.frame.place(*pargs, **kwargs);
+
         le = min(RESOLVER_MAX_KEYS, len(self.keys));
         for idx in range(le):
             key = self.keys[idx];
@@ -537,16 +544,17 @@ class Resolver:
 
     def wrap(self, cb):
         def _wrap():
-            res = None;
+            res = RNone();
             if callable(cb):
                 res = cb();
             
             # as a dummy task
-            self.task(res);
+            if self.task:
+                self.task(res);
             
             # the issue is actually resolved;
-            if self.task and callable(self.cb):
-                self.cb();
+            if self.task and callable(self.success_cb):
+                self.success_cb();
 
             return res;
 
@@ -554,30 +562,29 @@ class Resolver:
 
 
 class Reporter:
-    def __init__(self, stdscr, total):
+    def __init__(self, total):
         self.pcur = tkinter.StringVar();
         self.ptotal = total;
-        self.stdscr = stdscr;
+
+    def remove(self):
+        if self.frame != None:
+            self.frame.place_forget();
+            self.frame = None;
+
+
+    def place(self, stdscr, *pargs, **kwargs):
         self.frame = tkinter.ttk.Frame(stdscr);
         self.pbar = tkinter.ttk.Progressbar(self.frame,
                 orient=tkinter.HORIZONTAL, mode='determinate', variable =
-                self.pcur, maximum = total);
+                self.pcur, maximum = self.ptotal);
     
+        self.frame.place(*pargs, **kwargs);
 
-    def remove(self):
-        return self.frame.place_forget();
-
-    def show(self):
-        self.frame.place(relheight = 1, relwidth = 1, x = 0, y = 0);
         self.pbar.place(x = 0, y = 0, relwidth = 1, relheight = 1);
         return True;
 
     def progress(self, cur):
         self.pcur.set(str(cur));
-
-class RNone:
-    def __init__(self):
-        pass;
 
 
 class Task:
@@ -637,33 +644,18 @@ class PQueue(queue.PriorityQueue):
         return tup[1].item;
 
 class Activity:
-    def __init__(self, size = 30, regsize = 1):
+    def __init__(self, size = 30):
         self.logs = collections.deque([], size);
-        self.size = size;
-        # these are meant for user-defined internal processing.
-        self.register = queue.Queue(regsize);
-        self.error = None;
-        self.warning = None;
-        
-        # this can be assigned only once.
-        self.reporter = None;
-
-        #this is can be reassigned
-        self.resolver = None;
+        self.reporters = collections.deque([]);
 
     def append_log(self, log):
         self.logs.append(log);
-
-    def lock(self):
-        return self.lk.acquire();
-
-    def release(self):
-        return self.lk.release();
 
     def __iter__(self):
         yield from iter(self.logs);
 
 import pdb
+import tkinter.scrolledtext
 
 class Dashboard:
     NO_ID = -1;
@@ -678,10 +670,9 @@ class Dashboard:
             pqueue,
             signum = None,
             sigbits = 8,
-            activity_pauser = None,
-            activity_player = None,
             mlogger = None,
             logsize = MAX_LOG_SIZE,
+            max_reporters = 4,
             ):
         self.stdscr = stdscr;
         self.scroll_granularity = scroll_granularity;
@@ -693,8 +684,7 @@ class Dashboard:
         self.pqueue = pqueue;
         self.mlogger = mlogger;
         self.logsize = logsize;
-        self.activity_pauser = activity_pauser;
-        self.activity_player = activity_player;
+        self.max_reporters = max_reporters;
         self.id = self.NO_ID;
         self.c_lock = threading.Lock();
         self.a_lock = threading.Lock();
@@ -722,7 +712,6 @@ class Dashboard:
         #self.log = tkinter.Text(self.frame, background = "black", foreground = "white", state='normal', wrap = "word");
         self.logger = self.Logger(self, self.log);
 
-        self.resolution_scr = tkinter.ttk.Frame(self.frame);
         self.status_scr = tkinter.ttk.Frame(self.frame);
 
     def __call__(self, task):
@@ -743,35 +732,9 @@ class Dashboard:
         else:
             return False;
     
+    def refresh(self, aid = None):
+        pass;
 
-    def register_error(self, keys, commands, aid = None):
-        # return a task for the caller to wait on for resolution
-        aid = threading.get_ident() if not aid else aid;
-        task = Task(None);
-        act = self.get_activity(aid);
-        cb = Task(self.de_register_error, aid);
-        act.register.put(
-                Resolver(
-                    self.resolution_scr,
-                    keys,
-                    commands,
-                    task,
-                    cb
-                    ),
-                );
-        
-        return task;
-
-    def de_register_error(self, aid = None):
-        aid = threading.get_ident() if not aid else aid;
-        act = self.get_activity(aid);
-
-        # for the gui thread
-        act.resolver.remove();
-        act.register.task_done();
-        act.resolver = None;
-    
-    
     def send_task(self, tk, cmdnum = SIG_CMD_CONTAINS, sigargs = [], priority = None):
         global PRIORITY_WRITELOG;
         priority = PRIORITY_NORMAL if not priority else priority;
@@ -788,20 +751,29 @@ class Dashboard:
                 );
 
         return True;
+    
+    def append_reporter(self, rep, aid = None):
+        aid = threading.get_ident() if not aid else aid;
+        act = self.get_activity(aid);
+        if not act:
+            return False;
+        
+        act.reporters.append(rep);
 
-    def register_progress(self, cur, total, aid = None):
+    
+    def remove_reporter(self, rep, aid = None):
         aid = threading.get_ident() if not aid else aid;
         act = self.get_activity(aid);
         if not act:
             return False;
 
-        if not act.reporter:
-            act.reporter = Reporter(self.status_scr, total);
-            if self.get_vid_of(aid) == self.id:
-                act.reporter.show();
+        try:
+            act.reporters.remove(rep);
 
-        act.reporter.progress(cur);
+        except ValueError:
+            pass;
 
+        return True
 
     def is_current(self, aid = None):
         aid = threading.get_ident() if not aid else aid;
@@ -832,12 +804,10 @@ class Dashboard:
         self.items_listbox.bind("<<ListboxSelect>>", self.scroll);
 
         self.log.place(relx = 1/3 + 1/25, y = 0, relheight = 9/10, relwidth = 1 - (1/3 + 1/20));
-        self.resolution_scr.place(relx = 1/3 + 1/25, rely = 9/10, relwidth = 3/10, relheight = 1/10);
+        self.status_scr.place(relx = 1/3 + 1/25, rely = 9/10, relwidth = 6/10, relheight = 1/10);
 
-        self.status_scr.place(relx = (1/3 + 1/25)+(1/2 * (1 - (1/3 + 1/20))), rely = 9/10, relwidth = 3/10, relheight = 1/10);
         
         #tkinter.Button(self.status_scr, text = "STATUS", background = "yellow").place(x = 0, y = 0, relheight = 1, relwidth = 1);
-        #tkinter.Button(self.resolution_scr, text = "RESOLUTION").place(x = 0, y = 0, relheight = 1, relwidth = 1);
         self.is_live = True;
 
     def get_activity(self, realid = None):
@@ -921,30 +891,15 @@ class Dashboard:
 
         if self.id != self.NO_ID:
             old_act = self.get_activity(self.id);
-            if old_act.reporter:
-                old_act.reporter.remove();
-
-            if old_act.resolver:
-                old_act.resolver.remove();
+            for rep in old_act.reporters:
+                rep.remove();
 
         self.id = realid;
 
         self.logger.write_log(act);
-
-        if act.reporter:
-            act.reporter.show();
-
-        if act.resolver:
-            act.resolver.show();
-
-        else:
-            try:
-                r = act.register.get(block = False);
-                #act.register.task_done();
-                act.resolver = r;
-                r.show();
-            except queue.Empty:
-                pass;
+        le = min(self.max_reporters, len(act.reporters));
+        for idx in range(le):
+            act.reporters[idx].place(self.status_scr, relx = idx/le, y = 0, relwidth = 1/le, relheight = 1);
 
         return True;
 
