@@ -1,0 +1,41 @@
+{
+
+    "description": "TMADOG Cookie Server service the cookie needs of the main TMADOG program",
+    "manifest_version": 2,
+    "name": "TMADOG Cookie Server",
+    "version": "1.0",
+    //"homepage_url": "https://github.com/mdn/webextensions-examples/tree/master/borderify",
+    "icons": {
+	"48": "dog_icon-48.png"
+    },
+
+    "background": {
+	"scripts": ["dog_background.js"]
+    },
+
+    //"browser_action": {
+    //    "default_icon": "dog_icon-32.png",
+    //    "default_title": "TMADOG Cookie Server",
+    //    "default_popup": "dog_server.html",
+    //    "browser_style": true
+    //},
+
+    "permissions": [
+	"tabs",
+	"*://*.127.0.0.1/",
+	"*://*.nouonline.net/",
+	"https://.nouonline.net/",
+	"cookies",
+	"activeTab",
+	"webRequest",
+	"webRequestBlocking"
+    ],
+
+	"content_scripts": [
+	    {
+		"matches": ["https://www.nouonline.net/*?*"],
+		"js": ["har_getter.js"]
+	    }
+	]
+
+}

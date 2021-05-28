@@ -18,7 +18,6 @@ import status
 import tasker
 import libdogs
 import pathlib
-import threading
 
 STAT_ARG = 0;
 STAT_ST = 1;
@@ -36,22 +35,13 @@ def dog_submit_stat(dog):
 
         yield [ta.args, ta.status];
 
-DOG_CTRL_STOP = 0
-DOG_CTRL_STOP_WAIT = 1;
-DOG_CTRL_RUNNABLE = 2;
-DOG_CTRL_RUN_WAIT = 3;
-DOG_CTRL_PAUSE = 4;
-DOG_CTRL_PAUSE_WAIT = 5;
-
 class SimpleDog:
 
-    def __init__ (self, usrs, amgr, get_nav, outfile = None, exit_cb = None):
+    def __init__ (self, usrs, amgr, get_nav, outfile = None, **req_args):
         self.arg_gens = [];
         self.prep_argv = [];
         self.prep_argc = 0;
         self.status = status.Status();
-        self.ctrl = DOG_CTRL_RUN_WAIT;
-        self.ctrl_lock = threading.Lock();
         self.tasktab = [];
         self.tasktab_size = 0;
         self.amgr = amgr;
@@ -59,51 +49,8 @@ class SimpleDog:
         self.nav = None;
         self.get_nav = get_nav;
         self.outfile = outfile;
-        self.exit_cb = exit_cb;
-    
-    def run_wait(self):
-        self.ctrl_lock.acquire();
-        self.ctrl = DOG_CTRL_RUN_WAIT;
-        self.ctrl_lock.release();
+        self.req_args = req_args;
 
-        while self.ctrl != DOG_CTRL_RUNNABLE:
-            pass;
-
-    def pause_wait(self):
-        self.ctrl_lock.acquire();
-        self.ctrl = DOG_CTRL_PAUSE_WAIT;
-        self.ctrl_lock.release();
-        while self.ctrl != DOG_CTRL_PAUSE:
-            pass;
-
-    def wait_for(self, flag = DOG_CTRL_RUNNABLE):
-        while self.ctrl != flag:
-            if self.ctrl == DOG_CTRL_RUN_WAIT:
-                self.ctrl_lock.acquire();
-                self.ctrl = DOG_CTRL_RUNNABLE;
-                self.ctrl_lock.release();
-
-            elif self.ctrl == DOG_CTRL_PAUSE_WAIT:
-                self.ctrl_lock.acquire();
-                self.ctrl = DOG_CTRL_PAUSE;
-                self.ctrl_lock.release();
-
-            elif self.ctrl == DOG_CTRL_STOP_WAIT:
-                # lock it forever.
-                self.ctrl_lock.acquire();
-                self.ctrl = DOG_CTRL_STOP;
-                if callable(self.exit_cb):
-                    self.exit_cb();
-
-                sys.exit(0);
-
-    def stop_wait(self):
-        self.ctrl_lock.acquire();
-        self.ctrl = DOG_CTRL_STOP_WAIT;
-        self.ctrl_lock.release();
-
-        while self.ctrl != DOG_CTRL_STOP:
-            pass;
 
     def _alloc(self, task = None):
         self.tasktab.append(task);
@@ -169,7 +116,6 @@ class SimpleDog:
                    magic = SUB_LDR);
 
         ## to keep kick-start schedule pre-execution
-        self.wait_for(DOG_CTRL_RUNNABLE);
         return self.submit_pre_exec(task);
 
     def submit_pre_exec(self, task):
@@ -205,14 +151,13 @@ class SimpleDog:
                 # task list
                 while ldr.nxt:
                     # execute
-                    self.wait_for(DOG_CTRL_RUNNABLE);
                     st = self.submit_main(ldr.nxt.args);
-                    if st.code == status.S_FATAL:
+                    if st.code == status.S_FATAL or st.code == status.S_ERROR:
                         ldr.nxt.state = tasker.TS_TERM;
-                    elif st.code == status.S_ERROR:
+                    elif st.code == status.S_INT:
                         ldr.nxt.cmd = self.submit_pre_exec;
                         ldr.nxt.state = tasker.TS_STOPED;
-                    elif st:
+                    else:
                         ldr.nxt.state = tasker.TS_EXITED;
 
                     ldr.nxt.status = st;
@@ -223,9 +168,7 @@ class SimpleDog:
                 # create them and pre_execute them
                 prev = ldr;
 
-                self.wait_for(DOG_CTRL_RUNNABLE);
                 for arg in self.argv():
-                    self.wait_for(DOG_CTRL_RUNNABLE);
                     if isinstance(arg, status.Status):
                         self._alloc(self._InternalTask(magic = SUB_MBR, group =
                             ldr, cmd = self.nop, args = arg.cause, status = arg,
@@ -240,12 +183,12 @@ class SimpleDog:
                                 self.nop, args = arg, status = status.Status());
                     # start submiting
                     st = self.submit_main(arg);
-                    if st.code == status.S_FATAL:
+                    if st.code == status.S_FATAL or st.code == status.S_ERROR:
                         mbr.state = tasker.TS_TERM;
-                    elif st.code == status.S_ERROR:
+                    elif st.code == status.S_INT:
                         mbr.cmd = self.submit_pre_exec;
                         mbr.state = tasker.TS_STOPED;
-                    elif st:
+                    else:
                         mbr.state = tasker.TS_EXITED;
 
                     mbr.status = st;
@@ -257,12 +200,12 @@ class SimpleDog:
         else:
             # do the member only
             st = self.submit_main(mbr.args);
-            if st.code == status.S_FATAL:
+            if st.code == status.S_FATAL or st.code == status.S_ERROR:
                 mbr.state = tasker.TS_TERM;
-            elif st.code == status.S_ERROR:
+            elif st.code == status.S_INT:
                 mbr.cmd = self.submit_pre_exec;
                 mbr.state = tasker.TS_STOPED;
-            elif st:
+            else:
                 mbr.state = tasker.TS_EXITED;
 
             mbr.status = st;
@@ -270,9 +213,24 @@ class SimpleDog:
 
         return self.status;
 
+    def resume_suspended(self):
+        for task in self.tasktab:
+            if task.state != tasker.TS_STOPED:
+                continue;
+
+            st = self.submit_main(task.args);
+            if st.code == status.S_FATAL or st.code == status.S_ERROR:
+                task.state = tasker.TS_TERM;
+            elif st.code == status.S_INT:
+                task.cmd = self.submit_pre_exec;
+                task.state = tasker.TS_STOPED;
+            else:
+                task.state = tasker.TS_EXITED;
+
+            task.status = st;
+
     def submit_main(self, arg):
 
-        self.wait_for(DOG_CTRL_RUNNABLE);
         nav = self.get_nav(arg);
         if not nav:
             return nav;###handle
@@ -291,8 +249,8 @@ class SimpleDog:
 
 
 
-        for ftype in libdogs.fetch_all(nav, arg):
-            if not ftype:
+        for ftype in libdogs.fetch_all(nav, arg, **self.req_args):
+            if not ftype or isinstance(ftype, status.Status):
                 st = ftype;
                 break;
 
@@ -301,12 +259,13 @@ class SimpleDog:
                 line = "%s" % ("=" * len(arg[libdogs.P_CRSCODE]),);
                 fp.write("%s\n%s\n%s\n\n" % (line,arg[libdogs.P_CRSCODE],line));
 
-            self.wait_for(DOG_CTRL_RUNNABLE);
-            st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp);
-            self.wait_for(DOG_CTRL_RUNNABLE);
+            st = libdogs.brute_submit(arg, nav, ftype, self.amgr, fp = fp,
+                    **self.req_args);
 
+            if st == libdogs.SUBMIT_RETRY_FETCH:
+                continue;
 
-            if not st:
+            elif not st:
                 break;
 
         if not isinstance(st, status.Status):

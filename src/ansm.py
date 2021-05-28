@@ -1,4 +1,3 @@
-changequote`'include(`module.m4')dnl
 #changequote`'include(`utils.m4')changequote`'dnl
 import re
 import requests
@@ -14,15 +13,7 @@ from urllib import parse
 import configparser
 import copy
 import libdogs
-ifdef(
-`LIBPREFIX',
-`dnl
-import strip(LIBPREFIX)`'dbm
-',
-`dnl
 import dbm
-'dnl
-)dnl
 
 ANS_MODE_MAD = 0b00
 ANS_MODE_HACK = 0b01
@@ -34,34 +25,7 @@ ANS_FAIL = -2
 
 class AnsMgr (object):
 
-ifdef(
-`CONFIG_POLICE',
-`dnl
-    prologs = [
-                """The course {crscode} is unknown to the database, can you answer this question of it?""",
-
-
-                """I failed the answer to this question. Please can you answer it ?""",
-
-                """This question has no answer in the database, can you answer it?""",
-    ]
-
-    epilogs = [
-            "",
-
-            """Type "%s" if answer corresponds to row %s and so on.""",
-
-            """Type "%s" if answer corresponds to row %s or type ":hack" to switch to hack mode."""
-            ]
-
-    def __init__ (self, qmap, database, mode, pseudo_ans, interactive = True, max_retry = 3,):
-        self.interactive = interactive
-        self.max_retry = max_retry
-',
-`dnl
     def __init__ (self, qmap, database, mode, pseudo_ans,):
-'dnl
-)dnl
         self.pseudos = pseudo_ans
         self.mode = mode
         self.database = database
@@ -152,94 +116,10 @@ ifdef(
     def _copycase (self, t, i):
         return i.upper () if t.isupper () else i.lower ()
 
-ifdef(
-`CONFIG_MODULE',
-`dnl
-    def _mkprompt (self):
-        txt = """{prolog}
-
-    {%s}. {%s}
-
-    """ % (self.qmap ["qn"], self.qmap ["qdescr"])
-
-        for i in range (len (self.pseudos)):
-            k = "opt" + bytes ([65+i]).decode ()
-            txt += "%s: {%s}\n" % (self.pseudos [i], self.qmap [k])
-
-        txt += """
-        {epilog}
-        (type ":quit" to quit and leave question unanswered) --> """
-
-        return txt
-
-    def _qpromt (self, qst, epilog = None, prolog = None):
-
-        if not hasattr (self, "p_text"):
-            self.p_text = self._mkprompt ()
-
-        x = input (self.p_text.format (
-            prolog = prolog or "(tmadog)",
-            epilog = epilog or """Type "%s" if answer corresponds to row %s and so on.""" % (self.pseudos[0], self.pseudos[0]),
-            **qst
-            )
-            )
-
-        return x
-
-
-    def qprompt (self, qst, epilog = None, prolog = None, max_retry = 0,
-            err_msg = None):
-
-        x = self._qpromt (qst, epilog, prolog)
-        try:
-            qst [self.qmap ["ans"]] = self._copycase (self.pseudos[0], x) if not re.fullmatch (r"\s*", x) and not x.startswith (":") else None
-
-        except ValueError:
-
-            while max_retry:
-                x = self._qpromt (
-                        qst,
-                        epilog,
-                        (err_msg or """
-    Error: You have entered an invalid option. %d attempt(s) left""") % ( max_retry, )
-                        )
-                try:
-                    qst [self.qmap ["ans"]] = self._copycase (self.pseudos[0], x) if len (x) and not x.startswith (":") else None
-                    break
-
-                except ValueError:
-                    pass
-
-                max_retry -= 1
-
-
-        finally:
-
-            return x
-',
-`'dnl
-)dnl
 
     def check (self, qst, mark, effective = None):
         if mark == 0:
             qst = qst.copy ()
-ifdef(
-`CONFIG_MODULE',
-`dnl
-            if not self.interactive:
-                x = self (qst [self.qmap ["crscode"]], qst [self.qmap ["qid"]])
-
-                if x and qst [self.qmap ["ans"]] == x [self.qmap ["ans"]]:
-                    x [self.qmap ["ans"]] = None
-
-                elif not x:
-                    qst [self.qmap ["ans"]] = None
-                    self.update (qst.copy ())
-
-            else:
-                return self.resolve (qst, self.FAIL)
-',
-`dnl
             x = self (qst [self.qmap ["crscode"]], qst [self.qmap ["qid"]])
 
             if x and qst [self.qmap ["ans"]] == x [self.qmap ["ans"]]:
@@ -248,8 +128,6 @@ ifdef(
             elif not x:
                 qst [self.qmap ["ans"]] = None
                 self.update (qst.copy ())
-'dnl
-)dnl
 
         elif mark == 1:
             self.update (qst.copy ())
@@ -326,36 +204,10 @@ ifdef(
 
 
     def resolve (self, qst, sig):
-ifdef(
-`CONFIG_MODULE',
-`dnl
-        if not self.interactive:
-            self.update (qst)
-
-            return sig
-
-        x = self.qprompt (
-                qst,
-                prolog = self.prologs [sig].format (**qst),
-                epilog = self.epilogs [ANS_MODE_NORM if self.mode > ANS_MODE_NORM else self.mode] % (self.pseudos[0], self.pseudos[0]),
-
-                max_retry = self.max_retry
-                )
-
-        if x in (":hack", ":Hack", ":HACK"):
-            self.mode = ANS_MODE_HACK
-
-        self.update (qst.copy ())
-
-        return None if not qst[self.qmap ["ans"]] else qst
-',
-`dnl
 
         self.update (qst)
 
         return sig
-'dnl
-)dnl
 
     def revert_ans (self, qst):
         qst = qst.copy ()

@@ -44,7 +44,7 @@ def gen_whitelisted_key(nlist):
     return KeyInfo(key, data);
 
 
-def gen_key_with_epoch():
+def gen_key_with_epoch(x):
     return KeyInfo(math.trunc(time.time()));
 
 
@@ -236,6 +236,11 @@ if __name__ == "__main__":
 
     kparser.add_argument("--rm", help = "A key to delete");
 
+    kparser.add_argument("--count", help = "Number of keys", default = 1, type =
+            int);
+
+    kparser.add_argument("--put", help = "A key to force");
+
     args = kparser.parse_args();
 
     if args.rm:
@@ -246,48 +251,58 @@ if __name__ == "__main__":
             print("removed %s" % (args.rm,));
         sys.exit(0);
 
+    if args.rm:
+        res = rm_key(args.rm);
+        if not res:
+            print("cant't remove key %s\n%s" % (args.rm, res.text));
+        else:
+            print("removed %s" % (args.rm,));
+        sys.exit(0);
+
+
     if args.dump:
         print(json.dumps(fetch_keyinfo(args.dump)));
         sys.exit(0);
 
-    keyobj = gen_key_with_epoch(); #will always succeed, no checks needed
-    
-    o_info = fetch_keyinfo(args.owner);
+    for i in range(args.count):
+        keyobj = gen_key_with_epoch(i); #will always succeed, no checks needed
+        
+        o_info = fetch_keyinfo(args.owner);
 
-    if args.whitelisted:
-        keyobj["whitelist"] = [];
-        keyobj["max_wlist"] = args.wc;
+        if args.whitelisted:
+            keyobj["whitelist"] = [];
+            keyobj["max_wlist"] = args.wc;
 
-        if args.owner:
-            if o_info and o_info.get("wlist_keys", []):
-                raise KeyError(
-                        "A single owner %s can't have more than one whitelist key" %
-                        (args.owner,)
-                        );
-            else:
-                o_info = KeyInfo(args.owner);
+            if args.owner:
+                if o_info and o_info.get("wlist_keys", []):
+                    raise KeyError(
+                            "A single owner %s can't have more than one whitelist key" %
+                            (args.owner,)
+                            );
+                else:
+                    o_info = KeyInfo(args.owner);
 
-            o_info["wlist_keys"] = [str(keyobj)];
-            keyobj["owner"] = str(o_info);
+                o_info["wlist_keys"] = [str(keyobj)];
+                keyobj["owner"] = str(o_info);
 
 
 
-    keyobj["tmano"] = libdogs.TMANO_STRICT if not args.pro else libdogs.TMANO_LAX;
+        keyobj["tmano"] = libdogs.TMANO_STRICT if not args.pro else libdogs.TMANO_LAX;
 
-    keyobj["ts"] = 0;
+        keyobj["ts"] = 0;
 
-    try:
-        if o_info:
-            res = put_key(o_info);
+        try:
+            if o_info:
+                res = put_key(o_info);
+                if not res:
+                    print("\n%s\n" % (res.text,));
+                    raise Exception();
+
+            res = put_key(keyobj);
             if not res:
                 print("\n%s\n" % (res.text,));
                 raise Exception();
 
-        res = put_key(keyobj);
-        if not res:
-            print("\n%s\n" % (res.text,));
-            raise Exception();
-
-        print(keyobj);
-    except Exception:
-        print ("failure generating key");
+            print(keyobj);
+        except Exception:
+            print ("failure generating key");
