@@ -416,8 +416,7 @@ def main (parser, pkg_name, argv, kinfo = None):
     logger.addHandler(stdout);
 
     mp, argv = get_config(pkg_dir, argv, logger);
-    argv, rest = collapse_file_argv(parser, argv, prep_hypen, recs =
-                mp["tmafile"]["units"].strip().split(","));
+    argv, rest = collapse_file_argv(parser, argv, prep_hypen);
 
     argv.extend(rest);
 
@@ -1033,38 +1032,52 @@ def get_config(pkg_dir, argv, logger = None):
     return (dmp, rest);
 
 
-def iter_file_argv(argf, fprefs = []):
+def iter_file_argv(argf):
     args = libdogs.read_file_text(argf);
+    lbuf = [];
+    in_quotes = False;
     for arg_line in args.split("\n"):
         if re.match(r'^\s*#.*', arg_line):
             continue;
+        
+        # we want to consider multiple spaces in quotes
+        ar = arg_line.split(" ");
 
-        ar = arg_line.split();
-        # on a line, tokens with recognized prefixes are given as a unit
-        # while those without are given as a space-seperated collection.
-        lbuf = [];
         if not ar:
             # empty lines are skipped
             continue;
 
         for a1 in ar:
-            # NOTE: this implementation though
-            for pref in fprefs:
-                if re.match(pref, a1, re.I):
-                    if lbuf:
-                        yield " ".join(lbuf);
-                    yield a1;
-                    a1 = None;
-                    lbuf = [];
-                    break;
-            
-            if a1:
-                lbuf.append(a1);
-                
-        if lbuf:
-            # the whole of the line as oneunit
-            yield " ".join(lbuf);
+            # disconnect the conditionals since we are spliting by space alone
 
+            if in_quotes and a1.startswith((r'\"', r"\'")):
+                a1 = a1[1:];
+
+
+
+            if not in_quotes and a1.startswith(('"', "'")):
+                # NOTE: a python3.7+ hack; slices can refer to and empty string
+                # of even past a string's
+                # length
+                in_quotes = True;
+                a1 = a1[1:];
+
+                # do not check if 'a1' becomes an empty string; it means quoted
+                # token begins with a space
+
+            if in_quotes and a1.endswith(('"', "'")):
+                in_quotes = False;
+                a1 = a1[:-1];
+
+
+            lbuf.append(a1);
+
+            if not in_quotes:
+                yield " ".join(lbuf);
+                lbuf = [];
+
+
+                
 
 def gui_iter_file_argv(argf):
     args = libdogs.read_file_text(argf);
@@ -1104,7 +1117,7 @@ def gui_collapse_file_argv(parser, argv, preproc = lambda a,b: a):
 
 
 
-def collapse_file_argv(parser, argv, preproc = lambda a,b: a,  recs = []):
+def collapse_file_argv(parser, argv, preproc = lambda a,b: a):
     aid = parser.fromfile_prefix_chars;
     if not aid:
         return [];
@@ -1117,7 +1130,7 @@ def collapse_file_argv(parser, argv, preproc = lambda a,b: a,  recs = []):
             rest.append(arg);
             continue;
 
-        ar = iter_file_argv(arg[1:], recs);
+        ar = iter_file_argv(arg[1:]);
         arg_res.extend(preproc(ar, 0));
 
     return (arg_res, rest);
@@ -1165,8 +1178,7 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
 
         mp, argv = get_config(pkg_dir, argv, logger);
 
-        argr, rest = collapse_file_argv(parser, argv, prep_hypen, recs =
-                mp["tmafile"]["units"].strip().split(","));
+        argr, rest = collapse_file_argv(parser, argv, prep_hypen);
 
         argr.extend(rest);
 

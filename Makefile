@@ -8,10 +8,7 @@ SRC = src
 
 SHELL := $(shell which bash)
 
-M4_DEPS = ansm.m4 \
-	   dbm.m4 \
-	   navigation.m4 \
-	   scrm.m4 \
+M4_DEPS =
 
 PY_DEPS = dog_main.py \
 	  libdogs.py \
@@ -23,6 +20,13 @@ PY_DEPS = dog_main.py \
 	  dropbox.py \
 	  cookie_parse.py \
 	  dog_idl.py \
+	  ansm.py \
+	  dbm.py \
+	  navigation.py \
+	  scrm.py \
+	  nourc.py \
+
+
 
 
 M4FLAGS = -I $(SRC) -I .
@@ -40,7 +44,7 @@ dist: dog
 	xz -z $(DIST_DIR)/dogger.tar
 
 
-dog: $(addprefix $(OUTPUT)/,$(M4_DEPS:.m4=.py)) $(addprefix $(OUTPUT)/,$(PY_DEPS)) rc;
+dog: $(addprefix $(OUTPUT)/,$(M4_DEPS:.m4=.py)) $(addprefix $(OUTPUT)/,$(PY_DEPS)) raw_py;
 
 smeo: $(addprefix $(OUTPUT)/,$(M4_DEPS:.m4=.py)) $(addprefix $(OUTPUT)/,$(PY_DEPS));
 
@@ -50,14 +54,9 @@ enterprise: $(addprefix $(OUTPUT)/ent_,$(M4_DEPS:.m4=.py)) ;
 
 user: $(addprefix $(OUTPUT)/usr_,$(M4_DEPS:.m4=.py));
 
-rc: $(SRC)/nourc_future
-	printf "rc = r%s\n" '"""' > $(OUTPUT)/nourc.py
-	cat $< >> $(OUTPUT)/nourc.py
-	printf "%s;" '"""' >> $(OUTPUT)/nourc.py
-
 
 raw_py:
-	cp -v $(SRC)/{dog_main,libdogs,preproccesor,qstwriter,simple_dog,status,submit,tasker}.py $(OUTPUT)/
+	cp -vr $(SRC)/cookie_server $(SRC)/dog.ico $(OUTPUT)/
 
 $(addprefix $(OUTPUT)/,$(PY_DEPS)): $(addprefix $(SRC)/,$(PY_DEPS))
 	@ f=$@; cp -v $(SRC)/$${f/*\//} $@;

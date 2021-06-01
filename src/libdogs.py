@@ -1022,6 +1022,32 @@ def is_net_valid_arg(cmdl, arg):
 
 LOGIN_BLACKLIST = [];
 
+
+def resolve_ref(record, idx, target_attr, name = "value", fallback = False):
+    rec_id = int(idx);
+    rec_len = len(record);
+    if (rec_len > 0 and rec_id < 0 and abs(rec_id) <= rec_len) or
+    (rec_len > 0 and rec_id >= 0 and rec_id < rec_len):
+        rec_ref = record[rec_id];
+        if not rec_ref[target_attr] and isinstance(rec_ref[target_attr], status.Status):
+            # do not let previous failures affect the current user.
+            logger.info("fautly %s reference %s", name, idx);
+            if fallback != False:
+                logger.info("forcing to %s", fallback);
+            
+            return fallback;
+
+        else:
+            return rec_ref[target_attr];
+
+    else:
+        logger.info("invalid %s reference %s", name, idx)
+        if fallback != False:
+            logger.info("forcing to %s", fallback);
+        
+        return fallback;
+
+
 def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
         = None, *pargs, **kwargs):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
@@ -1063,9 +1089,16 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
 
         y = crscodes [i]
 
-        if re.match('all', y, re.I):
-            logger.info("preprocess(): no course specified for user %s, entering course discovery mode",
+        if re.fullmatch(r'-?\d+', y):
+            y = resolve_ref(record, y, P_CRSCODE, "all");
+
+        if re.fullmatch(r'-?\d+', usr[P_TMA]):
+            usr[P_TMA] = resolve_ref(record, usr[P_TMA], P_TMA, "1");
+
+        if re.fullmatch('all', y, re.I):
+            logger.info("preprocess(): no course specified for %s, entering course discovery mode",
                     usr[P_USR]);
+            cid_str = [];
 
             for crs in discover_by_quizlist (usr, nav_hook(usr)):
                 if crs:
@@ -1079,14 +1112,21 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
                         logger.info("skipping %s" % (crs,));
                         continue;
 
-                yy = copy(usr);
+                usr[P_CRSCODE] = crs;
 
                 if not isinstance(crs, status.Status):
                     logger.info("found %s for user number %s of %s", crs, i+1,
                             argc);
-                    yy[P_CRSCODE] = crs;
-                    yield yy;
+                    cid_str.append(crs);
+                    q_sns = usr[P_TMA];
+                    for q_sn in q_sns.split():
+                        usr[P_TMA] = q_sn;
+
+                        yield copy.deepcopy(usr);
+
+
                 else:
+                    yy = copy(usr);
                     LOGIN_BLACKLIST.append(yy);
                     yy.pop(P_CRSCODE, None);
                     yield status.Status(status.S_ERROR, "can't login", cause =
@@ -1095,7 +1135,14 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
         else:
             logger.info("%s specified for user number %s of %s", y, i+1, argc);
             usr[P_CRSCODE] = y;
-            yield copy(usr);
+            record.append(copy.deepcopy(usr));
+            qcrs = usr[P_CRSCODE];
+            q_sns = usr[P_TMA];
+            for q_sn in q_sns.split():
+                usr[P_TMA] = q_sn;
+                for q_crs in qcrs.split():
+                    usr[P_CRSCODE] = q_crs;
+                    yield copy.deepcopy(usr);
 
 
 ## this for now, is case-insensitive

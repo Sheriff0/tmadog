@@ -19,8 +19,6 @@ crscode = (?P<cs>[A-Za-z]{3})\d{3}(?!\d+)
 matno = (?P<cs>nou)\d{9}
 tma = (?<=tma)[1-3]
 
-[tmafile]
-units: --,http,${describe:crscode},${describe:matno},^[1-3]$$
 
 [kmap]
 usr = [Matric Number]
