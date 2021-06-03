@@ -1033,49 +1033,76 @@ def get_config(pkg_dir, argv, logger = None):
 
 
 def iter_file_argv(argf):
+    COMMENT = "#";
+    CTRL_CHAR = (COMMENT, '"', "'");
     args = libdogs.read_file_text(argf);
     lbuf = [];
     in_quotes = False;
-    for arg_line in args.split("\n"):
-        if re.match(r'^\s*#.*', arg_line):
-            continue;
-        
-        # we want to consider multiple spaces in quotes
-        ar = arg_line.split(" ");
+    idx = 0;
+    pre_eof = "";
+    while True:
+        try:
+            if args[idx] == COMMENT:
+                while args[idx] != "\n":
+                    idx += 1;
+                
+                # go past the new line
+                idx += 1;
+            
+            elif args[idx].startswith(('"', "'")):
+                pre_eof = "";
+                quote_term  = args[idx];
+                idx += 1;
 
-        if not ar:
-            # empty lines are skipped
-            continue;
+                while True:
+                    ch = args[idx];
 
-        for a1 in ar:
-            # disconnect the conditionals since we are spliting by space alone
-
-            if in_quotes and a1.startswith((r'\"', r"\'")):
-                a1 = a1[1:];
-
-
-
-            if not in_quotes and a1.startswith(('"', "'")):
-                # NOTE: a python3.7+ hack; slices can refer to and empty string
-                # of even past a string's
-                # length
-                in_quotes = True;
-                a1 = a1[1:];
-
-                # do not check if 'a1' becomes an empty string; it means quoted
-                # token begins with a space
-
-            if in_quotes and a1.endswith(('"', "'")):
-                in_quotes = False;
-                a1 = a1[:-1];
+                    if ch == "\\" and args[idx + 1] == quote_term: 
+                        pre_eof += quote_term;
+                        idx += 2;
 
 
-            lbuf.append(a1);
+                    elif ch == quote_term:
+                        # advance pointer for the main loop before exiting this one
+                        idx += 1;
+                        break;
 
-            if not in_quotes:
-                yield " ".join(lbuf);
-                lbuf = [];
+                    elif ch == "\n": 
+                        pre_eof += " ";
+                        idx += 1;
 
+
+                    else:
+                        pre_eof += ch;
+                        idx += 1;
+
+                
+                # skip checking to support quoted-empty args
+                yield pre_eof;
+
+            else:
+                pre_eof = "";
+                while args[idx] not in CTRL_CHAR:
+                    if args[idx] in (" ", "\n"):
+                        if pre_eof:
+                            yield pre_eof;
+                            pre_eof = "";
+                    
+                    else:
+                        pre_eof += args[idx];
+
+                    idx += 1;
+
+                # to prevent data loss at all cost.
+                # this also has the added advantage of handling users' ommision of spaces between an assumped previous argument and the quoted current argument.
+                if pre_eof:
+                    yield pre_eof;
+
+
+        except IndexError:
+            if pre_eof:
+                yield pre_eof;
+            return None;
 
                 
 
@@ -1427,11 +1454,11 @@ if __name__ == '__main__':
     parser.add_argument (*ARGNAME_PWD, help = 'Your password', nargs = "+", action =
             libdogs.AppendList, dest = libdogs.P_PWD, required = True);
 
-    parser.add_argument (*ARGNAME_CRSCODE, help = 'Your target course', nargs = "+",
+    parser.add_argument (*ARGNAME_CRSCODE, help = 'Your target course', 
             action = libdogs.AppendList, dest = libdogs.P_CRSCODE);
 
-    parser.add_argument (*ARGNAME_TMA, nargs = "+", help = 'Your target TMA for the chosen course',
-            action = libdogs.AppendList, dest = libdogs.P_TMA, type = int,
+    parser.add_argument (*ARGNAME_TMA , help = 'Your target TMA for the chosen course',
+            action = libdogs.AppendList, dest = libdogs.P_TMA, 
             required = True);
 
     parser.add_argument (*ARGNAME_CONFIG, help = 'configuration file to use', dest = libdogs.P_WMAP);

@@ -1026,17 +1026,14 @@ LOGIN_BLACKLIST = [];
 def resolve_ref(record, idx, target_attr, name = "value", fallback = False):
     rec_id = int(idx);
     rec_len = len(record);
-    if (rec_len > 0 and rec_id < 0 and abs(rec_id) <= rec_len) or
-    (rec_len > 0 and rec_id >= 0 and rec_id < rec_len):
+    if (rec_len > 0 and rec_id < 0 and abs(rec_id) <= rec_len) or (rec_len > 0 and rec_id >= 0 and rec_id < rec_len):
         rec_ref = record[rec_id];
-        if not rec_ref[target_attr] and isinstance(rec_ref[target_attr], status.Status):
+        if isinstance(rec_ref[target_attr], status.Status):
             # do not let previous failures affect the current user.
             logger.info("fautly %s reference %s", name, idx);
             if fallback != False:
                 logger.info("forcing to %s", fallback);
             
-            return fallback;
-
         else:
             return rec_ref[target_attr];
 
@@ -1045,7 +1042,7 @@ def resolve_ref(record, idx, target_attr, name = "value", fallback = False):
         if fallback != False:
             logger.info("forcing to %s", fallback);
         
-        return fallback;
+    return fallback;
 
 
 def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
@@ -1066,6 +1063,7 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
     P_USR = wmap ['kmap']['usr']
     P_PWD = wmap ['kmap']['pwd']
     argc = max (len (crscodes), len (tmas), len (matnos))
+    record = [];
 
     for i in range (argc):
         usr = {};
@@ -1122,8 +1120,7 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
                     for q_sn in q_sns.split():
                         usr[P_TMA] = q_sn;
 
-                        yield copy.deepcopy(usr);
-
+                        yield copy(usr);
 
                 else:
                     yy = copy(usr);
@@ -1132,17 +1129,23 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
                     yield status.Status(status.S_ERROR, "can't login", cause =
                             yy);
                     break;
+
+            # for others to reference.
+            usr[P_CRSCODE] = " ".join(cid_str) if cid_str else crs;
+            record.append(copy(usr));
+
         else:
-            logger.info("%s specified for user number %s of %s", y, i+1, argc);
             usr[P_CRSCODE] = y;
-            record.append(copy.deepcopy(usr));
+            # for others to reference.
+            record.append(copy(usr));
             qcrs = usr[P_CRSCODE];
             q_sns = usr[P_TMA];
             for q_sn in q_sns.split():
                 usr[P_TMA] = q_sn;
                 for q_crs in qcrs.split():
                     usr[P_CRSCODE] = q_crs;
-                    yield copy.deepcopy(usr);
+                    logger.info("%s specified for user number %s of %s", q_crs, i+1, argc);
+                    yield copy(usr);
 
 
 ## this for now, is case-insensitive

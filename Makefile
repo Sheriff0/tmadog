@@ -25,6 +25,8 @@ PY_DEPS = dog_main.py \
 	  navigation.py \
 	  scrm.py \
 	  nourc.py \
+	  user_agents.py \
+	  c_server.py \
 
 
 
