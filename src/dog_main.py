@@ -1031,6 +1031,67 @@ def get_config(pkg_dir, argv, logger = None):
 
     return (dmp, rest);
 
+# Abstract
+
+class OutputFile:
+    def format(self):
+        pass;
+
+    def __del__(self):
+        pass;
+
+import pyzipper
+import tempfile
+import shutil
+import threading
+
+class EncryptedZip(OutputFile):
+    def __init__(self, bdir, pfmt):
+        self._io_lock = threading.Lock();
+        self.pfmt = pfmt;
+        self.bdir = pathlib.Path(bdir);
+        if not self.bdir.is_dir():
+            raise TypeError("OutputFile: bdir must be a directory, got regular file %s" % (str(self.bdir.resolve()),));
+
+        self.tpath = pathlib.Path(tempfile.mkdtemp());
+        fd = dropbox.fetch_zipfd();
+        self.fd = fd;
+        self.bpath = self.bdir.joinpath(fd.name);
+        self.back_store = pyzipper.AESZipFile(str(self.bpath.resolve()), "a");
+        self.back_store.setencryption(pyzipper.WZ_AES, nbits = fd.nbits); #128 probably;
+
+        self.back_store.setpassword(bytes(fd.password, encoding = "utf-8"));
+
+    def clean_dir(self):
+        for fi in self.tpath.iterdir():
+            self.back_store.write(str(fi.resolve()), fi.name);
+            fi.unlink();
+
+
+    def format(self, *pargs, **kwargs):
+        self._io_lock.acquire();
+        self.clean_dir();
+        fi = pathlib.Path(self.pfmt.format(*pargs, **kwargs));
+
+        try:
+            self.back_store.extract(fi.name, path = str(self.tpath.resolve()));
+
+        except KeyError:
+            pass;
+
+        self._io_lock.release();
+
+        return str(fi.resolve());
+
+    
+    def __del__(self):
+        self.close();
+
+    def close(self):
+        # must be called on exit
+        self.clean_dir();
+        shutil.rmtree(str(self.tpath));
+
 
 def iter_file_argv(argf):
     COMMENT = "#";
