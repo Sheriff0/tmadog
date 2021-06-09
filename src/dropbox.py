@@ -1,9 +1,10 @@
-import requests, json, re
+import json, re
 import time
 import math
 import sys
 import argparse
 import libdogs
+import requests
 
 upload_url = "https://content.dropboxapi.com/2/files/upload";
 
@@ -132,7 +133,7 @@ def update_key(key):
     return libdogs.goto_page3("POST", upload_url, headers = hdrs, data = json.dumps(keyobj));
 
 
-def alloc_key(key):
+def alloc_key(key, requester = libdogs.goto_page3):
     hdrs = Base_headers();
     hdrs["Dropbox-API-Arg"] = json.dumps(
             {
@@ -140,14 +141,14 @@ def alloc_key(key):
                 }
             );
 
-    res = libdogs.goto_page3("GET", download_url, headers = hdrs);
+    res = requester("GET", download_url, headers = hdrs);
     
     if not res:
         return res;
 
     keyobj = json.loads(res.text);
     
-    if "ts" in keyobj and keyobj["ts"]:
+    if "ts" in keyobj and int(keyobj["ts"]):
         return False;
 
     if isinstance(key, dict):
@@ -212,6 +213,83 @@ class Base_headers(dict):
         self["Authorization"] = "Bearer %s" % (self.key,);
 
 
+def fetch_file(key, requester = libdogs.goto_page3):
+    if not key:
+        return None;
+
+    hdrs = Base_headers();
+    hdrs["Dropbox-API-Arg"] = json.dumps(
+            {
+                "path": "/%s" % (key,),
+                }
+            );
+
+    res = requester("GET", download_url, headers = hdrs);
+    
+    if not res:
+        return res;
+
+    return res.text;
+
+
+def write_file(key, data, requester = libdogs.goto_page3):
+    hdrs = Base_headers();
+
+    hdrs["Dropbox-API-Arg"] = json.dumps(
+            {
+                "path": "/%s" % (key,),
+                "mode": "overwrite",
+                "mute": True,
+                }
+            );
+
+    hdrs["Content-Type"] = "application/octet-stream";
+
+    return requester("POST", upload_url, headers = hdrs, data = str(data));
+
+
+def ZipFd(requester = libdogs.goto_page3, zfname = "zipfile"):
+    zf_str = fetch_file(zfname, requester);
+
+    if not zf_str:
+        return zf_str;
+    
+    zdata = json.loads(zf_str);
+
+    class _Zdata:
+        @property
+        def name(self):
+            return zdata["name"];
+        
+        @property
+        def nbits(self):
+            return int(zdata.get("nbits", 128));
+
+        @property
+        def password(self):
+            return zdata["password"];
+    
+    return _Zdata();
+
+def Updates(requester = libdogs.goto_page3, ufname = "update"):
+    u_str = fetch_file(ufname, requester);
+
+    if not u_str:
+        return u_str;
+    
+    udata = json.loads(u_str);
+
+    class _Udata:
+        @property
+        def version(self):
+            return int(udata["version"]);
+        
+        @property
+        def urls(self):
+            return udata["urls"];
+
+    
+    return _Udata();
 
 if __name__ == "__main__":
 

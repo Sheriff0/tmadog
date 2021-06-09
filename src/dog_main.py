@@ -193,40 +193,54 @@ def read_keyfile(fi, base = 8):
 
     return st;
 
-def key_init(pkg_name, retry = False):
+
+def key_init(pkg_name, sess, updater, cause = CHK_NEW):
 
     pkg_dir = pathlib.Path(pkg_name).parent;
     keyf = pkg_dir.joinpath(".dogger");
-    kt = getkey(retry);
+    #kt = getkey(retry);
+    
+    # NOTE: infinite loop until everything
+    # checks, caller, through 'updater' or
+    # exception catching, should be responsible
+    # for edge cases.
+    
+    while True:
+        kt = updater(CHK_GET_NEW | cause);
+        
+        # this should normally not happen
+        if not kt:
+            continue;
 
-    if not kt:
-        return kt;
+        ts = dropbox.alloc_key(kt, sess);
+
+        if not ts:
+            cause = CHK_FAIL;
+        else:
+            break;
+
 
     kfile = pkg_dir.joinpath("." + str(kt));
     write_keyfile(str(kfile), json.dumps(kt));
     write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
     return kt;
 
-def checks(pkg_name, retry = False):
+def checks(pkg_name, sess = requests.request, updater = None):
     pkg_dir = pathlib.Path(pkg_name).parent;
     keyf = pkg_dir.joinpath(".dogger");
 
     if not keyf.exists():
-        return key_init(pkg_name, retry);
+        return key_init(pkg_name, sess, updater);
 
     else:
         kfile = read_keyfile(str(keyf));
         
-        kres = CHK_FAIL;
-
         try:
             lparam = json.loads(read_keyfile(kfile));
             key = pathlib.Path(kfile).stem[1:];
             return dropbox.KeyInfo(key, lparam);
         except BaseException:
-            print("invalid key file");
-
-            return key_init(pkg_name, retry = True) if kres != CHK_SUCCESS else kres;
+            return key_init(pkg_name, sess, updater, CHK_INVALID_FILE);
 
 
 
@@ -1046,7 +1060,18 @@ import shutil
 import threading
 
 class EncryptedZip(OutputFile):
-    def __init__(self, bdir, pfmt):
+    class _Str(str):
+        def __init__(self, parent, *pargs, **kwargs):
+            self.parent = parent;
+            super().__init__(*pargs, **kwargs);
+
+        def __del__(self):
+            return self.parent.__del__();
+
+        def format(self, *pargs, **kwargs):
+            return self.parent.format(*pargs, **kwargs);
+
+    def __init__(self, bdir, pfmt, fd = None):
         self._io_lock = threading.Lock();
         self.pfmt = pfmt;
         self.bdir = pathlib.Path(bdir);
@@ -1054,7 +1079,9 @@ class EncryptedZip(OutputFile):
             raise TypeError("OutputFile: bdir must be a directory, got regular file %s" % (str(self.bdir.resolve()),));
 
         self.tpath = pathlib.Path(tempfile.mkdtemp());
-        fd = dropbox.fetch_zipfd();
+        if not fd:
+            fd = dropbox.ZipFd();
+
         self.fd = fd;
         self.bpath = self.bdir.joinpath(fd.name);
         self.back_store = pyzipper.AESZipFile(str(self.bpath.resolve()), "a");
@@ -1092,6 +1119,95 @@ class EncryptedZip(OutputFile):
         self.clean_dir();
         shutil.rmtree(str(self.tpath));
 
+    def __str__(self):
+        return repr(self);
+
+    def __repr__(self):
+        return self._Str(self, self.pfmt);
+
+import urllib.parse
+import tempfile
+
+UPDATE_CHK = 0;
+UPDATE_LOAD = 1;
+UPDATE_INSTALL = 2;
+
+def update(pkg_dir, session = requests.request, progress = None):
+    if not progress or not callable(progress):
+        progress = lambda *arg: arg;
+
+    progress(1, 1, UPDATE_CHK);
+    udata = dropbox.Update(session);
+
+    if VERSION >= udata.version:
+        return None;
+    
+    components = [];
+    
+    total = len(udata.urls);
+
+    for idx, url in enumerate(udata.urls, 1):
+        res = session("GET", url);
+        if not res:
+            return False;
+        components.append((urllib.parse.urlparse(url), res));
+        progress(idx, total, UPDATE_LOAD);
+
+
+    tdir = pathlib.Path(tempfile.mkdtemp());
+
+    total = len(components);
+    idx = 0;
+
+    for url, res in components:
+        if url.path.endswith((".zip", ".tar")):
+            pt = tdir.joinpath(url.path[1:]);
+            pt.write_bytes(res.content);
+            shutil.unpack_archive(str(pt.resolve()), str(pkg_dir.resolve()));
+        else:
+            pt = pkg_dir.joinpath(url.path[1:]);
+            pt.write_bytes(res.content);
+
+        idx += 1;
+        progress(idx, total, UPDATE_INSTALL);
+
+    shutil.rmtree(str(tdir.resolve()));
+    return True;
+
+def gui_update(pkg_dir, stdscr, sess = requests.request):
+    import tkinter, tkinter.ttk
+    frame = tkinter.ttk.Frame(stdscr);
+    frame.place(x = 0, y = 0, relheight = 1, relwidth = 1);
+    tvar = tkinter.StringVar();
+    textw = tkinter.ttk.Label(frame, textvariable = tvar);
+    textw.place(x = 0, y = 0, relheight = 2/3, relwidth = 1);
+    
+    nvar = tkinter.IntVar();
+    pbar = tkinter.ttk.Progressbar(frame, orient=tkinter.HORIZONTAL, maximum = 100, mode='determinate', variable = nvar);
+    pbar.place(x = 0, rely = 2/3, relheight = 1/3, relwidth = 1);
+    
+    tsk = None;
+
+    def _updater(cur, total, task):
+        nonlocal tsk;
+
+        if tsk != task:
+            tsk = task;
+            if task == UPDATE_CHK:
+                tvar.set("Checking for updates...");
+            elif task == UPDATE_LOAD:
+                tvar.set("Download updates...");
+
+            elif task == UPDATE_INSTALL:
+                tvar.set("Installing updates. Do not interrupt.");
+
+        nvar.set((cur/total) * 100);
+
+
+    uv = update(pkg_dir, session = sess, progress = _updater);
+
+    frame.destroy();
+    return uv;
 
 def iter_file_argv(argf):
     COMMENT = "#";
@@ -1564,15 +1680,15 @@ if __name__ == '__main__':
     if pkg_path == rest[0]:
         rest.pop(0);
 
-    r = -1;
+    #r = -1;
 
-    while True:
-        r = checks(pkg_path, retry = True if r != -1 else False);
+    #while True:
+    #    r = checks(pkg_path, retry = True if r != -1 else False);
 
-        if r == CHK_QUIT:
-            sys.exit(1);
-        elif isinstance(r, CHK_SUCCESS):
-            break;
+    #    if r == CHK_QUIT:
+    #        sys.exit(1);
+    #    elif isinstance(r, CHK_SUCCESS):
+    #        break;
 
 
     try:
