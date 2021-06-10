@@ -49,23 +49,17 @@ def gen_key_with_epoch(x):
     return KeyInfo(math.trunc(time.time()));
 
 
-def fetch_keyinfo(key):
+def fetch_keyinfo(key, requester = libdogs.goto_page3):
     if not key:
         return None;
 
-    hdrs = Base_headers();
-    hdrs["Dropbox-API-Arg"] = json.dumps(
-            {
-                "path": "/%s" % (key,),
-                }
-            );
 
-    res = libdogs.goto_page3("GET", download_url, headers = hdrs);
+    res = fetch_file(key, requester);
     
     if not res:
         return res;
 
-    return KeyInfo(key, json.loads(res.text));
+    return KeyInfo(key, json.loads(res));
 
 
 
@@ -135,18 +129,12 @@ def update_key(key):
 
 def alloc_key(key, requester = libdogs.goto_page3):
     hdrs = Base_headers();
-    hdrs["Dropbox-API-Arg"] = json.dumps(
-            {
-                "path": "/%s" % (key,),
-                }
-            );
-
-    res = requester("GET", download_url, headers = hdrs);
+    res = fetch_file(key, requester);
     
     if not res:
         return res;
 
-    keyobj = json.loads(res.text);
+    keyobj = json.loads(res);
     
     if "ts" in keyobj and int(keyobj["ts"]):
         return False;
@@ -156,19 +144,8 @@ def alloc_key(key, requester = libdogs.goto_page3):
 
     keyobj["ts"] = math.trunc(time.time());
     keyobj["mtime"] = keyobj["ts"];
-
-    hdrs["Dropbox-API-Arg"] = json.dumps(
-            {
-                "path": "/%s" % (key,),
-                "mode": "overwrite",
-                "mute": True,
-                }
-            );
-
-    hdrs["Content-Type"] = "application/octet-stream";
-
-    res = libdogs.goto_page3("POST", upload_url, headers = hdrs, data = json.dumps(keyobj));
-
+    
+    res = write_file(key, keyobj, requester);
     if not res:
         return res;
 

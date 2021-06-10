@@ -40,11 +40,7 @@ $(shell mkdir -p $(DIST_DIR))
 all: smeo default user enterprise ;
 
 dist: dog
-	if [[ -e $(DIST_DIR)/dogger.tar ]]; then rm $(DIST_DIR)/dogger.tar; fi;
-	tar --exclude __pycache__ -cf $(DIST_DIR)/dogger.tar -C $(OUTPUT)/ . 
-	if [[ -e $(DIST_DIR)/dogger.tar.xz ]]; then rm $(DIST_DIR)/dogger.tar.xz; fi;
-	xz -z $(DIST_DIR)/dogger.tar
-
+	echo done;
 
 dog: $(addprefix $(OUTPUT)/,$(M4_DEPS:.m4=.py)) $(addprefix $(OUTPUT)/,$(PY_DEPS)) raw_py;
 
@@ -58,7 +54,7 @@ user: $(addprefix $(OUTPUT)/usr_,$(M4_DEPS:.m4=.py));
 
 
 raw_py:
-	cp -vr $(SRC)/cookie_server $(SRC)/dog.ico $(OUTPUT)/
+	cp -vr $(SRC)/cookie_server $(SRC)/images $(SRC)/dog.ico $(OUTPUT)/
 
 $(addprefix $(OUTPUT)/,$(PY_DEPS)): $(addprefix $(SRC)/,$(PY_DEPS))
 	@ f=$@; cp -v $(SRC)/$${f/*\//} $@;

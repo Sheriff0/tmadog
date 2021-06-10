@@ -40,8 +40,11 @@ CANONICAL_URL = "https://www.nouonline.net";
 
 REQUEST_TIMEOUT = 100; #seconds
 
-CHK_QUIT = False;
-CHK_FAIL = None;
+CHK_QUIT = 0b00000001;
+CHK_FAIL = 0b00000010;
+CHK_NEW = 0b00000100;
+CHK_GET_NEW = 0b00001000;
+CHK_INVALID_FILE = 0b00010000;
 CHK_SUCCESS = dropbox.KeyInfo;
 
 
@@ -214,7 +217,7 @@ def key_init(pkg_name, sess, updater, cause = CHK_NEW):
 
         ts = dropbox.alloc_key(kt, sess);
 
-        if not ts:
+        if not isinstance(ts, CHK_SUCCESS):
             cause = CHK_FAIL;
         else:
             break;
@@ -670,18 +673,18 @@ def gui_get_argv(pscr, parser, *pargs):
 
     scr = tkinter.ttk.Frame(pscr);
     
-    pscr.option_add('*tearOff', tkinter.FALSE);
-    menu = tkinter.Menu(pscr);
-    elp = tkinter.Menu(menu);
-    elp.add_command(label = 'Cookie file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
-    elp.add_command(label = 'TMA file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!"));
-    elp.add_command(label = 'WEBSITE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
-    elp.add_command(label = 'TMA NO', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
-    elp.add_command(label = 'COURSE CODE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
-    
-    menu.add_cascade(menu = elp, label = "Help");
+    #pscr.option_add('*tearOff', tkinter.FALSE);
+    #menu = tkinter.Menu(pscr);
+    #elp = tkinter.Menu(menu);
+    #elp.add_command(label = 'Cookie file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    #elp.add_command(label = 'TMA file', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!"));
+    #elp.add_command(label = 'WEBSITE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    #elp.add_command(label = 'TMA NO', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    #elp.add_command(label = 'COURSE CODE', command = lambda: tkinter.messagebox.showinfo(title = "World", message = "Hello, World!", detail = "xxx"));
+    #
+    #menu.add_cascade(menu = elp, label = "Help");
 
-    pscr["menu"] = menu;
+    #pscr["menu"] = menu;
 
     scr.place(x = 0, y = 0, relheight = 1, relwidth = 1);
 
@@ -1517,9 +1520,7 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
     
     getcookie = gui_getcookie(default = args, attr = "cookies", cb = update_cookie, cookie_client = cookie_client);
 
-    err_handle = unknown_err_handler;
-
-    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
+    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav);
 
 
     try:
@@ -1552,7 +1553,6 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
-    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
 
 
     logger = logging.getLogger('tmadog');
@@ -1586,16 +1586,30 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
     threading.Thread(target = cookie_client.serve_forever, daemon = True).start();
 
     libdogs.init_hooks(cookie_client = cookie_client);
+    #wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
 
     stat_tab = {};
     args = None;
     dog = None;
     frame = None;
 
+    libdogs.init_hooks(logger_hook = logger, err_hook = unknown_err_handler);
+
+    
     stdscr = tkinter.Tk();
     stdscr.geometry(GEOMETRY);
     stdscr.title("TMADOG version %s" % (VERSION,));
+    stdscr.config(bg = "yellow");
 
+    img = pathlib.Path(getattr(sys, '_MEIPASS', pkg_dir)).joinpath("images/dog-1728494_640.png");
+
+    if img.exists():
+        bg_photo = tkinter.PhotoImage(file = str(img.resolve()), name = "mbg");
+        bg_lab = tkinter.Label(stdscr, image = bg_photo);
+        bg_lab.photo = bg_photo;
+        bg_lab.image = bg_photo;
+        bg_lab.place(x = 0, y = 0, relwidth = 1, relheight = 1);
+    
     while True:
         if frame:
             frame.destroy();
@@ -1692,10 +1706,10 @@ if __name__ == '__main__':
 
 
     try:
-        args.main(parser, pkg_path, rest, r);
+        args.main(parser, pkg_path, rest);
 
     except ModuleNotFoundError:
-        main(parser, pkg_path, rest, r);
+        main(parser, pkg_path, rest);
 
     except BaseException as err:
         import traceback
