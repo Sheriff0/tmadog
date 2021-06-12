@@ -40,12 +40,22 @@ CANONICAL_URL = "https://www.nouonline.net";
 
 REQUEST_TIMEOUT = 100; #seconds
 
-CHK_QUIT = 0b00000001;
-CHK_FAIL = 0b00000010;
+CHK_QUIT = 0b00000001; # the user wants to terminate the program. NOTE: there shouldn't be a need for this.
+
+CHK_FAIL = 0b00000010; # key check failure.
+
+# to indicate that a user hasn't had/provided an
+# invalid/expired key. an updater should never
+# get this.
 CHK_NEW = 0b00000100;
-CHK_GET_NEW = 0b00001000;
-CHK_INVALID_FILE = 0b00010000;
-CHK_SUCCESS = dropbox.KeyInfo;
+
+CHK_GET_NEW = 0b00001000; # indicates and action to tell a given handler to get a new key from the user.
+
+CHK_INVALID_FILE = 0b00010000; # tells the handler that the user has/provided a faulty/invalid key.
+
+CHK_PRINT = 0b00100000; # tells the handler to print a message to a users screen..
+
+CHK_SUCCESS = dropbox.KeyInfo; # key check complete
 
 
 ARGNAME_MATNO = ('--matno',);
@@ -197,14 +207,14 @@ def read_keyfile(fi, base = 8):
     return st;
 
 
-def key_init(pkg_name, sess, updater, cause = CHK_NEW):
+def key_init(pkg_name, updater, sess = libdogs.goto_page3, cause = CHK_NEW):
 
     pkg_dir = pathlib.Path(pkg_name).parent;
     keyf = pkg_dir.joinpath(".dogger");
     #kt = getkey(retry);
     
     # NOTE: infinite loop until everything
-    # checks, caller, through 'updater' or
+    # checks. Caller, through 'updater' or
     # exception catching, should be responsible
     # for edge cases.
     
@@ -214,7 +224,8 @@ def key_init(pkg_name, sess, updater, cause = CHK_NEW):
         # this should normally not happen
         if not kt:
             continue;
-
+        
+        updater(CHK_PRINT, "checking key %s" % (kt,));
         ts = dropbox.alloc_key(kt, sess);
 
         if not isinstance(ts, CHK_SUCCESS):
@@ -228,12 +239,12 @@ def key_init(pkg_name, sess, updater, cause = CHK_NEW):
     write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
     return kt;
 
-def checks(pkg_name, sess = requests.request, updater = None):
+def checks(pkg_name, updater, sess = libdogs.goto_page3):
     pkg_dir = pathlib.Path(pkg_name).parent;
     keyf = pkg_dir.joinpath(".dogger");
 
     if not keyf.exists():
-        return key_init(pkg_name, sess, updater);
+        return key_init(pkg_name, updater, sess);
 
     else:
         kfile = read_keyfile(str(keyf));
@@ -243,7 +254,29 @@ def checks(pkg_name, sess = requests.request, updater = None):
             key = pathlib.Path(kfile).stem[1:];
             return dropbox.KeyInfo(key, lparam);
         except BaseException:
-            return key_init(pkg_name, sess, updater, CHK_INVALID_FILE);
+            return key_init(pkg_name, updater, sess, CHK_INVALID_FILE);
+
+
+def term_chk_updater(cmd, args = None):
+    def _getkey(msg = "Please enter a new key"):
+        try:
+            user_key = input("\n%s->> " % (msg,));
+        except KeyboardInterrupt:
+            #CHK_QUIT
+            print("Exiting...");
+            sys.exit(0);
+
+    if cmd & CHK_INVALID_FILE:
+        print("\n\nYou current installation has an Invalid or expired key");
+
+    elif cmd & CHK_FAIL:
+        print("\n\nYou have entered an invalid or expired key");
+
+    elif CHK_PRINT:
+        print("\n", args);
+
+    if cmd & CHK_GET_NEW:
+        return _getkey();
 
 
 
@@ -398,15 +431,20 @@ class Wlist_Handler(dropbox.KeyInfo):
 
 def main (parser, pkg_name, argv, kinfo = None):
 
-    if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
-        print("Please renew your package as the current package has expired");
-        return False;
+    #if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
+    #    print("Please renew your package as the current package has expired");
+    #    return False;
 
     pkg_name = pathlib.Path(pkg_name);
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
     mp = None;
+    
+    if term_update(pkg_dir):
+        return os.execv(str(pkg_name.resolve()), argv);
+
+    kinfo = checks(pkg_name, term_chk_updater);
 
     wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
 
@@ -1135,11 +1173,11 @@ UPDATE_CHK = 0;
 UPDATE_LOAD = 1;
 UPDATE_INSTALL = 2;
 
-def update(pkg_dir, session = requests.request, progress = None):
+def update(pkg_dir, session = libdogs.goto_page3, progress = None):
     if not progress or not callable(progress):
         progress = lambda *arg: arg;
 
-    progress(1, 1, UPDATE_CHK);
+    progress(UPDATE_CHK, 1, 1);
     udata = dropbox.Update(session);
 
     if VERSION >= udata.version:
@@ -1154,7 +1192,7 @@ def update(pkg_dir, session = requests.request, progress = None):
         if not res:
             return False;
         components.append((urllib.parse.urlparse(url), res));
-        progress(idx, total, UPDATE_LOAD);
+        progress(UPDATE_LOAD, idx, total);
 
 
     tdir = pathlib.Path(tempfile.mkdtemp());
@@ -1172,10 +1210,34 @@ def update(pkg_dir, session = requests.request, progress = None):
             pt.write_bytes(res.content);
 
         idx += 1;
-        progress(idx, total, UPDATE_INSTALL);
+        progress(UPDATE_INSTALL, idx, total);
 
     shutil.rmtree(str(tdir.resolve()));
     return True;
+
+def term_update(pkg_dir, sess = libdogs.goto_page3):
+    tsk = None;
+
+    def _updater(task, cur, total):
+        nonlocal tsk;
+
+        if tsk != task:
+            tsk = task;
+            if task == UPDATE_CHK:
+                print("\n\nChecking for updates...");
+            elif task == UPDATE_LOAD:
+                print("\n\nDownload updates...");
+
+            elif task == UPDATE_INSTALL:
+                print("\n\nInstalling updates. Do not interrupt.");
+
+        print("%s%" % (math.trunc((cur/total) * 100),));
+
+
+    uv = update(pkg_dir, session = sess, progress = _updater);
+
+    return uv;
+
 
 def gui_update(pkg_dir, stdscr, sess = requests.request):
     import tkinter, tkinter.ttk
@@ -1547,7 +1609,6 @@ def gui_start(parser, pkg_name, logger, *argv, **kwargs):
 def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     import tkinter, tkinter.ttk, tkinter.filedialog
-
 
     pkg_name = pathlib.Path(pkg_name);
 

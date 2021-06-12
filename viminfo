@@ -11,7 +11,7 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/xz
+~MSle0~/write_
 
 # Last Substitute Search Pattern:
 ~MSle0&\.\zsresolver
@@ -20,8 +20,48 @@
 $
 
 # Command Line History (newest to oldest):
+:qall
+|2,0,1623459185,,"qall"
 :w
-|2,0,1623328144,,"w"
+|2,0,1623459139,,"w"
+:py3 help(set)
+|2,0,1623450443,,"py3 help(set)"
+:py3 print(json.dumps({'a': set([1,2])}, default = lambda a: list(a)))
+|2,0,1623449348,,"py3 print(json.dumps({'a': set([1,2])}, default = lambda a: list(a)))"
+:py3 print(json.dumps(set([1,2]), default = lambda a: list(a)))
+|2,0,1623449331,,"py3 print(json.dumps(set([1,2]), default = lambda a: list(a)))"
+:py3 print(json.dumps(list(set([1,2])), default = lambda a: list(a)))
+|2,0,1623449317,,"py3 print(json.dumps(list(set([1,2])), default = lambda a: list(a)))"
+:py3 print(json.dumps(list(set([1,2])), defa))
+|2,0,1623449293,,"py3 print(json.dumps(list(set([1,2])), defa))"
+:py3 help(json.dumps)
+|2,0,1623449187,,"py3 help(json.dumps)"
+:py3 print(len(set([1,2])))
+|2,0,1623448726,,"py3 print(len(set([1,2])))"
+:py3 print(json.dumps(list(set([1,2]))))
+|2,0,1623448338,,"py3 print(json.dumps(list(set([1,2]))))"
+:py3 print(json.dumps(set([1,2])))
+|2,0,1623448311,,"py3 print(json.dumps(set([1,2])))"
+:py3 print(json.dumps(set(1,2)))
+|2,0,1623448302,,"py3 print(json.dumps(set(1,2)))"
+:py3 print(json.dumps((1,2)))
+|2,0,1623448242,,"py3 print(json.dumps((1,2)))"
+:py3 import json
+|2,0,1623448189,,"py3 import json"
+:split
+|2,0,1623435411,,"split"
+:split src/libdogs.py
+|2,0,1623431160,,"split src/libdogs.py"
+:q
+|2,0,1623427967,,"q"
+:split src/dog_main.py
+|2,0,1623427927,,"split src/dog_main.py"
+:py3 print(time.time())
+|2,0,1623426297,,"py3 print(time.time())"
+:py3 import time
+|2,0,1623426285,,"py3 import time"
+:py3 tu = ()
+|2,0,1623417386,,"py3 tu = ()"
 :!ffmpeg -i /home/sheriff/mybak/63A9-0A18/Download/dog-1728494_640.png src/images/dog-1728494_640.gif
 |2,0,1623288079,,"!ffmpeg -i /home/sheriff/mybak/63A9-0A18/Download/dog-1728494_640.png src/images/dog-1728494_640.gif"
 :tabnew Makefile
@@ -44,12 +84,8 @@ $
 |2,0,1623285668,,"!ls /home/sheriff/mybak/63A9-0A18/Download/dog-1728494_640.png"
 :vsplit src/dog_main.py
 |2,0,1623282195,,"vsplit src/dog_main.py"
-:qall
-|2,0,1623259339,,"qall"
 :q!
 |2,0,1623259309,,"q!"
-:q
-|2,0,1623259303,,"q"
 :py3 print((5/10)*100)
 |2,0,1623168838,,"py3 print((5/10)*100)"
 :py3 print((5/9)*100)
@@ -152,8 +188,6 @@ $
 |2,0,1622818743,,"read !pydoc3 tempfile"
 :enew
 |2,0,1622818726,,"enew"
-:split
-|2,0,1622818721,,"split"
 :py3 help(pyzipper)
 |2,0,1622816567,,"py3 help(pyzipper)"
 :py3 import pyzipper
@@ -182,8 +216,6 @@ $
 |2,0,1622642993,,"py3 help(str.split)"
 :py3 print("df hjf jjf".split(""))
 |2,0,1622642962,,"py3 print(\"df hjf jjf\".split(\"\"))"
-:split src/dog_main.py
-|2,0,1622640008,,"split src/dog_main.py"
 :sg
 |2,0,1622580556,,"sg"
 :split libdogs.py
@@ -418,34 +450,44 @@ $
 |2,0,1618921218,,"py3 help(print)"
 :py3 print(time.sleep)
 |2,0,1618921015,,"py3 print(time.sleep)"
-:py3 import time
-|2,0,1618921000,,"py3 import time"
-:py3 print(threading.active_count())
-|2,0,1618920454,,"py3 print(threading.active_count())"
-:py3 import threading
-|2,0,1618920442,,"py3 import threading"
-:py3 print([].pop())
-|2,0,1618920111,,"py3 print([].pop())"
-:py3 print(type(str))
-|2,0,1618916676,,"py3 print(type(str))"
-:py3 print(type(dict))
-|2,0,1618916669,,"py3 print(type(dict))"
-:py3 print(type(None))
-|2,0,1618916602,,"py3 print(type(None))"
-:!pydoc3 threading
-|2,0,1618915443,,"!pydoc3 threading"
-:tabnew swin.py
-|2,0,1618915371,,"tabnew swin.py"
-:!less dist_laptop/debug.log
-|2,0,1618787563,,"!less dist_laptop/debug.log"
-:vsplit src/dog_help.py
-|2,0,1618785608,,"vsplit src/dog_help.py"
 
 # Search String History (newest to oldest):
+?/write_
+|2,1,1623449589,47,"write_"
+?/mtime
+|2,1,1623447823,47,"mtime"
+?/allo
+|2,1,1623447427,47,"allo"
+?/Wl
+|2,1,1623436104,47,"Wl"
+?/prepr
+|2,1,1623435804,47,"prepr"
+?/Wh
+|2,1,1623435418,47,"Wh"
+??parser
+|2,1,1623427936,63,"parser"
+?/time
+|2,1,1623426412,47,"time"
+?/def up
+|2,1,1623418896,47,"def up"
+?/Up
+|2,1,1623417727,47,"Up"
+?/def u
+|2,1,1623416635,47,"def u"
+?/update
+|2,1,1623416623,47,"update"
+?/mti
+|2,1,1623395138,47,"mti"
+??getkey
+|2,1,1623346616,63,"getkey"
+?/gui_update
+|2,1,1623342282,47,"gui_update"
+??checks
+|2,1,1623340053,63,"checks"
+?/gui_m
+|2,1,1623339705,47,"gui_m"
 ?/xz
 |2,1,1623286475,47,"xz"
-?/gui_m
-|2,1,1623282178,47,"gui_m"
 ?/CH
 |2,1,1623281642,47,"CH"
 ?/fetch_k
@@ -472,16 +514,12 @@ $
 |2,1,1622640016,47,"iter_f"
 ? @$
 |2,1,1622639507,,"@$"
-?/prepr
-|2,1,1622639505,47,"prepr"
 ?/total
 |2,1,1619822644,47,"total"
 ??Rep
 |2,1,1619820416,63,"Rep"
 ?/setc
 |2,1,1619807554,47,"setc"
-?/allo
-|2,1,1619802373,47,"allo"
 ??appen
 |2,1,1619802336,63,"appen"
 ?/Ac
@@ -842,14 +880,6 @@ $
 |2,1,1606423958,47,"lazy_lo"
 ?/fro\>
 |2,1,1606423671,47,"fro\\>"
-??goto
-|2,1,1606423455,63,"goto"
-?/nav_h
-|2,1,1606401805,47,"nav_h"
-?/goto_
-|2,1,1606401601,47,"goto_"
-?/assi
-|2,1,1606396654,47,"assi"
 
 # Expression History (newest to oldest):
 =@"
@@ -875,102 +905,64 @@ $
 
 # Registers:
 ""0	LINE	0
-	        bg_lab.photo = bg_photo;
-|3,1,0,1,1,0,1623327511,"        bg_lab.photo = bg_photo;"
-"1	BLOCK	0
-	#
-	#
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	 
-	#
-	#
-	 
-	#
-|3,0,1,2,20,0,1623326362,"#","#","#","#","#","#"," ","#","#","#","#"," ","#","#","#"," ","#","#"," ","#"
+	                if not keymgr.chk_tma(q_sn, logger.info):
+	                    continue;
+|3,1,0,1,2,0,1623459096,"                if not keymgr.chk_tma(q_sn, logger.info):","                    continue;"
+"1	LINE	0
+	
+|3,0,1,1,1,0,1623452466,""
 "2	LINE	0
-	    stdscr.mainloop();
-|3,0,2,1,1,0,1623326356,"    stdscr.mainloop();"
+	        if whitelist != None and max_wlist:
+	            wlen = len(whitelist);
+	            if wlen >= max_wlist and matnos [i] not in whitelist:
+	                logger.info("skipping %s: maximum user list has been reached", matnos [i]);
+	                continue;
+	
+	            elif wlen < max_wlist and matnos [i] not in whitelist:
+	                whitelist.append(matnos [i]);
+	                if not wlist_cb(whitelist):
+	                    logger.info("There is a problem with the whitelist handler");
+	                    return None;
+|3,0,2,1,11,0,1623452464,"        if whitelist != None and max_wlist:","            wlen = len(whitelist);","            if wlen >= max_wlist and matnos [i] not in whitelist:","                logger.info(\"skipping %s: maximum user list has been reached\", matnos [i]);","                continue;","","            elif wlen < max_wlist and matnos [i] not in whitelist:","                whitelist.append(matnos [i]);",>45
+|<"                if not wlist_cb(whitelist):","                    logger.info(\"There is a problem with the whitelist handler\");","                    return None;"
 "3	LINE	0
-	    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
-|3,0,3,1,1,0,1623325574,"    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));"
-"4	BLOCK	0
-	#
-	#
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	 
-	#
-	#
-	 
-	#
-|3,0,4,2,20,0,1623292534,"#","#","#","#","#","#"," ","#","#","#","#"," ","#","#","#"," ","#","#"," ","#"
+	        logger("Key is incompatible with more than %s courses" % (self.keyinfo["cw_count"],));
+|3,0,3,1,1,0,1623452168,"        logger(\"Key is incompatible with more than %s courses\" % (self.keyinfo[\"cw_count\"],));"
+"4	LINE	0
+	        logger("Key is incompatible with more than %s matric numbers" % (self.keyinfo["uw_count"],));
+|3,0,4,1,1,0,1623452159,"        logger(\"Key is incompatible with more than %s matric numbers\" % (self.keyinfo[\"uw_count\"],));"
 "5	LINE	0
-	    stdscr.mainloop();
-|3,0,5,1,1,0,1623292525,"    stdscr.mainloop();"
+	        logger("Key is incompatible with more than %s courses" % (self.keyinfo["uw_count"],));
+|3,0,5,1,1,0,1623452093,"        logger(\"Key is incompatible with more than %s courses\" % (self.keyinfo[\"uw_count\"],));"
 "6	LINE	0
-	        bg_lab.create_image(0, 0, anchor = "n", image = bg_photo);
-|3,0,6,1,1,0,1623292260,"        bg_lab.create_image(0, 0, anchor = \"n\", image = bg_photo);"
+	        logger("Key is incompatible with more than %s matric numbers" % (self.keyinfo["cw_count"],));
+|3,0,6,1,1,0,1623452081,"        logger(\"Key is incompatible with more than %s matric numbers\" % (self.keyinfo[\"cw_count\"],));"
 "7	LINE	0
-	        bg_lab.create_image(0, 0, image = bg_photo);
-|3,0,7,1,1,0,1623291807,"        bg_lab.create_image(0, 0, image = bg_photo);"
-"8	BLOCK	0
-	#
-	#
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	#
-	 
-	#
-	#
-	#
-	 
-	#
-	#
-	 
-	#
-|3,0,8,2,20,0,1623290026,"#","#","#","#","#","#"," ","#","#","#","#"," ","#","#","#"," ","#","#"," ","#"
+	
+|3,0,7,1,1,0,1623451575,""
+"8	LINE	0
+	        if whitelist != None and max_wlist:
+	            wlen = len(whitelist);
+	            if wlen >= max_wlist and matnos [i] not in whitelist:
+	                logger.info("skipping %s: maximum user list has been reached", matnos [i]);
+	                continue;
+	
+	            elif wlen < max_wlist and matnos [i] not in whitelist:
+	                whitelist.append(matnos [i]);
+	                if not wlist_cb(whitelist):
+	                    logger.info("There is a problem with the whitelist handler");
+	                    return None;
+|3,0,8,1,11,0,1623451572,"        if whitelist != None and max_wlist:","            wlen = len(whitelist);","            if wlen >= max_wlist and matnos [i] not in whitelist:","                logger.info(\"skipping %s: maximum user list has been reached\", matnos [i]);","                continue;","","            elif wlen < max_wlist and matnos [i] not in whitelist:","                whitelist.append(matnos [i]);",>45
+|<"                if not wlist_cb(whitelist):","                    logger.info(\"There is a problem with the whitelist handler\");","                    return None;"
 "9	LINE	0
-	    stdscr.mainloop();
-|3,0,9,1,1,0,1623290019,"    stdscr.mainloop();"
+	
+|3,0,9,1,1,0,1623450812,""
 "a@	LINE	0
-	    err_handle = unknown_err_handler;
-	
-	    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);
-	
-	
-|3,2,10,1,5,0,1623282322,"    err_handle = unknown_err_handler;","","    libdogs.init_hooks(cookie_hook = getcookie, nav_hook = get_nav, logger_hook = logger, err_hook = err_handle);","",""
+	            if not keymgr.chk_tma(q_sn, logger.info):
+|3,2,10,1,1,0,1623452997,"            if not keymgr.chk_tma(q_sn, logger.info):"
 "b	LINE	0
-	        self.ctrl_lock.release();
-|3,0,11,1,1,0,1619780245,"        self.ctrl_lock.release();"
+	        logger("Key is incompatible with more than %s matric numbers" % (self.keyinfo["cw_count"],));
+|3,0,11,1,1,0,1623452081,"        logger(\"Key is incompatible with more than %s matric numbers\" % (self.keyinfo[\"cw_count\"],));"
 "c	LINE	0
 	        self.wait_for(DOG_CTRL_RUNNABLE);
 |3,0,12,1,1,0,1619781196,"        self.wait_for(DOG_CTRL_RUNNABLE);"
@@ -984,32 +976,106 @@ $
 	        return status.Status(status.S_OK);
 |3,0,24,1,1,0,1605218118,"        return status.Status(status.S_OK);"
 "-	CHAR	0
-	#
-|3,0,36,0,1,0,1623292526,"#"
+	q_sns
+|3,0,36,0,1,0,1623458878,"q_sns"
+
+# global variables:
 
 # File marks:
-'0  1602  29  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
-|4,48,1602,29,1623330684,"~/mybak/63A9-0A18/2020/dogger/src/dog_main.py"
-'1  215  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,49,215,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
-'2  1283  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,50,1283,0,1622640051,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
-'3  46  15  /storage/sdcard0/2020/dogger/src/simple_dog.py
-|4,51,46,15,1622580609,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
-'4  1248  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-|4,52,1248,75,1619825540,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
-'5  895  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,53,895,44,1619814551,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'6  7901  0  /storage/sdcard0/2020/dogger/src/user_agents.py
-|4,54,7901,0,1619787181,"/storage/sdcard0/2020/dogger/src/user_agents.py"
-'7  742  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,55,742,0,1619728549,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
-'8  628  39  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
-|4,56,628,39,1619658735,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
-'9  592  46  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,57,592,46,1619643226,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'0  1133  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,48,1133,0,1623459189,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+'1  1602  29  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
+|4,49,1602,29,1623330684,"~/mybak/63A9-0A18/2020/dogger/src/dog_main.py"
+'2  225  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,50,225,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+'3  1345  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,51,1345,0,1622640051,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+'4  46  15  /storage/sdcard0/2020/dogger/src/simple_dog.py
+|4,52,46,15,1622580609,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
+'5  1248  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
+|4,53,1248,75,1619825540,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
+'6  895  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,54,895,44,1619814551,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'7  7901  0  /storage/sdcard0/2020/dogger/src/user_agents.py
+|4,55,7901,0,1619787181,"/storage/sdcard0/2020/dogger/src/user_agents.py"
+'8  742  0  /storage/sdcard0/2020/dogger/src/dog_idl.py
+|4,56,742,0,1619728549,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'9  628  39  /media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py
+|4,57,628,39,1619658735,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_idl.py"
 
 # Jumplist (newest first):
+-'  1133  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1133,0,1623459189,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1146  46  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1146,46,1623459136,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1074  9  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1074,9,1623452517,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1072  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1072,0,1623452448,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1075  8  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1075,8,1623452447,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1048  74  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1048,74,1623451449,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1,0,1623431164,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  400  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,400,0,1623431160,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  461  7  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,461,7,1623430030,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  499  4  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,499,4,1623430013,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  392  28  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,392,28,1623430004,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  463  8  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,463,8,1623427478,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  494  8  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,494,8,1623426851,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  497  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,497,12,1623426571,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  2  7  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,2,7,1623426482,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  146  13  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,146,13,1623426475,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  145  29  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,145,29,1623426474,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  117  32  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,117,32,1623426463,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  87  32  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,87,32,1623426452,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  49  24  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,49,24,1623426443,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  22  15  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,22,15,1623426438,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  469  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,469,12,1623426278,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  156  4  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,156,4,1623417727,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  135  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,135,12,1623339696,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  1974  4  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1974,4,1623338645,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  245  19  /storage/emulated/0/dogger/dogger/src/simple_dog.py
+|4,39,245,19,1623338645,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
+-'  755  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,755,0,1623338645,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1  0  /storage/emulated/0/dogger/dogger
+|4,39,1,0,1623338645,"/storage/emulated/0/dogger/dogger"
+-'  520  28  /storage/emulated/0/dogger/dogger/src/dog_idl.py
+|4,39,520,28,1623338645,"/storage/emulated/0/dogger/dogger/src/dog_idl.py"
+-'  38  15  /storage/emulated/0/dogger/dogger/src/simple_dog.py
+|4,39,38,15,1623338645,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
+-'  1310  29  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1310,29,1623338645,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1  49  /storage/emulated/0/dogger/dogger/src/dog_help.py
+|4,39,1,49,1623338645,"/storage/emulated/0/dogger/dogger/src/dog_help.py"
+-'  47  14  /storage/emulated/0/dogger/dogger/src/nourc_future
+|4,39,47,14,1623338645,"/storage/emulated/0/dogger/dogger/src/nourc_future"
+-'  1  0  /storage/emulated/0/dogger/dogger/src/tasker.py
+|4,39,1,0,1623338645,"/storage/emulated/0/dogger/dogger/src/tasker.py"
+-'  15  48  /storage/emulated/0/dogger/dogger/src/status.py
+|4,39,15,48,1623338645,"/storage/emulated/0/dogger/dogger/src/status.py"
+-'  157  0  /storage/emulated/0/dogger/dogger/src/qstwriter.py
+|4,39,157,0,1623338645,"/storage/emulated/0/dogger/dogger/src/qstwriter.py"
 -'  1602  29  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
 |4,39,1602,29,1623330684,"~/mybak/63A9-0A18/2020/dogger/src/dog_main.py"
 -'  1611  33  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
@@ -1080,160 +1146,272 @@ $
 |4,39,15,48,1623276388,"~/mybak/63A9-0A18/2020/dogger/src/status.py"
 -'  157  0  ~/mybak/63A9-0A18/2020/dogger/src/qstwriter.py
 |4,39,157,0,1623276388,"~/mybak/63A9-0A18/2020/dogger/src/qstwriter.py"
--'  215  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,215,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  225  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,225,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
 -'  139  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
 |4,39,139,12,1623259336,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  1972  4  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1972,4,1623259336,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  245  19  /storage/emulated/0/dogger/dogger/src/simple_dog.py
-|4,39,245,19,1623259335,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
--'  717  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,717,0,1623259335,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  1  0  /storage/emulated/0/dogger/dogger
-|4,39,1,0,1623259335,"/storage/emulated/0/dogger/dogger"
 
 # History of marks within files (newest to oldest):
 
-> ~/mybak/63A9-0A18/2020/dogger/src/qstwriter.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/qstwriter.py
+	*	1623338645	0
 	"	157	0
 
-> ~/mybak/63A9-0A18/2020/dogger/src/status.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/status.py
+	*	1623338645	0
 	"	15	48
 
-> ~/mybak/63A9-0A18/2020/dogger/src/tasker.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/tasker.py
+	*	1623338645	0
 	"	1	0
 
-> ~/mybak/63A9-0A18/2020/dogger/src/nourc_future
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/nourc_future
+	*	1623338645	0
 	"	47	14
 
-> ~/mybak/63A9-0A18/2020/dogger/src/dog_help.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/dog_help.py
+	*	1623338645	0
 	"	1	49
 
-> ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
-	*	1623328144	0
-	"	235	4
-	^	1602	30
-	.	1602	30
-	+	220	41
-	+	43	13
-	+	44	14
+> /storage/emulated/0/dogger/dogger/src/dog_main.py
+	*	1623436212	0
+	"	1659	3
+	^	445	8
+	.	445	0
+	+	247	41
+	+	258	0
+	+	257	0
+	+	257	46
+	+	242	0
+	+	243	0
+	+	242	19
+	+	217	14
+	+	43	4
+	+	43	0
 	+	43	19
-	+	44	18
-	+	45	0
-	+	46	21
-	+	47	23
-	+	49	0
-	+	1523	66
-	+	1523	0
-	+	1596	0
-	+	1596	74
-	+	1596	0
-	+	1598	0
-	+	1613	14
-	+	1604	9
-	+	1604	97
-	+	1612	0
-	+	1608	54
-	+	1613	0
-	+	1709	40
-	+	1712	35
-	+	1608	124
-	+	1608	45
-	+	1607	57
-	+	1608	57
-	+	1611	13
-	+	1608	49
-	+	1604	93
-	+	1607	44
-	+	1608	38
-	+	1608	72
-	+	1607	34
-	+	1604	93
-	+	1607	0
-	+	1614	0
-	+	1613	21
-	+	1608	29
-	+	1608	0
-	+	1613	4
-	+	1613	0
-	+	1608	40
-	+	1611	0
-	+	1612	0
-	+	1611	0
-	+	1612	0
-	+	1611	0
-	+	1608	0
-	+	677	0
-	+	1613	4
-	+	1616	40
-	+	834	4
-	+	1611	0
-	+	1611	31
-	+	834	0
-	+	1613	0
-	+	1613	21
-	+	1556	0
-	+	1589	4
-	+	1607	75
-	+	1608	50
-	+	1613	4
-	+	1608	0
-	+	1607	0
-	+	1611	0
-	+	1608	0
-	+	1613	0
-	+	1607	30
-	+	1609	31
-	+	1607	27
-	+	1610	19
-	+	1611	0
-	+	1608	54
-	+	1602	30
-	b	235	0
+	+	43	7
+	+	43	41
+	+	43	42
+	+	43	0
+	+	45	42
+	+	47	0
+	+	51	0
+	+	50	124
+	+	50	21
+	+	47	0
+	+	46	0
+	+	47	48
+	+	48	46
+	+	52	57
+	+	1176	47
+	+	1180	28
+	+	1195	0
+	+	1196	0
+	+	1195	40
+	+	1213	32
+	+	1214	0
+	+	1213	32
+	+	1241	0
+	+	1218	49
+	+	1219	0
+	+	1224	0
+	+	1221	22
+	+	1227	26
+	+	1229	26
+	+	1232	26
+	+	1234	52
+	+	1241	0
+	+	1218	0
+	+	449	4
+	+	444	25
+	+	448	0
+	+	281	0
+	+	280	0
+	+	260	23
+	+	242	29
+	+	269	29
+	+	280	0
+	+	262	0
+	+	270	43
+	+	280	0
+	+	270	18
+	+	261	40
+	+	279	24
+	+	261	41
+	+	270	50
+	+	272	24
+	+	273	60
+	+	265	20
+	+	267	22
+	+	266	0
+	+	228	50
+	+	56	0
+	+	57	0
+	+	56	80
+	+	260	28
+	+	276	23
+	+	260	36
+	+	447	11
+	+	449	4
+	+	1216	0
+	+	1176	30
+	+	444	28
+	+	1218	30
+	+	1237	10
+	+	1241	0
+	+	1216	17
+	+	1216	4
+	+	1216	7
+	+	1216	0
+	+	1216	12
+	+	1216	0
+	+	444	28
+	+	445	17
+	+	395	0
+	+	445	0
+	a	606	20
+	d	445	17
+	v	448	0
+	y	434	4
+	z	222	23
 
-> ~/mybak/63A9-0A18/2020/dogger/src/simple_dog.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/simple_dog.py
+	*	1623338645	0
 	"	245	19
 
-> ~/mybak/63A9-0A18/2020/dogger/src/dog_idl.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/dog_idl.py
+	*	1623338645	0
 	"	520	28
 
-> ~/mybak/63A9-0A18/2020/dogger/src/libdogs.py
-	*	1623276388	0
-	"	1972	4
+> /storage/emulated/0/dogger/dogger/src/libdogs.py
+	*	1623459178	0
+	"	1133	0
+	^	1146	47
+	.	1146	0
+	+	1048	80
+	+	1048	42
+	+	1072	0
+	+	1074	0
+	+	1068	43
+	+	1070	0
+	+	1068	53
+	+	1093	60
+	+	1095	0
+	+	1114	65
+	+	1115	36
+	+	1135	0
+	+	1120	0
+	+	1119	0
+	+	1120	33
+	+	1142	0
+	+	1146	0
 
-> ~/mybak/63A9-0A18/2020/dogger/src/dropbox.py
-	*	1623281563	0
-	"	333	0
-	^	62	38
-	.	62	38
-	+	132	34
-	+	137	27
-	+	149	0
-	+	148	42
-	+	52	51
-	+	56	0
-	+	57	34
-	+	52	31
-	+	62	38
+> /storage/emulated/0/dogger/dogger/src/dropbox.py
+	*	1623452571	0
+	"	498	0
+	^	227	0
+	.	227	0
+	+	177	24
+	+	179	0
+	+	179	61
+	+	180	24
+	+	179	66
+	+	180	64
+	+	181	64
+	+	235	19
+	+	100	47
+	+	108	16
+	+	127	17
+	+	249	55
+	+	171	66
+	+	174	30
+	+	183	22
+	+	197	0
+	+	247	42
+	+	234	0
+	+	247	69
+	+	237	0
+	+	243	52
+	+	327	0
+	+	295	0
+	+	297	26
+	+	312	33
+	+	249	37
+	+	247	0
+	+	246	24
+	+	236	14
+	+	249	49
+	+	252	0
+	+	184	10
+	+	197	0
+	+	184	52
+	+	186	0
+	+	187	85
+	+	188	49
+	+	187	75
+	+	197	25
+	+	191	23
+	+	191	27
+	+	191	0
+	+	189	12
+	+	197	0
+	+	191	37
+	+	191	16
+	+	191	0
+	+	190	0
+	+	191	0
+	+	190	0
+	+	191	0
+	+	193	24
+	+	196	20
+	+	197	0
+	+	199	14
+	+	183	11
+	+	200	37
+	+	203	41
+	+	204	38
+	+	208	45
+	+	203	66
+	+	204	60
+	+	208	27
+	+	214	0
+	+	230	0
+	+	215	37
+	+	218	67
+	+	219	39
+	+	223	59
+	+	221	29
+	+	206	29
+	+	190	29
+	+	183	39
+	+	195	54
+	+	199	39
+	+	212	0
+	+	214	39
+	+	228	66
+	+	212	0
+	+	228	0
+	+	212	0
+	+	212	80
+	+	228	87
+	+	228	0
+	+	211	0
+	+	212	0
+	+	226	0
+	+	199	15
+	+	200	37
+	+	203	42
+	+	204	39
+	+	208	59
+	+	203	67
+	+	215	37
+	+	218	66
+	+	219	38
+	+	223	58
+	+	227	0
+	i	249	42
+	z	175	54
 
-> ~/mybak/63A9-0A18/2020/dogger/src/setups/update.py
-	*	1623276388	0
+> /storage/emulated/0/dogger/dogger/src/setups/update.py
+	*	1623338645	0
 	"	75	0
-
-> ~/mybak/63A9-0A18/2020/dogger/Makefile
-	*	1623286513	0
-	"	43	10
-	^	43	11
-	.	43	10
-	+	57	0
-	+	58	0
-	+	57	43
-	+	43	10

@@ -1045,8 +1045,7 @@ def resolve_ref(record, idx, target_attr, name = "value", fallback = False):
     return fallback;
 
 
-def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
-        = None, *pargs, **kwargs):
+def preprocess(args, excl_crs = [], keymgr, *pargs, **kwargs):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
     global LOGIN_BLACKLIST;
     
@@ -1066,19 +1065,10 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
     record = [];
 
     for i in range (argc):
+        if not keymgr.chk_user(matnos [i], logger.info):
+            continue;
+
         usr = {};
-        if whitelist != None and max_wlist:
-            wlen = len(whitelist);
-            if wlen >= max_wlist and matnos [i] not in whitelist:
-                logger.info("skipping %s: maximum user list has been reached", matnos [i]);
-                continue;
-
-            elif wlen < max_wlist and matnos [i] not in whitelist:
-                whitelist.append(matnos [i]);
-                if not wlist_cb(whitelist):
-                    logger.info("There is a problem with the whitelist handler");
-                    return None;
-
         usr[P_WMAP] = wmap;
         usr[P_USR] = matnos [i]
         usr[P_PWD] = pwds [i]
@@ -1100,6 +1090,9 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
 
             for crs in discover_by_quizlist (usr, nav_hook(usr)):
                 if crs:
+                    if not keymgr.chk_crs(crs, logger.info):
+                        continue;
+
                     mt = None;
                     for x_crs in excl_crs:
                         mt = re.match(x_crs,  crs, re.I);
@@ -1118,9 +1111,13 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
                     cid_str.append(crs);
                     q_sns = usr[P_TMA];
                     for q_sn in q_sns.split():
+                        if not keymgr.chk_tma(q_sn, logger.info):
+                            continue;
                         usr[P_TMA] = q_sn;
 
                         yield copy(usr);
+
+                    usr[P_TMA] = q_sns;
 
                 else:
                     yy = copy(usr);
@@ -1135,14 +1132,19 @@ def preprocess(args, excl_crs = [], whitelist = None, max_wlist = None, wlist_cb
             record.append(copy(usr));
 
         else:
+            if not keymgr.chk_tma(q_sn, logger.info):
             usr[P_CRSCODE] = y;
             # for others to reference.
             record.append(copy(usr));
             qcrs = usr[P_CRSCODE];
             q_sns = usr[P_TMA];
             for q_sn in q_sns.split():
+                if not keymgr.chk_tma(q_sn, logger.info):
+                    continue;
                 usr[P_TMA] = q_sn;
                 for q_crs in qcrs.split():
+                    if not keymgr.chk_crs(q_crs, logger.info):
+                        continue;
                     usr[P_CRSCODE] = q_crs;
                     logger.info("%s specified for user number %s of %s", q_crs, i+1, argc);
                     yield copy(usr);
