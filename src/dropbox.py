@@ -5,6 +5,7 @@ import sys
 import argparse
 import libdogs
 import requests
+import pathlib
 
 upload_url = "https://content.dropboxapi.com/2/files/upload";
 
@@ -46,7 +47,7 @@ def gen_whitelisted_key(nlist):
 
 
 def gen_key_with_epoch(x):
-    return KeyInfo(time.time());
+    return KeyInfo("".join(str(time.time()).split(".")));
 
 
 def fetch_keyinfo(key, requester = libdogs.goto_page3):
@@ -246,7 +247,7 @@ class KeyMgr:
                     data,
                     );
 
-            return dropbox.update_file(self, data,self.updater);
+            return update_file(str(self.keyinfo), data,self.updater);
         except BaseException:
             return False;
 
@@ -380,9 +381,6 @@ def Updates(requester = libdogs.goto_page3, ufname = "update"):
         def urls(self):
             return udata["urls"];
 
-        @property
-        def exec(self):
-            return udata["exec"];
     
     return _Udata();
 
@@ -390,69 +388,40 @@ def Updates(requester = libdogs.goto_page3, ufname = "update"):
 class Cmds:
     def add(self, argv):
         # the default command
-        kparser = libdogs.DogCmdParser ();
-        kparser.add_argument("--paid", "--no-whitelist", action = "store_false",
-        help = "a key restricted by a whitelist", default = True, dest =
-        "whitelisted");
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("--users", help = "Number of users to restrict a key to", type = int);
 
-        kparser.add_argument("-wc", "--max_whitelist", type = int, default = 2,
-        help = "max users in whitelist", dest = "wc");
+        parser.add_argument("--tmas", type = int, help = "Number of tma to restrict a key to");
 
-        kparser.add_argument("--unrestricted", action = "store_true",
-        help = "a key unrestricted");
+        parser.add_argument("--courses", type = int, help = "Number of courses to restrict a key to");
 
-        kparser.add_argument("--pro", action = "store_true",
-        help = "Any tma number can be submitted (experimental)");
-        
-        kparser.add_argument("--owner", help = "A unique ID of the owner of the key");
-
-        kparser.add_argument("--count", help = "Number of keys", default = 1, type =
+        parser.add_argument("--count", help = "Number of keys", default = 1, type =
                 int);
+
+        args = parser.parse_args(argv);
 
         for i in range(args.count):
             keyobj = gen_key_with_epoch(i); #will always succeed, no checks needed
             
-            o_info = fetch_keyinfo(args.owner);
-
-            if args.whitelisted:
-                keyobj["whitelist"] = [];
-                keyobj["max_wlist"] = args.wc;
-
-                if args.owner:
-                    if o_info and o_info.get("wlist_keys", []):
-                        raise KeyError(
-                                "A single owner %s can't have more than one whitelist key" %
-                                (args.owner,)
-                                );
-                    else:
-                        o_info = KeyInfo(args.owner);
-
-                    o_info["wlist_keys"] = [str(keyobj)];
-                    keyobj["owner"] = str(o_info);
-
-
-
-            keyobj["tmano"] = libdogs.TMANO_STRICT if not args.pro else libdogs.TMANO_LAX;
-
             keyobj["ts"] = 0;
 
-            try:
-                if o_info:
-                    res = put_key(o_info);
-                    if not res:
-                        print("\n%s\n" % (res.text,));
-                        raise Exception();
+            if args.users:
+                keyobj["uw_count"] = args.users;
 
-                res = put_key(keyobj);
-                if not res:
-                    print("\n%s\n" % (res.text,));
-                    raise Exception();
+            if args.courses:
+                keyobj["cw_count"] = args.courses;
 
-                print(keyobj);
-            except Exception:
-                print ("failure generating key");
+            if args.tmas:
+                keyobj["tw_count"] = args.tmas;
+            
+            # must pass
+            while not write_file(str(keyobj), json.dumps(keyobj)):
+                pass;
 
-    def rm(self, argv):
+            print(keyobj);
+
+
+    def remove(self, argv):
         parser = libdogs.DogCmdParser ();
         parser.add_argument("key", action = libdogs.AppendList, help =
             "keys to remove", nargs = "+");
@@ -460,15 +429,77 @@ class Cmds:
         args = parser.parse_args(argv);
         
         for key in args.key:
-            res = rm_key(args.rm);
+            res = rm_key(key);
             if not res:
-                print("cant't remove key %s\n%s" % (args.rm, res.text));
+                print("cant't remove key %s\n%s" % (key, res.text));
+            else:
+                print("removed key %s" % (key,));
 
         print("\nDone.");
 
+    
+    def add_file(self, argv):
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("file", action = libdogs.AppendList, help =
+            "file to add", nargs = "+");
 
+        parser.add_argument("--stdin", "-st", help =
+            "read from stdin", dest = "stdin", action = "store_true");
+
+        args = parser.parse_args(argv);
+        
+        if args.stdin:
+            dt = sys.stdin.read();
+            res = write_file(args.file[0], dt);
+            if not res:
+                print("write error:", res.text);
+            else:
+                print("Done.");
+        
+        else:
+            for fi in args.file:
+                dt = libdogs.read_file_text(fi);
+                if not dt:
+                    print("no such file", fi);
+
+                else:
+                    res = write_file(fi, dt);
+                    if not res:
+                        print("could not write file", fi);
+                        print(res.text, "\n");
+                    else:
+                        print("file", fi, "written");
+        
     def add_json(self, argv):
-        pass;
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("file", help =
+            "file to write");
+
+        args,rest = parser.parse_known_args(argv);
+
+        dt = {};
+
+        # we process =-delimited key-value pairs in argv
+        for arg in rest:
+            tg = arg.split("=", 1);
+            # an un-delimited argument is a key with empty string as value
+            value = tg[-1] if len(tg) > 1 else "";
+            
+            if tg[0] in dt:
+                if not isinstance(dt[tg[0]], list):
+                    dt[tg[0]] = [dt[tg[0]]];
+                
+                dt[tg[0]].append(value);
+
+            else:
+                dt[tg[0]] = value;
+        
+        
+        res = write_file(args.file, json.dumps(dt));
+        if not res:
+            print("can't write file", args.file);
+        else:
+            print("Done.");
 
     def dump(self, argv):
         parser = libdogs.DogCmdParser ();
@@ -478,21 +509,79 @@ class Cmds:
         args = parser.parse_args(argv);
 
         for key in args.key:
-            print("\n\n%: --|" % (key,), json.dumps(fetch_keyinfo(key)));
-            print("\n\n--------------------");
+            dt = fetch_file(key);
+            print("\n\n%s: %s" % (key, "" if dt else "error"));
+            print(dt if dt else dt.text);
+            print("\n--------------------");
+
+        print("\nDone.");
+
+
+    def dump_json(self, argv):
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("key", action = libdogs.AppendList, help =
+            "keys to dump", nargs = "+");
+
+        args = parser.parse_args(argv);
+
+        for key in args.key:
+            dt = fetch_keyinfo(key);
+            print("\n\n%s: %s" % (key, "" if dt else "error"));
+            print(json.dumps(dt, indent = 4) if dt else dt.text);
+            print("\n--------------------");
 
         print("\nDone.");
 
 
     def find(self, argv):
         # can exec a select number of other commands in this object. Similar to unix's 'find'
-        pass;
+        print("command currently unavailable");
 
-    def edit(self, argv):
-        pass;
+    def edit_json(self, argv):
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("file", help =
+            "file to write");
+
+        args,rest = parser.parse_known_args(argv);
+
+        dt1 = fetch_keyinfo(args.file);
+        dt = {};
+
+        if not isinstance(dt, KeyInfo):
+            return self.add_json(argv);
+
+        # we process =-delimited key-value pairs in argv
+        for arg in rest:
+            tg = arg.split("=", 1);
+            # an un-delimited argument is a key with empty string as value
+            value = tg[-1] if len(tg) > 1 else "";
+            
+            if tg[0] in dt:
+                if not isinstance(dt[tg[0]], list):
+                    dt[tg[0]] = [dt[tg[0]]];
+                
+                dt[tg[0]].append(value);
+
+            else:
+                dt[tg[0]] = value;
+        
+        dt1.update(dt);
+        res = write_file(args.file, json.dumps(dt1));
+        if not res:
+            print("can't write file", args.file);
+        else:
+            print("Done.");
 
 
 if __name__ == "__main__":
 
     kparser = argparse.ArgumentParser(fromfile_prefix_chars='@');
+    cmds = Cmds();
+    choices = [ cmd for cmd in dir(cmds) if re.fullmatch(r'[^_]\w*', cmd) ]
+    kparser.add_argument("cmd", choices = choices);
+
+    args,rest = kparser.parse_known_args();
+    getattr(cmds, args.cmd)(rest);
+
+
 

@@ -33,7 +33,7 @@ import dropbox
 import c_server
 import threading
 
-VERSION = 2.00;
+VERSION = 2.10;
 GEOMETRY = '400x400+100+100';
 
 CANONICAL_URL = "https://www.nouonline.net";

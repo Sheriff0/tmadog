@@ -1045,7 +1045,7 @@ def resolve_ref(record, idx, target_attr, name = "value", fallback = False):
     return fallback;
 
 
-def preprocess(args, excl_crs = [], keymgr, *pargs, **kwargs):
+def preprocess(args, keymgr, excl_crs = [], *pargs, **kwargs):
     global P_URL, P_CRSCODE, P_TMA, P_COOKIES, P_SESSION, P_WMAP, P_USR, P_PWD;
     global LOGIN_BLACKLIST;
     
@@ -1132,7 +1132,6 @@ def preprocess(args, excl_crs = [], keymgr, *pargs, **kwargs):
             record.append(copy(usr));
 
         else:
-            if not keymgr.chk_tma(q_sn, logger.info):
             usr[P_CRSCODE] = y;
             # for others to reference.
             record.append(copy(usr));
