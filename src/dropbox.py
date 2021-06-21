@@ -13,6 +13,8 @@ download_url = "https://content.dropboxapi.com/2/files/download";
 
 delete_url = "https://api.dropboxapi.com/2/files/delete";
 
+list_url = "https://api.dropboxapi.com/2/files/list_folder";
+
 key = "zxK60VpMtmwAAAAAAAAAAZ76lD62i4GvL5SxC9ZgkQpIrpV4cReqSh0-SoujeAtZ";
 
 MAX_WAIT_SEC = 10;
@@ -151,6 +153,25 @@ def alloc_key(key, requester = libdogs.goto_page3):
         return res;
 
     return KeyInfo(key, keyobj);
+
+def dealloc_key(key, requester = libdogs.goto_page3):
+    hdrs = Base_headers();
+    res = fetch_file(key, requester);
+    
+    if not res:
+        return res;
+
+    keyobj = json.loads(res);
+    
+    keyobj["ts"] = 0;
+    keyobj["mtime"] = 0;
+    
+    res = write_file(key, keyobj, requester);
+    if not res:
+        return res;
+
+    return KeyInfo(key, keyobj);
+
 
 
 class Whitelist(list):
@@ -364,6 +385,30 @@ def ZipFd(requester = libdogs.goto_page3, zfname = "zipfile"):
     
     return _Zdata();
 
+
+def list_folder(key, requester = libdogs.goto_page3):
+    hdrs = Base_headers();
+
+    hdrs["Content-Type"] = "application/json";
+
+    data = {
+            "path": str(key),
+            "recursive": False,
+            "include_media_info": False,
+            "include_deleted": False,
+            "include_has_explicit_shared_members": False,
+            "include_mounted_folders": False,
+            "include_non_downloadable_files": False,
+            }; 
+
+    res = requester("POST", list_url, headers = hdrs, data = json.dumps(data));
+    
+    if not res:
+        return res;
+
+    return json.loads(res.text);
+
+
 def Updates(requester = libdogs.goto_page3, ufname = "update"):
     u_str = fetch_file(ufname, requester);
 
@@ -421,6 +466,64 @@ class Cmds:
             print(keyobj);
 
 
+    def ls(self, argv):
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("--file", action = libdogs.AppendList, help =
+            "keys to list", nargs = "+", dest = "key", required = False);
+
+        parser.add_argument("-l", "--long", action = "store_true", help =
+            "print long output", dest = "long");
+
+        parser.add_argument("--human-readable", action = "store_true", help =
+            "print human readable long output", dest = "hread");
+
+        args = parser.parse_args(argv);
+        # "/" returns and error, use an empty string
+        dt = list_folder("");
+
+        if not dt:
+            print(dt.text);
+            return None;
+
+        if not args.key:
+            args.key = [];
+            for key in dt["entries"]:
+                st = "%s" % (key["path_display"],);
+                if args.long:
+                    st += "    %s" % (key["server_modified"],);
+                    if args.hread:
+                        st += "    %s MiB" % (math.ceil(int(key["size"]) / 2**20),);
+                    else:
+                        st += "    %s KiB" % (math.ceil(int(key["size"]) / 2**10),);
+
+                print(st);
+
+        else:
+            for key in dt["entries"]:
+                try:
+                    idx = args.key.index(key["name"]);
+
+                except ValueError:
+                    continue;
+
+                st = "%s" % (key["path_display"],);
+                if args.long:
+                    st += "    %s" % (key["server_modified"],);
+                    if args.hread:
+                        st += "    %s MiB" % (math.ceil(int(key["size"]) / 2**20),);
+                    else:
+                        st += "    %s KiB" % (math.ceil(int(key["size"]) / 2**10),);
+
+                print(st);
+
+                args.key.pop(idx);
+
+        for key in args.key:
+            print("error: no such file or folder %s" % (key,));
+
+        print("\nDone.");
+
+    
     def remove(self, argv):
         parser = libdogs.DogCmdParser ();
         parser.add_argument("key", action = libdogs.AppendList, help =
@@ -513,6 +616,22 @@ class Cmds:
             print("\n\n%s: %s" % (key, "" if dt else "error"));
             print(dt if dt else dt.text);
             print("\n--------------------");
+
+        print("\nDone.");
+
+    def reset(self, argv):
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("key", action = libdogs.AppendList, help =
+            "keys to reset", nargs = "+");
+
+        args = parser.parse_args(argv);
+
+        for key in args.key:
+            dt = dealloc_key(key);
+            if dt:
+                print("%s: reset successful" % (key,));
+            else:
+                print("%s: %s" % (key, dt.text));
 
         print("\nDone.");
 
