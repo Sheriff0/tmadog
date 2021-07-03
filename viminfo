@@ -11,17 +11,49 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/add
+~MSle0~/gui_m
 
 # Last Substitute Search Pattern:
-~MSle0&\.\zsresolver
+~MSle0&\<path\>
 
 # Last Substitute String:
-$
+$kpath
 
 # Command Line History (newest to oldest):
 :qall
-|2,0,1624288365,,"qall"
+|2,0,1625325186,,"qall"
+:w
+|2,0,1625324992,,"w"
+:2,3 windo set noscrollbind
+|2,0,1625324490,,"2,3 windo set noscrollbind"
+:2,3 windo set scrollbind
+|2,0,1625324466,,"2,3 windo set scrollbind"
+:2,3 set scrollbind
+|2,0,1625323924,,"2,3 set scrollbind"
+:2,3 windo diffoff
+|2,0,1625323797,,"2,3 windo diffoff"
+:2,3 windo diffthis
+|2,0,1625323778,,"2,3 windo diffthis"
+:q
+|2,0,1625323743,,"q"
+:help :windo
+|2,0,1625323723,,"help :windo"
+:192,.s/\<path\>/kpath/egc
+|2,0,1625323459,,"192,.s/\\<path\\>/kpath/egc"
+:split src/dropbox.py
+|2,0,1625289060,,"split src/dropbox.py"
+:py3 import builtins; help(builtins)
+|2,0,1625286162,,"py3 import builtins; help(builtins)"
+:split
+|2,0,1625284402,,"split"
+:tabs
+|2,0,1625244847,,"tabs"
+:tabnew +1792 ~/storage/shared/dogger/tmadog_extension/libdogs.py
+|2,0,1625179453,,"tabnew +1792 ~/storage/shared/dogger/tmadog_extension/libdogs.py"
+:q!
+|2,0,1625146448,,"q!"
+:tabnew src/bug_list.py
+|2,0,1625137712,,"tabnew src/bug_list.py"
 :!python3 src/dropbox.py dump 12345
 |2,0,1624288332,,"!python3 src/dropbox.py dump 12345"
 :!python3 src/dropbox.py reset 12345
@@ -32,10 +64,6 @@ $
 |2,0,1624288194,,"!python3 src/dropbox.py add_json"
 :!python3 src/dropbox.py reset 12234
 |2,0,1624288056,,"!python3 src/dropbox.py reset 12234"
-:w
-|2,0,1624288051,,"w"
-:tabs
-|2,0,1624139093,,"tabs"
 :!python3 src/dropbox.py dump zipfile
 |2,0,1624139067,,"!python3 src/dropbox.py dump zipfile"
 :!python3 src/dropbox.py ls -l --human
@@ -192,8 +220,6 @@ $
 |2,0,1623507587,,"py3 print(re.fullmatch(r'\\W+', \"sh\"))"
 :py3 import re
 |2,0,1623507490,,"py3 import re"
-:split
-|2,0,1623502634,,"split"
 :py3 help(set)
 |2,0,1623450443,,"py3 help(set)"
 :py3 print(json.dumps({'a': set([1,2])}, default = lambda a: list(a)))
@@ -216,8 +242,6 @@ $
 |2,0,1623448242,,"py3 print(json.dumps((1,2)))"
 :split src/libdogs.py
 |2,0,1623431160,,"split src/libdogs.py"
-:q
-|2,0,1623427967,,"q"
 :split src/dog_main.py
 |2,0,1623427927,,"split src/dog_main.py"
 :py3 print(time.time())
@@ -246,8 +270,6 @@ $
 |2,0,1623285668,,"!ls /home/sheriff/mybak/63A9-0A18/Download/dog-1728494_640.png"
 :vsplit src/dog_main.py
 |2,0,1623282195,,"vsplit src/dog_main.py"
-:q!
-|2,0,1623259309,,"q!"
 :py3 print((5/10)*100)
 |2,0,1623168838,,"py3 print((5/10)*100)"
 :py3 print((5/9)*100)
@@ -318,8 +340,6 @@ $
 |2,0,1622989468,,"py3 help(object.__del__)"
 :py3 help(str.__del__)
 |2,0,1622989456,,"py3 help(str.__del__)"
-:split src/dropbox.py
-|2,0,1622892332,,"split src/dropbox.py"
 :py3 print(pt.unlink)
 |2,0,1622831439,,"py3 print(pt.unlink)"
 :py3 print(type(pt.joinpath("xxj.hg").name))
@@ -400,80 +420,50 @@ $
 |2,0,1619796492,,"py3 print(collections.deque([1,3,5]).pop(1))"
 :py3 print(collections.deque([1,3,5]))
 |2,0,1619796477,,"py3 print(collections.deque([1,3,5]))"
-:py3 import collections
-|2,0,1619796448,,"py3 import collections"
-:%s/\.\i\+ers\?\.\zsshow/place/gc
-|2,0,1619794335,,"%s/\\.\\i\\+ers\\?\\.\\zsshow/place/gc"
-:%s/\.\i\+er\.\zsshow/place/gc
-|2,0,1619794310,,"%s/\\.\\i\\+er\\.\\zsshow/place/gc"
-:%s/\.\zsreporter/\0s/gc
-|2,0,1619793846,,"%s/\\.\\zsreporter/\\0s/gc"
-:!git add -- %
-|2,0,1619791943,,"!git add -- %"
-:-
-|2,0,1619791857,,"-"
-:py3 print(bool(set([5])))
-|2,0,1619791825,,"py3 print(bool(set([5])))"
-:py3 print(bool(set([])))
-|2,0,1619791819,,"py3 print(bool(set([])))"
-:py3 print(bool([1]))
-|2,0,1619790131,,"py3 print(bool([1]))"
-:py3 print(bool([]))
-|2,0,1619790126,,"py3 print(bool([]))"
-:py3 print(email.message.Message({"a": 4}))
-|2,0,1619788708,,"py3 print(email.message.Message({\"a\": 4}))"
-:py3 help(email.message.Message)
-|2,0,1619788667,,"py3 help(email.message.Message)"
-:py3 import email.message
-|2,0,1619788598,,"py3 import email.message"
-:split src/cookie_parse.py
-|2,0,1619788569,,"split src/cookie_parse.py"
-:py3 [].pop(0)
-|2,0,1619788193,,"py3 [].pop(0)"
-:py3 help(random)
-|2,0,1619787233,,"py3 help(random)"
-:py3 import random
-|2,0,1619787207,,"py3 import random"
-:py3 print({"hh":1}.keys())
-|2,0,1619785862,,"py3 print({\"hh\":1}.keys())"
-:%s/null\ze,/None/g
-|2,0,1619785615,,"%s/null\\ze,/None/g"
-:ed src/user_agents.py
-|2,0,1619784733,,"ed src/user_agents.py"
-:ed %:h
-|2,0,1619784713,,"ed %:h"
-:w! src/user_agents.py
-|2,0,1619784669,,"w! src/user_agents.py"
-:w src/user_agents.py
-|2,0,1619784664,,"w src/user_agents.py"
-:split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/
-|2,0,1619782616,,"split /data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/"
-:split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'
-|2,0,1619782527,,"split '/data/data/com.termux/files/usr/lib/python3.7/site-packages/cloudscraper/__init__.py'"
-:!pwd
-|2,0,1619782223,,"!pwd"
-:!git commit -sv -uno
-|2,0,1619781997,,"!git commit -sv -uno"
-:!git add -- % src/dog_idl.py
-|2,0,1619781977,,"!git add -- % src/dog_idl.py"
-:py3 help(sys.exit)
-|2,0,1619778721,,"py3 help(sys.exit)"
-:py3 import sys
-|2,0,1619778647,,"py3 import sys"
-:!git checkout -- %
-|2,0,1619776468,,"!git checkout -- %"
-:split src/simple_dog.py
-|2,0,1619751294,,"split src/simple_dog.py"
-:py3 print(random.random() * 10)
-|2,0,1619749595,,"py3 print(random.random() * 10)"
-:py3 import math
-|2,0,1619749556,,"py3 import math"
-:py3 print(sorted([(0, "sheriff"), (1, "esseson")]))
-|2,0,1619749547,,"py3 print(sorted([(0, \"sheriff\"), (1, \"esseson\")]))"
-:py3 print(random.random() * 2)
-|2,0,1619749525,,"py3 print(random.random() * 2)"
 
 # Search String History (newest to oldest):
+?/gui_m
+|2,1,1625323804,47,"gui_m"
+? \<path\>
+|2,1,1625323459,,"\\<path\\>"
+?/\cmgr
+|2,1,1625322938,47,"\\cmgr"
+?/-1
+|2,1,1625319729,47,"-1"
+?/\<alloc_
+|2,1,1625319137,47,"\\<alloc_"
+?/Zi
+|2,1,1625289065,47,"Zi"
+?/dump
+|2,1,1625287222,47,"dump"
+?/Appen
+|2,1,1625287136,47,"Appen"
+?/add_
+|2,1,1625286769,47,"add_"
+?/chk
+|2,1,1625284938,47,"chk"
+?/Upd
+|2,1,1625284644,47,"Upd"
+?/update
+|2,1,1625244877,47,"update"
+? @$
+|2,1,1625244860,,"@$"
+?/fetch_allq
+|2,1,1625234490,47,"fetch_allq"
+?/bug_
+|2,1,1625179551,47,"bug_"
+?/fetch_all
+|2,1,1625150754,47,"fetch_all"
+?/number
+|2,1,1625150728,47,"number"
+?/brute_safe
+|2,1,1625149834,47,"brute_safe"
+?/brute_s
+|2,1,1625149820,47,"brute_s"
+?/_all
+|2,1,1625147115,47,"_all"
+?/te_sub
+|2,1,1625136409,47,"te_sub"
 ?/add
 |2,1,1624283635,47,"add"
 ??all
@@ -486,8 +476,6 @@ $
 |2,1,1624119415,47,"Con"
 ?/fetch
 |2,1,1624119228,47,"fetch"
-?/dump
-|2,1,1623566265,47,"dump"
 ?/read_
 |2,1,1623565870,47,"read_"
 ??App
@@ -526,8 +514,6 @@ $
 |2,1,1623417727,47,"Up"
 ?/def u
 |2,1,1623416635,47,"def u"
-?/update
-|2,1,1623416623,47,"update"
 ?/mti
 |2,1,1623395138,47,"mti"
 ??getkey
@@ -536,8 +522,6 @@ $
 |2,1,1623342282,47,"gui_update"
 ??checks
 |2,1,1623340053,63,"checks"
-?/gui_m
-|2,1,1623339705,47,"gui_m"
 ?/xz
 |2,1,1623286475,47,"xz"
 ?/CH
@@ -562,8 +546,6 @@ $
 |2,1,1622682742,47,"deep"
 ?/iter_f
 |2,1,1622640016,47,"iter_f"
-? @$
-|2,1,1622639507,,"@$"
 ?/total
 |2,1,1619822644,47,"total"
 ??Rep
@@ -840,48 +822,6 @@ $
 |2,1,1607432198,47,"hoo"
 ?/t g
 |2,1,1607432121,47,"t g"
-?/\<login\>
-|2,1,1607427948,47,"\\<login\\>"
-?/retryi
-|2,1,1607272787,47,"retryi"
-?/goto
-|2,1,1607214605,47,"goto"
-?/done
-|2,1,1607212237,47,"done"
-?/fetch_all
-|2,1,1607211785,47,"fetch_all"
-? ger\.\i\+("\zs\\n
-|2,1,1607210699,,"ger\\.\\i\\+(\"\\zs\\\\n"
-?/ger\.\i\+("\zs\\n/
-|2,1,1607210632,47,"ger\\.\\i\\+(\"\\zs\\\\n/"
-?/sti
-|2,1,1607210102,47,"sti"
-?/answer
-|2,1,1607205807,47,"answer"
-?/fet
-|2,1,1607205254,47,"fet"
-?/quiet
-|2,1,1607203278,47,"quiet"
-?/fetch_
-|2,1,1607201462,47,"fetch_"
-?/retry
-|2,1,1607193051,47,"retry"
-?/raise_
-|2,1,1607183452,47,"raise_"
-?/rai
-|2,1,1607183419,47,"rai"
-?/deepcopy
-|2,1,1607100653,47,"deepcopy"
-? copy\.\<deepcopy\>
-|2,1,1607100459,,"copy\\.\\<deepcopy\\>"
-? copy\.\ze\<deepcopy\>
-|2,1,1607098952,,"copy\\.\\ze\\<deepcopy\\>"
-? \<deepcopy\>
-|2,1,1607085134,,"\\<deepcopy\\>"
-?/fetch_o
-|2,1,1606854590,47,"fetch_o"
-?/\<mp
-|2,1,1606853454,47,"\\<mp"
 
 # Expression History (newest to oldest):
 =@"
@@ -907,40 +847,105 @@ $
 
 # Registers:
 "0	LINE	0
-	                print("%s: reset successful" % (key,));
-|3,0,0,1,1,0,1624287904,"                print(\"%s: reset successful\" % (key,));"
-""1	LINE	0
-	            print("\n--------------------");
-|3,1,1,1,1,0,1624287910,"            print(\"\\n--------------------\");"
-"2	LINE	0
-	                print(json.dumps(dt, indent = 4) if dt else dt.text);
-|3,0,2,1,1,0,1624287908,"                print(json.dumps(dt, indent = 4) if dt else dt.text);"
-"3	LINE	0
 	
-|3,0,3,1,1,0,1624283568,""
-"4	LINE	0
-	        keyobj.update(key);
-|3,0,4,1,1,0,1624283566,"        keyobj.update(key);"
-"5	LINE	0
-	    if isinstance(key, dict):
-|3,0,5,1,1,0,1624283565,"    if isinstance(key, dict):"
-"6	LINE	0
-	    if "ts" in keyobj and int(keyobj["ts"]):
+	    pkg_name = pathlib.Path(pkg_name);
+	
+	    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
+	
+	    mp = None;
+	    
+	    if term_update(pkg_dir):
+	        return os.execv(str(pkg_name.resolve()), argv);
+	
+	    kinfo = checks(pkg_name, term_chk_updater);
+	
+	    # no key, no access rule
+	    if not kinfo:
 	        return False;
 	
-|3,0,6,1,3,0,1624283532,"    if \"ts\" in keyobj and int(keyobj[\"ts\"]):","        return False;",""
+	    output_file = EncryptedZip(pkg_dir, "dump_output");
+	
+	    keymgr = dropbox.KeyMgr(kinfo, pkg_dir);
+	
+	    logger = logging.getLogger('tmadog');
+	
+	    logger.setLevel(logging.DEBUG);
+	    # create file handler which logs even debug messages
+	    dfh = logging.FileHandler(str(output_file.tpath.joinpath('debug.log')), mode = "w");
+	    dfh.setLevel(logging.DEBUG);
+	
+	    fatal = logging.FileHandler(str(output_file.tpath.joinpath('fatal.log')), mode = "w");
+	    fatal.setLevel(logging.CRITICAL);
+	
+	    stdout = logging.StreamHandler();
+	    stdout.setLevel(logging.INFO);
+	
+	    dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));
+	
+	    stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));
+|3,0,0,1,36,0,1625324953,"","    pkg_name = pathlib.Path(pkg_name);","","    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;","","    mp = None;","    ","    if term_update(pkg_dir):","        return os.execv(str(pkg_name.resolve()), argv);","","    kinfo = checks(pkg_name, term_chk_updater);","","    # no key, no access rule","    if not kinfo:","        return False;","","    output_file = EncryptedZip(pkg_dir, \"dump_output\");","",>46
+|<"    keymgr = dropbox.KeyMgr(kinfo, pkg_dir);","","    logger = logging.getLogger('tmadog');","","    logger.setLevel(logging.DEBUG);","    # create file handler which logs even debug messages","    dfh = logging.FileHandler(str(output_file.tpath.joinpath('debug.log')), mode = \"w\");","    dfh.setLevel(logging.DEBUG);","","    fatal = logging.FileHandler(str(output_file.tpath.joinpath('fatal.log')), mode = \"w\");","    fatal.setLevel(logging.CRITICAL);","",>39
+|<"    stdout = logging.StreamHandler();","    stdout.setLevel(logging.INFO);","","    dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));","","    stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));"
+""1	LINE	0
+	
+|3,1,1,1,1,0,1625324981,""
+"2	LINE	0
+	    pkg_name = pathlib.Path(pkg_name);
+	
+	    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
+	
+	
+	
+	    logger = logging.getLogger('tmadog');
+	
+	    logger.setLevel(logging.DEBUG);
+	    # create file handler which logs even debug messages
+	    dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
+	    dfh.setLevel(logging.DEBUG);
+	
+	    fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = "w");
+	    fatal.setLevel(logging.CRITICAL);
+	
+	    stdout = logging.StreamHandler();
+	    stdout.setLevel(logging.INFO);
+	
+	    dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));
+	
+	    stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));
+|3,0,2,1,22,0,1625324979,"    pkg_name = pathlib.Path(pkg_name);","","    pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;","","","","    logger = logging.getLogger('tmadog');","","    logger.setLevel(logging.DEBUG);","    # create file handler which logs even debug messages","    dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = \"w\");","    dfh.setLevel(logging.DEBUG);","",>84
+|<"    fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = \"w\");","    fatal.setLevel(logging.CRITICAL);","","    stdout = logging.StreamHandler();","    stdout.setLevel(logging.INFO);","","    dfh.setFormatter(logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s'));","","    stdout.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'));"
+"3	LINE	0
+	
+|3,0,3,1,1,0,1625324366,""
+"4	LINE	0
+	    #if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
+	    #    print("Please renew your package as the current package has expired");
+	    #    return False;
+|3,0,4,1,3,0,1625324365,"    #if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):","    #    print(\"Please renew your package as the current package has expired\");","    #    return False;"
+"5	LINE	0
+	
+|3,0,5,1,1,0,1625287372,""
+"6	LINE	0
+	            keyobj["ts"] = 0;
+|3,0,6,1,1,0,1625287370,"            keyobj[\"ts\"] = 0;"
 "7	LINE	0
-	                        st += "    %sB" % (key["size"],);
-|3,0,7,1,1,0,1624139007,"                        st += \"    %sB\" % (key[\"size\"],);"
+	        parser.add_argument("keys", help = "keys to extend");
+|3,0,7,1,1,0,1625287162,"        parser.add_argument(\"keys\", help = \"keys to extend\");"
 "8	LINE	0
-	                        st += "    %sMiB" % (int(key["size"]) / 1024,);
-|3,0,8,1,1,0,1624138997,"                        st += \"    %sMiB\" % (int(key[\"size\"]) / 1024,);"
+	        # do some lowkey allocation if prev attempts failed
+	        keyobj["ts"] = int(keyobj.get("ts", -1)) + 1;
+|3,0,8,1,2,0,1625286460,"        # do some lowkey allocation if prev attempts failed","        keyobj[\"ts\"] = int(keyobj.get(\"ts\", -1)) + 1;"
 "9	LINE	0
 	
-|3,0,9,1,1,0,1624138278,""
+|3,0,9,1,1,0,1625234524,""
 "a@	LINE	0
-	                        st += "    %s MiB" % (math.ceil(int(key["size"]) / 2**20),);
-|3,2,10,1,1,0,1624138975,"                        st += \"    %s MiB\" % (math.ceil(int(key[\"size\"]) / 2**20),);"
+	    if isinstance(fe, status.Status):
+	        return fe;
+	
+	    elif not int(qst[nav.webmap["qmap"]["qn"]]) < int(fe[F_QKEY][nav.webmap["qmap"]["qn"]]):
+	        return BUG_NOT_APPLY;
+	            
+|3,2,10,1,6,0,1625153451,"    if isinstance(fe, status.Status):","        return fe;","","    elif not int(qst[nav.webmap[\"qmap\"][\"qn\"]]) < int(fe[F_QKEY][nav.webmap[\"qmap\"][\"qn\"]]):","        return BUG_NOT_APPLY;","            "
 "b	CHAR	0
 	json.dumps(dt, indent = 4)
 |3,0,11,0,1,0,1623540880,"json.dumps(dt, indent = 4)"
@@ -957,36 +962,106 @@ $
 	        return status.Status(status.S_OK);
 |3,0,24,1,1,0,1605218118,"        return status.Status(status.S_OK);"
 "-	CHAR	0
-	)
-|3,0,36,0,1,0,1624138320,")"
+	k
+|3,0,36,0,1,0,1625319087,"k"
 
 # global variables:
 
 # File marks:
-'0  633  13  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,48,633,13,1624288369,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
-'1  271  28  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,49,271,28,1623599687,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
-'2  689  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,50,689,12,1623599675,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
-'3  1133  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,51,1133,0,1623459189,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
-'4  1602  29  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
-|4,52,1602,29,1623330684,"~/mybak/63A9-0A18/2020/dogger/src/dog_main.py"
-'5  225  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,53,225,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
-'6  1345  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,54,1345,0,1622640051,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
-'7  46  15  /storage/sdcard0/2020/dogger/src/simple_dog.py
-|4,55,46,15,1622580609,"/storage/sdcard0/2020/dogger/src/simple_dog.py"
-'8  1248  75  /media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py
-|4,56,1248,75,1619825540,"/media/sheriff/63A9-0A18/2020/dogger/src/dog_main.py"
-'9  895  44  /storage/sdcard0/2020/dogger/src/dog_idl.py
-|4,57,895,44,1619814551,"/storage/sdcard0/2020/dogger/src/dog_idl.py"
+'0  1613  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,48,1613,0,1625325191,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+'1  1658  4  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,49,1658,4,1625325001,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+'2  1955  7  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,50,1955,7,1625136727,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+'3  675  13  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,51,675,13,1624288369,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+'4  277  28  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,52,277,28,1623599687,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+'5  731  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,53,731,12,1623599675,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+'6  1134  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,54,1134,0,1623459189,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+'7  1602  29  ~/mybak/63A9-0A18/2020/dogger/src/dog_main.py
+|4,55,1602,29,1623330684,"~/mybak/63A9-0A18/2020/dogger/src/dog_main.py"
+'8  225  38  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,56,225,38,1623259342,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+'9  1349  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,57,1349,0,1622640051,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
 
 # Jumplist (newest first):
+-'  1613  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1613,0,1625325191,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1658  4  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1658,4,1625325169,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  192  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,192,0,1625325168,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  520  28  /storage/emulated/0/dogger/dogger/src/dog_idl.py
+|4,39,520,28,1625325168,"/storage/emulated/0/dogger/dogger/src/dog_idl.py"
+-'  252  19  /storage/emulated/0/dogger/dogger/src/simple_dog.py
+|4,39,252,19,1625325168,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
+-'  1248  4  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1248,4,1625325168,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1  49  /storage/emulated/0/dogger/dogger/src/dog_help.py
+|4,39,1,49,1625325168,"/storage/emulated/0/dogger/dogger/src/dog_help.py"
+-'  47  14  /storage/emulated/0/dogger/dogger/src/nourc_future
+|4,39,47,14,1625325168,"/storage/emulated/0/dogger/dogger/src/nourc_future"
+-'  1  0  /storage/emulated/0/dogger/dogger/src/tasker.py
+|4,39,1,0,1625325168,"/storage/emulated/0/dogger/dogger/src/tasker.py"
+-'  15  48  /storage/emulated/0/dogger/dogger/src/status.py
+|4,39,15,48,1625325168,"/storage/emulated/0/dogger/dogger/src/status.py"
+-'  157  0  /storage/emulated/0/dogger/dogger/src/qstwriter.py
+|4,39,157,0,1625325168,"/storage/emulated/0/dogger/dogger/src/qstwriter.py"
+-'  1614  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1614,0,1625323938,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  432  6  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,432,6,1625323804,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1124  53  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1124,53,1625323603,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1146  25  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1146,25,1625318722,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1106  19  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1106,19,1625318719,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1273  29  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1273,29,1625288857,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1180  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1180,0,1625284405,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1218  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1218,0,1625284398,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1087  12  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1087,12,1625244878,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  883  9  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,883,9,1625244877,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  701  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,701,0,1625244877,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1  0  /storage/emulated/0/dogger/dogger
+|4,39,1,0,1625137427,"/storage/emulated/0/dogger/dogger"
+-'  38  15  /storage/emulated/0/dogger/dogger/src/simple_dog.py
+|4,39,38,15,1625137427,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
+-'  1252  4  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1252,4,1625137427,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1793  7  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1793,7,1625136727,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  1136  12  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1136,12,1625136409,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  496  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,496,0,1625124060,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
 -'  633  13  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,39,633,13,1624288369,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+|4,39,633,13,1625124060,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  499  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
+|4,39,499,0,1625124060,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
+-'  1601  3  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1601,3,1625124060,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  395  16  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,395,16,1625124060,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1209  9  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1209,9,1625124060,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  1200  4  /storage/emulated/0/dogger/dogger/src/libdogs.py
+|4,39,1200,4,1625124060,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
+-'  245  19  /storage/emulated/0/dogger/dogger/src/simple_dog.py
+|4,39,245,19,1625124060,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
+-'  719  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,719,0,1625124060,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
 -'  172  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
 |4,39,172,0,1624287709,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
 -'  630  18  /storage/emulated/0/dogger/dogger/src/dropbox.py
@@ -1009,36 +1084,8 @@ $
 |4,39,594,15,1624283046,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
 -'  271  28  /storage/emulated/0/dogger/dogger/src/dropbox.py
 |4,39,271,28,1623599690,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  1597  3  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,1597,3,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  395  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,395,0,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  1195  8  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,1195,8,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  1200  4  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1200,4,1623599689,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  245  19  /storage/emulated/0/dogger/dogger/src/simple_dog.py
-|4,39,245,19,1623599689,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
--'  717  0  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,717,0,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  1  0  /storage/emulated/0/dogger/dogger
-|4,39,1,0,1623599689,"/storage/emulated/0/dogger/dogger"
--'  520  28  /storage/emulated/0/dogger/dogger/src/dog_idl.py
-|4,39,520,28,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_idl.py"
--'  38  15  /storage/emulated/0/dogger/dogger/src/simple_dog.py
-|4,39,38,15,1623599689,"/storage/emulated/0/dogger/dogger/src/simple_dog.py"
--'  1248  4  /storage/emulated/0/dogger/dogger/src/dog_main.py
-|4,39,1248,4,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
--'  1  49  /storage/emulated/0/dogger/dogger/src/dog_help.py
-|4,39,1,49,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_help.py"
--'  47  14  /storage/emulated/0/dogger/dogger/src/nourc_future
-|4,39,47,14,1623599689,"/storage/emulated/0/dogger/dogger/src/nourc_future"
--'  1  0  /storage/emulated/0/dogger/dogger/src/tasker.py
-|4,39,1,0,1623599689,"/storage/emulated/0/dogger/dogger/src/tasker.py"
--'  15  48  /storage/emulated/0/dogger/dogger/src/status.py
-|4,39,15,48,1623599689,"/storage/emulated/0/dogger/dogger/src/status.py"
--'  157  0  /storage/emulated/0/dogger/dogger/src/qstwriter.py
-|4,39,157,0,1623599689,"/storage/emulated/0/dogger/dogger/src/qstwriter.py"
+-'  1199  8  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1199,8,1623599689,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
 -'  689  12  /storage/emulated/0/dogger/dogger/src/dropbox.py
 |4,39,689,12,1623599675,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
 -'  270  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
@@ -1125,62 +1172,34 @@ $
 |4,39,468,0,1623502211,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
 -'  51  0  /storage/emulated/0/dogger/dogger/src/dropbox.py
 |4,39,51,0,1623502173,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  444  16  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,39,444,16,1623502000,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  194  16  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,39,194,16,1623501623,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  1133  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1133,0,1623499498,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1971  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1971,0,1623499498,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1145  46  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1145,46,1623459136,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1074  9  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1074,9,1623452517,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1072  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1072,0,1623452448,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1075  8  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1075,8,1623452447,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1048  74  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1048,74,1623451449,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
--'  1  0  /storage/emulated/0/dogger/dogger/src/libdogs.py
-|4,39,1,0,1623431164,"/storage/emulated/0/dogger/dogger/src/libdogs.py"
 
 # History of marks within files (newest to oldest):
 
 > /storage/emulated/0/dogger/dogger/src/qstwriter.py
-	*	1623599689	0
+	*	1625325168	0
 	"	157	0
 
 > /storage/emulated/0/dogger/dogger/src/status.py
-	*	1623599689	0
+	*	1625325168	0
 	"	15	48
 
 > /storage/emulated/0/dogger/dogger/src/tasker.py
-	*	1623599689	0
+	*	1625325168	0
 	"	1	0
 
 > /storage/emulated/0/dogger/dogger/src/nourc_future
-	*	1623599689	0
+	*	1625325168	0
 	"	47	14
 
 > /storage/emulated/0/dogger/dogger/src/dog_help.py
-	*	1623599689	0
+	*	1625325168	0
 	"	1	49
 
 > /storage/emulated/0/dogger/dogger/src/dog_main.py
-	*	1624140186	0
-	"	1597	3
-	^	445	8
-	.	36	12
-	+	247	41
-	+	258	0
-	+	257	0
-	+	257	46
-	+	242	0
-	+	243	0
-	+	242	19
-	+	217	14
+	*	1625325184	0
+	"	1597	0
+	^	445	28
+	.	1617	0
 	+	43	4
 	+	43	0
 	+	43	19
@@ -1198,27 +1217,27 @@ $
 	+	47	48
 	+	48	46
 	+	52	57
-	+	1176	47
-	+	1180	28
-	+	1195	0
-	+	1196	0
-	+	1195	40
-	+	1213	32
-	+	1214	0
-	+	1213	32
-	+	1241	0
-	+	1218	49
-	+	1219	0
-	+	1224	0
-	+	1221	22
-	+	1227	26
-	+	1229	26
-	+	1232	26
-	+	1234	52
-	+	1241	0
+	+	1180	47
+	+	1184	28
+	+	1199	0
+	+	1200	0
+	+	1199	40
+	+	1217	32
 	+	1218	0
+	+	1217	32
+	+	1245	0
+	+	1222	49
+	+	1223	0
+	+	1228	0
+	+	1225	22
+	+	1231	26
+	+	1233	26
+	+	1236	26
+	+	1238	52
+	+	1245	0
+	+	1222	0
 	+	449	4
-	+	444	25
+	+	440	25
 	+	448	0
 	+	281	0
 	+	280	0
@@ -1246,45 +1265,171 @@ $
 	+	260	28
 	+	276	23
 	+	260	36
-	+	447	11
+	+	443	11
 	+	449	4
-	+	1216	0
-	+	1176	30
-	+	444	28
-	+	1218	30
-	+	1237	10
-	+	1241	0
-	+	1216	17
-	+	1216	4
-	+	1216	7
-	+	1216	0
-	+	1216	12
-	+	1216	0
-	+	444	28
-	+	445	17
+	+	1220	0
+	+	1180	30
+	+	440	28
+	+	1222	30
+	+	1241	10
+	+	1245	0
+	+	1220	17
+	+	1220	4
+	+	1220	7
+	+	1220	0
+	+	1220	12
+	+	1220	0
+	+	440	28
+	+	441	17
 	+	395	0
-	+	445	0
+	+	441	0
 	+	36	12
-	a	606	20
-	d	445	17
+	+	1187	0
+	+	1128	87
+	+	1146	0
+	+	240	12
+	+	237	40
+	+	238	42
+	+	432	32
+	+	449	14
+	+	457	50
+	+	460	52
+	+	451	43
+	+	447	20
+	+	447	0
+	+	445	27
+	+	434	0
+	+	1617	0
+	a	443	15
+	d	441	17
 	v	448	0
-	x	1248	60
-	y	434	4
+	x	1252	60
+	y	1180	6
 	z	222	23
 
 > /storage/emulated/0/dogger/dogger/src/simple_dog.py
-	*	1623599689	0
+	*	1625325168	0
 	"	245	19
 
 > /storage/emulated/0/dogger/dogger/src/dog_idl.py
-	*	1623599689	0
+	*	1625325168	0
 	"	520	28
 
+> /storage/emulated/0/dogger/dogger/src/dropbox.py
+	*	1625325169	0
+	"	356	0
+	^	197	70
+	.	269	0
+	+	564	48
+	+	410	60
+	+	564	54
+	+	527	24
+	+	524	26
+	+	396	0
+	+	530	13
+	+	514	58
+	+	543	19
+	+	543	12
+	+	544	0
+	+	532	0
+	+	542	0
+	+	533	0
+	+	542	12
+	+	542	0
+	+	514	39
+	+	523	51
+	+	513	34
+	+	514	70
+	+	531	25
+	+	530	0
+	+	533	52
+	+	534	27
+	+	516	43
+	+	517	32
+	+	516	63
+	+	519	0
+	+	518	0
+	+	521	0
+	+	520	45
+	+	519	30
+	+	520	44
+	+	535	63
+	+	538	27
+	+	537	28
+	+	539	42
+	+	537	39
+	+	539	38
+	+	537	67
+	+	541	25
+	+	551	0
+	+	561	0
+	+	533	50
+	+	551	50
+	+	519	0
+	+	537	37
+	+	539	39
+	+	537	69
+	+	539	80
+	+	537	55
+	+	553	0
+	+	555	0
+	+	556	0
+	+	557	0
+	+	157	0
+	+	166	19
+	+	167	22
+	+	664	11
+	+	672	27
+	+	667	25
+	+	664	12
+	+	673	22
+	+	674	55
+	+	675	16
+	+	676	0
+	+	677	0
+	+	676	45
+	+	673	14
+	+	200	0
+	+	199	61
+	+	201	11
+	+	199	70
+	+	201	0
+	+	204	0
+	+	205	108
+	+	207	0
+	+	205	124
+	+	206	0
+	+	440	17
+	+	446	57
+	+	457	17
+	+	443	0
+	+	445	0
+	+	457	25
+	+	458	82
+	+	458	35
+	+	460	0
+	+	461	64
+	+	465	0
+	+	464	53
+	+	467	53
+	+	473	0
+	+	216	46
+	+	220	13
+	+	148	0
+	+	151	43
+	+	197	69
+	+	269	0
+	a	457	24
+	i	277	42
+	x	212	8
+	y	158	0
+	z	197	54
+
 > /storage/emulated/0/dogger/dogger/src/libdogs.py
-	*	1623599690	0
-	"	1135	12
-	^	1145	47
-	.	1135	0
+	*	1625325169	0
+	"	1153	28
+	^	1148	29
+	.	1148	28
 	+	1048	80
 	+	1048	42
 	+	1072	0
@@ -1292,129 +1437,76 @@ $
 	+	1068	43
 	+	1070	0
 	+	1068	53
-	+	1093	60
-	+	1095	0
-	+	1114	65
-	+	1115	36
-	+	1135	0
+	+	1094	60
+	+	1096	0
+	+	1115	65
+	+	1116	36
+	+	1136	0
+	+	1121	0
 	+	1120	0
-	+	1119	0
-	+	1120	33
-	+	1141	0
-	+	1145	0
+	+	1121	33
+	+	1144	0
+	+	1150	0
 	+	1048	0
 	+	1049	0
 	+	1048	29
-	+	1135	0
+	+	1136	0
+	+	1955	0
+	+	1955	23
+	+	1955	0
+	+	1955	42
+	+	1955	0
+	+	1955	5
+	+	1955	0
+	+	1955	18
+	+	1955	12
+	+	1955	16
+	+	1955	0
+	+	1955	36
+	+	1955	8
+	+	1955	9
+	+	1955	42
+	+	1955	12
+	+	1955	91
+	+	1955	54
+	+	1955	21
+	+	1955	27
+	+	1955	0
+	+	1955	44
+	+	1955	0
+	+	1955	61
+	+	1955	42
+	+	1955	66
+	+	1955	0
+	+	1955	4
+	+	1955	32
+	+	1955	0
+	+	1794	0
+	+	1684	0
+	+	1092	49
+	+	1144	0
+	+	1142	21
+	+	1148	28
+	x	1878	0
 
-> /storage/emulated/0/dogger/dogger/src/dropbox.py
-	*	1624288343	0
-	"	377	0
-	^	633	14
-	.	631	14
-	+	401	50
-	+	402	13
-	+	401	46
-	+	404	69
-	+	400	43
-	+	401	51
-	+	389	14
-	+	409	30
-	+	469	9
-	+	482	29
-	+	485	0
-	+	483	0
-	+	501	0
-	+	502	31
-	+	504	39
-	+	519	46
-	+	519	38
-	+	523	0
-	+	504	46
-	+	519	22
-	+	519	0
-	+	519	29
-	+	519	0
-	+	503	15
-	+	504	50
-	+	506	30
-	+	507	24
-	+	520	0
-	+	521	0
-	+	522	48
-	+	404	60
-	+	522	54
-	+	485	24
-	+	482	26
-	+	390	0
-	+	488	13
-	+	472	58
-	+	501	19
-	+	501	12
-	+	502	0
-	+	490	0
-	+	500	0
-	+	491	0
-	+	500	12
-	+	500	0
-	+	472	39
-	+	481	51
-	+	471	34
-	+	472	70
-	+	489	25
-	+	488	0
-	+	491	52
-	+	492	27
-	+	474	43
-	+	475	32
-	+	474	63
-	+	477	0
-	+	476	0
-	+	479	0
-	+	478	45
-	+	477	30
-	+	478	44
-	+	493	63
-	+	496	27
-	+	495	28
-	+	497	42
-	+	495	39
-	+	497	38
-	+	495	67
-	+	499	25
-	+	509	0
-	+	519	0
-	+	491	50
-	+	509	50
-	+	477	0
-	+	495	37
-	+	497	39
-	+	495	69
-	+	497	80
-	+	495	55
-	+	511	0
-	+	513	0
-	+	514	0
-	+	515	0
-	+	157	0
-	+	166	19
-	+	167	22
-	+	622	11
-	+	630	27
-	+	625	25
-	+	622	12
-	+	631	22
-	+	632	55
-	+	633	16
-	+	634	0
-	+	635	0
-	+	634	45
-	+	631	14
-	i	271	42
-	x	157	22
-	y	158	0
-	z	197	54
+> /storage/emulated/0/dogger/tmadog_extension/libdogs.py
+	*	1625325169	0
+	"	1739	0
+	^	1763	23
+	.	1763	0
+	+	1741	0
+	+	1892	77
+	+	1894	13
+	+	1894	14
+	+	1739	0
+	+	1894	14
+	+	1895	0
+	+	1894	27
+	+	1895	71
+	+	1897	14
+	+	1894	0
+	+	1763	0
 
 > /storage/emulated/0/dogger/dogger/src/setups/update.py
-	*	1623599690	0
+	*	1625325169	0
 	"	75	0

@@ -145,10 +145,10 @@ def alloc_key(key, requester = libdogs.goto_page3):
     if isinstance(key, dict):
         keyobj.update(key);
 
-    keyobj["ts"] = int(keyobj.get("ts", -1)) + 1;
+    keyobj["ts"] = int(keyobj.get("ts", 0)) + 1;
     keyobj["mtime"] = int(keyobj.get("mtime", -1)) + 1;
     
-    res = write_file(key, keyobj, requester);
+    res = write_file(key, json.dumps(keyobj), requester);
     if not res:
         return res;
 
@@ -194,10 +194,16 @@ class KeyMgr:
         self.kpath = kpath;
         self.keyinfo = keyinfo;
         self.updater = updater;
-        rkinfo = dropbox.fetch_keyinfo(str(self.keyinfo));
-        if rkinfo and rkinfo.get("mtime", 0) > self.keyinfo.get("mtime", 0):
+        rkinfo = dropbox.fetch_keyinfo(str(self.keyinfo), self.updater);
+        if not rkinfo:
+            raise LookupError("Could not fetch remote key file", rkinfo);
+
+        if rkinfo.get("mtime", 0) > self.keyinfo.get("mtime", 0):
             self.keyinfo.update(rkinfo);
         
+        # do some lowkey allocation if prev attempts failed
+        self.keyinfo["ts"] = int(self.keyinfo.get("ts", 0)) + 1 if not int(self.keyinfo.get("ts", 0)) else self.keyinfo["ts"];
+
         self.keyinfo["user_whitelist"] = set(self.keyinfo.get("user_whitelist", []));
         self.keyinfo["crs_whitelist"] = set(self.keyinfo.get("crs_whitelist", []));
         self.keyinfo["tma_whitelist"] = set(self.keyinfo.get("tma_whitelist", []));
@@ -207,11 +213,11 @@ class KeyMgr:
             return True;
 
         if len(self.keyinfo["tma_whitelist"]) < int(self.keyinfo["tw_count"]):
-            self.keyinfo["tma_whitelist"].add(tg);
+            self.keyinfo["tma_whitelist"].add(str(tg).lower());
             
             return self.upload();
         
-        elif tg in self.keyinfo["tma_whitelist"]:
+        elif str(tg).lower() in self.keyinfo["tma_whitelist"]:
             return True;
         
         logger("Key is incompatible with TMA%s" % (tg,));
@@ -260,7 +266,7 @@ class KeyMgr:
             write_keyfile(
                     str(
                         pathlib.Path(
-                            self.path
+                            self.kpath
                             ).joinpath(
                                 ".%s" % (self.keyinfo,)
                                 ).resolve()
@@ -431,6 +437,42 @@ def Updates(requester = libdogs.goto_page3, ufname = "update"):
 
 
 class Cmds:
+    def extend_key(self, argv):
+        # the default command
+        parser = libdogs.DogCmdParser ();
+        parser.add_argument("key", action = libdogs.AppendList, help =
+            "keys to remove", nargs = "+");
+
+        parser.add_argument("--users", help = "Number of users to restrict a key to", type = int);
+
+        parser.add_argument("--tmas", type = int, help = "Number of tma to restrict a key to");
+
+        parser.add_argument("--courses", type = int, help = "Number of courses to restrict a key to");
+
+        parser.add_argument("--count", help = "Number of keys", default = 1, type =
+                int);
+
+        args = parser.parse_args(argv);
+
+        for i in args.key:
+            keyobj = fetch_keyinfo(i);
+            
+            if args.users:
+                keyobj["uw_count"] = int(keyobj.get("uw_count", 0)) + args.users;
+
+            if args.courses:
+                keyobj["cw_count"] = int(keyobj.get("cw_count", 0)) + args.courses;
+
+            if args.tmas:
+                keyobj["tw_count"] = int(keyobj.get("tw_count", 0)) + args.tmas;
+            
+            # must pass
+            while not write_file(str(keyobj), json.dumps(keyobj)):
+                pass;
+
+            print(keyobj, "extended successfully");
+
+
     def add(self, argv):
         # the default command
         parser = libdogs.DogCmdParser ();

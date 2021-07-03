@@ -1089,6 +1089,7 @@ def preprocess(args, keymgr, excl_crs = [], *pargs, **kwargs):
             cid_str = [];
 
             for crs in discover_by_quizlist (usr, nav_hook(usr)):
+                # 'crs' could be an error 'Status' object
                 if crs:
                     if not keymgr.chk_crs(crs, logger.info):
                         continue;
@@ -1137,10 +1138,14 @@ def preprocess(args, keymgr, excl_crs = [], *pargs, **kwargs):
             record.append(copy(usr));
             qcrs = usr[P_CRSCODE];
             q_sns = usr[P_TMA];
+
+            # for TMAs
             for q_sn in q_sns.split():
                 if not keymgr.chk_tma(q_sn, logger.info):
                     continue;
                 usr[P_TMA] = q_sn;
+
+                # for courses
                 for q_crs in qcrs.split():
                     if not keymgr.chk_crs(q_crs, logger.info):
                         continue;
@@ -1677,7 +1682,6 @@ def fetch_all(nav, usr, **kwargs):
             
 
 
-
 def fetch_allq(nav, usr, **kwargs):
     global F_LAST_FETCH, F_QFMT, F_NEXT;
 
@@ -1787,6 +1791,92 @@ def brute_safe(nav, usr, qst, **kwargs):
 
     return False;
 
+BUG_NOT_APPLY = "BNA";
+
+def bug_submit_failFirst(usr, nav, f_type, amgr = None, retry = 3, fp = None, **kwargs):
+
+    qst = f_type[F_QKEY].copy() if not amgr else answer_lax(f_type[F_QKEY], amgr);
+
+    preq = f_type[F_SREQUEST];
+
+    kwargs.setdefault (
+            'headers',
+            mkheader (
+                f_type[F_SREQUEST]['url'],
+                f_type.get(F_REFERER, "")
+                ),
+            )
+    if not qst [nav.webmap["qmap"]["ans"]]:
+        qst [nav.webmap["qmap"]["ans"]] = f_type[F_PSEUDO_ANS][0];
+
+    preq[F_QKEY] = qst;
+
+    # we won't be needing returns
+    submit(nav, preq, **kwargs);
+
+
+    for fe in fetch_all(nav, usr, **kwargs):
+
+        if isinstance(fe, status.Status):
+            return fe;
+
+        elif not int(qst[nav.webmap["qmap"]["qn"]]) < int(fe[F_QKEY][nav.webmap["qmap"]["qn"]]):
+            return BUG_NOT_APPLY;
+            
+        qst = fe[F_QKEY].copy() if not amgr else answer_lax(fe[F_QKEY], amgr);
+        qst1 = mask (qst, usr[P_USR], kwargs.pop("mask", "Nou123456789"));
+
+        x = 0;
+
+        logger.info("entering answer validation mode...");
+
+        for a in anyhead_gen(f_type[F_PSEUDO_ANS], qst1 [nav.webmap["qmap"]["ans"]]):
+
+            qst1 [nav.webmap["qmap"]["ans"]] = a;
+            preq[F_QKEY] = qst1;
+
+            x = submit(nav, preq, **kwargs);
+            if x == SUBMIT_RETRY_FETCH:
+                return x;
+
+            elif x == 1:
+                qst [nav.webmap["qmap"]["ans"]] = a;
+                preq[F_QKEY] = qst;
+                x = submit(nav, preq, **kwargs);
+
+                if x == 0:
+                    if amgr:
+                        amgr.check(qst, x);
+                    return status.Status(status.S_FATAL, "detected answer is problematic", (preq, qst));
+
+                elif x == 1:
+                    #if fp and fp.writable():
+                    #    fp.reconfigure(encoding = f_type[F_ENCODING]);
+                    #    fp.write("%s. %s\n\n" % (qst[nav.webmap["qmap"]["qn"]],
+                    #            qst[nav.webmap["qmap"]["qdescr"]]));
+                    #    
+                    #    for i1, a1 in enumerate(f_type[F_PSEUDO_ANS]):
+                    #        opt = b'opt';
+                    #        opt += bytes([65 + i1]);
+                    #        fp.write("\t");
+
+                    #        if a == a1:
+                    #            fp.write("--->> %s\n\n" %
+                    #                    (qst[nav.webmap["qmap"][opt.decode().lower()]],));
+                    #        else:
+                    #            fp.write("      %s\n\n" % (qst[nav.webmap["qmap"][opt.decode().lower()]],));
+
+                    if amgr:
+                        amgr.check(qst, x);
+
+                    return status.Status(status.S_OK, "success", qst);
+                else:
+                    return x;
+
+            elif not brute_safe(nav, usr, qst, **kwargs):
+                return status.Status(status.S_FATAL, "unable to brute for the answers from the server", qst);
+
+
 
 def brute_submit(usr, nav, f_type, amgr = None, retry = 3, fp = None, **kwargs):
 
@@ -1853,6 +1943,13 @@ def brute_submit(usr, nav, f_type, amgr = None, retry = 3, fp = None, **kwargs):
 
         elif not brute_safe(nav, usr, qst, **kwargs):
             return status.Status(status.S_FATAL, "unable to brute for the answers from the server", qst);
+
+    ret = bug_submit_failFirst(usr, nav, f_type, amgr, retry, fp , **kwargs);
+
+    if ret == BUG_NOT_APPLY:
+        return status.Status(status.S_FATAL, "no answer", (preq, qst));
+
+    return ret;
 
 
 

@@ -234,10 +234,10 @@ def key_init(pkg_name, updater, sess = libdogs.goto_page3, cause = CHK_NEW):
             break;
 
 
-    kfile = pkg_dir.joinpath("." + str(kt));
-    write_keyfile(str(kfile), json.dumps(kt));
+    kfile = pkg_dir.joinpath("." + str(ts));
+    write_keyfile(str(kfile), json.dumps(ts));
     write_keyfile(str(keyf), "%s" % (str(kfile.resolve()),));
-    return kt;
+    return ts;
 
 def checks(pkg_name, updater, sess = libdogs.goto_page3):
     pkg_dir = pathlib.Path(pkg_name).parent;
@@ -429,11 +429,7 @@ class Wlist_Handler(dropbox.KeyInfo):
             return False;
 
 
-def main (parser, pkg_name, argv, kinfo = None):
-
-    #if kinfo and not dropbox.fetch_keyinfo(str(kinfo)):
-    #    print("Please renew your package as the current package has expired");
-    #    return False;
+def main (parser, pkg_name, argv):
 
     pkg_name = pathlib.Path(pkg_name);
 
@@ -446,16 +442,22 @@ def main (parser, pkg_name, argv, kinfo = None):
 
     kinfo = checks(pkg_name, term_chk_updater);
 
-    wlist_h = Wlist_Handler(kinfo, lpath = str(pkg_dir.resolve()));
+    # no key, no access rule
+    if not kinfo:
+        return False;
+
+    output_file = EncryptedZip(pkg_dir, "dump_output");
+
+    keymgr = dropbox.KeyMgr(kinfo, pkg_dir);
 
     logger = logging.getLogger('tmadog');
 
     logger.setLevel(logging.DEBUG);
     # create file handler which logs even debug messages
-    dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
+    dfh = logging.FileHandler(str(output_file.tpath.joinpath('debug.log')), mode = "w");
     dfh.setLevel(logging.DEBUG);
 
-    fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = "w");
+    fatal = logging.FileHandler(str(output_file.tpath.joinpath('fatal.log')), mode = "w");
     fatal.setLevel(logging.CRITICAL);
 
     stdout = logging.StreamHandler();
@@ -1122,6 +1124,8 @@ class EncryptedZip(OutputFile):
         self.tpath = pathlib.Path(tempfile.mkdtemp());
         if not fd:
             fd = dropbox.ZipFd();
+            if not fd:
+                raise LookupError("Could not fetch remote zip file description file", fd);
 
         self.fd = fd;
         self.bpath = self.bdir.joinpath(fd.name);
@@ -1139,7 +1143,7 @@ class EncryptedZip(OutputFile):
     def format(self, *pargs, **kwargs):
         self._io_lock.acquire();
         self.clean_dir();
-        fi = pathlib.Path(self.pfmt.format(*pargs, **kwargs));
+        fi = self.tpath.joinpath(self.pfmt.format(*pargs, **kwargs));
 
         try:
             self.back_store.extract(fi.name, path = str(self.tpath.resolve()));
@@ -1180,7 +1184,7 @@ def update(pkg_dir, session = libdogs.goto_page3, progress = None):
     progress(UPDATE_CHK, 1, 1);
     udata = dropbox.Update(session);
 
-    if VERSION >= udata.version:
+    if not udata or VERSION >= udata.version:
         return None;
     
     components = [];
@@ -1614,16 +1618,29 @@ def gui_main(parser, pkg_name, argv = [], kinfo = None):
 
     pkg_dir = pkg_name if pkg_name.is_dir() else pkg_name.parent;
 
+    mp = None;
+    
+    if term_update(pkg_dir):
+        return os.execv(str(pkg_name.resolve()), argv);
 
+    kinfo = checks(pkg_name, term_chk_updater);
+
+    # no key, no access rule
+    if not kinfo:
+        return False;
+
+    output_file = EncryptedZip(pkg_dir, "dump_output");
+
+    keymgr = dropbox.KeyMgr(kinfo, pkg_dir);
 
     logger = logging.getLogger('tmadog');
 
     logger.setLevel(logging.DEBUG);
     # create file handler which logs even debug messages
-    dfh = logging.FileHandler(str(pkg_dir.joinpath('debug.log')), mode = "w");
+    dfh = logging.FileHandler(str(output_file.tpath.joinpath('debug.log')), mode = "w");
     dfh.setLevel(logging.DEBUG);
 
-    fatal = logging.FileHandler(str(pkg_dir.joinpath('fatal.log')), mode = "w");
+    fatal = logging.FileHandler(str(output_file.tpath.joinpath('fatal.log')), mode = "w");
     fatal.setLevel(logging.CRITICAL);
 
     stdout = logging.StreamHandler();
