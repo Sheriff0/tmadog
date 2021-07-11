@@ -253,10 +253,50 @@ try:
 
             self.printi ("Done.")
             return qscr ["qmgr"]
+        
+
+        def escapesCmd_colon58(self, key = None):
+            args = bytearray ()
+            c = key;
+            self.stdscr.scrollok (True)
+            self.stdscr.keypad (True)
+            self.stdscr.nodelay (False)
+            self.stdscr.notimeout (False)
+            self.stdscr.move (self.LINES - 1, 0)
+            self.stdscr.clrtoeol ()
+            self.stdscr.touchline (0, self.LINES - 1, False)
+            curses.echo ()
+            
+            cmd_mode = False;
+            comm = None;
+            while c != 10:
+                c = self.stdscr.getch ()
+                if c == 10 or cmd_mode:
+                    #to disable the terminating enter key
+                    if cmd_mode:
+                        comm = self._get_cmd (c);
+                    cmd_mode = True;
+                    if comm:
+                        c = 10;
+                elif c == curses.ascii.ESC:
+                    break
+
+                elif curses.ascii.isascii (c):
+                    args.append (c)
+
+                else:
+                    break
+            else:
+                curses.noecho ()
+                return comm (args) if args else comm ()
+
+
+            curses.noecho ()
+            self.ctrl_l12 ()
 
 
         def __call__ (self, key):
-            args = bytearray ()
+            args = bytearray (); 
             comm = self._get_cmd (key)
             if not comm:
                 self.stdscr.scrollok (True)
@@ -520,7 +560,7 @@ try:
 
             return (flags, txt_range, top_scry, bot_scry, topy, boty)
 
-        def enter10 (self, c = False):
+        def enter10 (self, c = False, **kwargs):
 
             if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
                 if c == False:
@@ -550,7 +590,7 @@ try:
                 post_fetch_arg = ()
 
                 try:
-                    qst = self.scr_mgr ["qmgr"].fetch (timeout = (30.5, 60))
+                    qst = self.scr_mgr ["qmgr"].fetch (timeout = (30.5, 60), **kwargs);
 
                     if qst and isinstance (qst, lxml.html.FieldsDict):
 
@@ -845,15 +885,8 @@ try:
             self.scr_mgr ["qscr"].move (t[0], 0)
 
         def ctrl_r18 (self):
-            if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
-                qst = self.scr_mgr["qst"].copy ()
-
-                for k, v in self.scr_mgr ["nav"].webmap ["retros"].items ():
-                    if k not in qst:
-                        break
-                    qst [k] = v
-
-                return self.update_qscr (qst)
+            self.scr_mgr ["qmode"] = False;
+            return self.enter10(force = True);
 
         def increaseQn_keyPlus43 (self, addend = None):
             if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
@@ -883,6 +916,21 @@ try:
                 n = math.trunc (int (qst [self.scr_mgr ["qmgr"].qmap ["score"]] + "0") / 10) + addend
 
                 qst [self.scr_mgr ["qmgr"].qmap ["score"]] = str (n)
+
+                self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
+
+        def chTMA_key_rightBrace125 (self, crscode = bytearray ()):
+            if self.scr_mgr ["qmode"] and self.scr_mgr ["qst"]:
+                crscode = crscode.decode()
+
+                qst = {}
+
+                for k,v in self.scr_mgr ["qst"].copy ().items ():
+                    if isinstance (v, str):
+                        v = re.sub (r"(?P<cs>tma" + self.scr_mgr [self.keys.UID2] + ")",
+                                self.scr_mgr ["qmgr"]._copycase (crscode), v, flags =
+                                re.I)
+                    qst [k] = v
 
                 self.update_qscr (qst, flags = PRT_PRINT_CHOICES | PRT_PRINT_QST | PRT_KEEPLINE)
 

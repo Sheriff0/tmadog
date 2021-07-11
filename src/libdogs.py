@@ -1080,8 +1080,8 @@ def preprocess(args, keymgr, excl_crs = [], *pargs, **kwargs):
         if re.fullmatch(r'-?\d+', y):
             y = resolve_ref(record, y, P_CRSCODE, "all");
 
-        if re.fullmatch(r'-?\d+', usr[P_TMA]):
-            usr[P_TMA] = resolve_ref(record, usr[P_TMA], P_TMA, "1");
+        #if re.fullmatch(r'-?\d+', usr[P_TMA]):
+        #    usr[P_TMA] = resolve_ref(record, usr[P_TMA], P_TMA, "1");
 
         if re.fullmatch('all', y, re.I):
             logger.info("preprocess(): no course specified for %s, entering course discovery mode",

@@ -194,7 +194,7 @@ class KeyMgr:
         self.kpath = kpath;
         self.keyinfo = keyinfo;
         self.updater = updater;
-        rkinfo = dropbox.fetch_keyinfo(str(self.keyinfo), self.updater);
+        rkinfo = fetch_keyinfo(str(self.keyinfo), self.updater);
         if not rkinfo:
             raise LookupError("Could not fetch remote key file", rkinfo);
 

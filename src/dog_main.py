@@ -261,6 +261,8 @@ def term_chk_updater(cmd, args = None):
     def _getkey(msg = "Please enter a new key"):
         try:
             user_key = input("\n%s->> " % (msg,));
+            return user_key;
+
         except KeyboardInterrupt:
             #CHK_QUIT
             print("Exiting...");
@@ -446,7 +448,7 @@ def main (parser, pkg_name, argv):
     if not kinfo:
         return False;
 
-    output_file = EncryptedZip(pkg_dir, "dump_output");
+    output_file = EncryptedZip(pkg_dir, "dumb_output");
 
     keymgr = dropbox.KeyMgr(kinfo, pkg_dir);
 
@@ -582,9 +584,11 @@ Please input a cookie file (e.g from the browser)--> """));
         logger.info("no output file given, setting default output file for quiz");
 
         #NOTE the unix-style though.
-        args.output = str(pkg_dir.joinpath("output/{matno}_{crscode}_TMA{tmano}.txt"));
+        args.output = "{matno}_{crscode}_TMA{tmano}.txt";
 
-    pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
+    output_file.pfmt = args.output;
+
+    #pathlib.Path(args.output).parent.resolve().mkdir(parents = True, exist_ok = True);
 
     logger.debug("initializing answer manager");
     ansmgr = ansm.AnsMgr (
@@ -603,14 +607,13 @@ Please input a cookie file (e.g from the browser)--> """));
     dog = simple_dog.SimpleDog(
             libdogs.preprocess(
                 args,
+                keymgr,
                 args.exclude if args.exclude else [], # NOTE defaults like
                 # this should be in config
-                **wlist_h,
-                wlist_cb = wlist_h,
                 ),
             ansmgr,
             get_nav,
-            outfile = args.output,
+            outfile = output_file,
             timeout = REQUEST_TIMEOUT,
             );
 
@@ -621,12 +624,16 @@ Please input a cookie file (e.g from the browser)--> """));
         dog.submit(task);
         logger.info("checking for suspended jobs for rerun");
         dog.resume_suspended();
+        output_file.close();
         cleanup();
+        output_file.close();
 
     except KeyboardInterrupt:
+        output_file.close();
         cleanup();
 
     except BaseException as err:
+        output_file.close();
         cleanup();
         raise err;
 
@@ -1108,8 +1115,8 @@ class EncryptedZip(OutputFile):
             self.parent = parent;
             super().__init__(*pargs, **kwargs);
 
-        def __del__(self):
-            return self.parent.__del__();
+        #def __del__(self):
+        #    return self.parent.__del__();
 
         def format(self, *pargs, **kwargs):
             return self.parent.format(*pargs, **kwargs);
@@ -1182,7 +1189,7 @@ def update(pkg_dir, session = libdogs.goto_page3, progress = None):
         progress = lambda *arg: arg;
 
     progress(UPDATE_CHK, 1, 1);
-    udata = dropbox.Update(session);
+    udata = dropbox.Updates(session);
 
     if not udata or VERSION >= udata.version:
         return None;
@@ -1235,7 +1242,7 @@ def term_update(pkg_dir, sess = libdogs.goto_page3):
             elif task == UPDATE_INSTALL:
                 print("\n\nInstalling updates. Do not interrupt.");
 
-        print("%s%" % (math.trunc((cur/total) * 100),));
+        print("%s%%" % (math.trunc((cur/total) * 100),));
 
 
     uv = update(pkg_dir, session = sess, progress = _updater);
