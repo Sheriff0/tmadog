@@ -8,63 +8,68 @@ class User
 
     Resu status;
 
-    private org.json.JSONObject _data;
-
     private String _name;
 
     private Server _server;
-    
+
     byte _flags;
 
-    boolean _init()
+    protected org.json.JSONObject _data;
+
+    private boolean
+    _init()
     {
-	if(STARTED & _flags > 0)
+	if(STARTED & this._flags > 0)
 	    return true;
 
-	_flags = 0;
+	this._server = new Dropbox();
 
 	// NOTE: error handling
-	_data = _server.readFileJSON(_name);
+	update(_server.readFileJSON(this._name));
+
+	this.status = Resu(this.toString());
+
+	sync();
 
 	return true;
+    }
+    
+    User()
+    {
+	super();
+	this._flags = 0;
+	this._data = new org.json.JSONObject();
     }
 
     User(String name)
     {
-	_name = name;
-	_server = new Dropbox();
+	this();
+	this._name = name;
     }
 
     User(Server server)
     {
-	_server = server;
+	this();
+	this._server = server;
 
-	// An implicit name
-	_name = null;
     }
 
     User(String name, Server server)
     { 
-	_name = name;
-	_server = server;
+	super();
+	this._name = name;
+	this._server = server;
     }
 
-    <JSONType> JSONType get(String key)
-    {
-	if(_init())
-	    JSONType res = _data.get(key);
-	else
-	    JSONType res = new T();
+    void set_dirty() { this._flags |= DIRTY; };
 
-	return res;
-    }
-
-    <JSONType> boolean set(String key, JSONType value)
+    <JSONType> boolean
+    set(String key, JSONType value)
     {
 	if(_init())
 	{
-	    JSONType res = _data.put(key);
-	    _flags |= DIRTY;
+	    set_dirty();
+	    this._data.put(key, value);
 
 	} else
 	    return false;
@@ -72,26 +77,106 @@ class User
 	return true;
     }
 
-    boolean flush(boolean force)
+    boolean
+    flush(boolean force)
     {
 	if(!(_init()))
 	    return false;
 
-	if((_flags & DIRTY) == 0) // clean
+	if((this._flags & DIRTY) == 0) // clean
 	{
 	    if(!force)
 		return true;
 	}
 
-	return _sync();
-	
+	return this._server.writeFileJSON(_name, this._data);
+
     }
 
-    boolean _sync()
+    boolean
+    sync()
     {
+	if(!(_init()))
+	    return false;
 
+	return this.status.sync();
+    }
+    
+    // shallow copy
+    boolean 
+    update(<? extends org.json.JSONObject> other)
+    {
+	for(String key : other.keySet())
+	{
+	    this.put(key, other.get(key));
+	}
+
+	return true;
     }
 
-    String toString(){ return _name; };
+    boolean 
+    copy(<? extends User> other)
+    {
+	for(String key : other.keySet())
+	{
+	    this.put(key, other.get(key));
+	}
+
+	return true;
+    }
+
+    String toString(){ return this._name; };
+
+    // overides
+    
+
+    public int length() { return this._data.length(); };
+    public void
+    clear()
+    {
+	set_dirty();
+	this._data.clear();
+    }
+
+    public boolean isEmpty() { return this._data.isEmpty(); };
+
+    
+    public Iterator<String> keys() { return keySet().iterator(); };
+
+    Set
+    keySet()
+    {
+	return this._data.keySet().clone(); 
+    }
+
+    <JSONType> JSONType
+    get(String key)
+    {
+	if(!(_init()))
+	    return new JSONType();
+
+	return super.get(key);
+    }
+
+
+    <JSONType> boolean
+    put(String key, JSONType value)
+    {
+	return set<JSONType>(key, value);
+    }
+
+    public void
+    clear()
+    {
+	set_dirty();
+	return super.clear();
+    }
+
+    public Object
+    remove(String key)
+    {
+	this.set_dirty();
+	return super.remove(key);
+    }
 
 }
