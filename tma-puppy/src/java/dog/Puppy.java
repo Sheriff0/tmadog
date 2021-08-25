@@ -69,7 +69,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.io.IOException;
 import java.util.Set;
-import java.io.File
+import java.io.File;
 
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -79,7 +79,7 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.internal.UnrecognizedArgumentException;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 
-import org.json.JSONObject
+import org.json.JSONObject;
 
 class 
 Puppy
@@ -92,18 +92,18 @@ Puppy
 	{"--tma"}
     };
 
+    private final String arg_dest[] = {
+	"matno",
+	"pwd",
+	"crscode",
+    };
+
     private final int
 	ARGNAME_MATNO = 0,
 	ARGNAME_PWD = 1,
 	ARGNAME_CRSCODE = 2,
 	ARGNAME_TMA = 3;
 
-
-    private final String arg_dest[] = {
-	"matno",
-	"pwd",
-	"crscode",
-    };
 
     private byte flags = 0;
     
@@ -128,23 +128,116 @@ Puppy
 	USR_PUPPY_ID = "pid",
 	USR_EXTRAS = "extras",
 	// for reads
-	USR_CRSCODES = "courses";
+	USR_CRSCODES = "courses",
 
-    private Server _server;
+	USR_JOB_CMDLINE = "cmdline",
+	USR_JOB_NAME = "name";
+
+    private Server server;
 
     private JSONObject
-	_user_rw,
-	_user_r;
+	user_rw,
+	user_r;
 
     private String
-	_name,
-	_name_r,
-	_pwd;
+	name,
+	name_r,
+	pwd;
     
     //Puppy id
-    private Integer _pid;
+    private Integer pid;
 
-    private final ArgumentParser _parser = ArgumentParsers.newFor(null).build();
+    private final ArgumentParser parser = ArgumentParsers.newFor(null).build();
+
+    Puppy(
+	    String name,
+	    String pwd,
+	    Integer pid,
+	 )
+    {
+	this(name, pwd, pid, null, null);
+    }
+
+    Puppy(
+	    String name,
+	    String pwd,
+	    Integer pid,
+	    Server server,
+	    JSONObject initials
+	    ) throws AuthError
+    {
+	user_rw = load_user_rw(name);
+
+	if (is_user_rw_empty(user_rw))
+	{
+	    user_rw = init_new_user(name, pwd, user_rw);
+	    pid = user_rw.get(USR_PUPPY_ID);
+
+	} else
+	{
+
+	    if(name != user_rw.get(USR_ID).toString())
+		throw new AuthError(MSG_INVALID_NAME);
+
+
+	    if(pwd != user_rw.get(USR_PWD))
+		throw new AuthError(MSG_INVALID_PWD);
+
+	    if(pid != user_rw.getInt(USR_PUPPY_ID))
+		throw new AuthError(MSG_INVALID_PID);
+	}
+
+	this.name = name;
+	this.pwd = pwd;
+	this.pid = pid;
+
+	this.user_rw = user_rw;
+	
+	this.name_r = to_user_r(name);
+
+	this.user_r = load_user_r(this.name_r);
+
+	this.server = (server != null)? server : new FileServer();
+
+	//Check if we have initial data,
+	//e.g from a previous unsuccessful attempt to flush to server.
+	
+	update_from_obj(initials);
+    }
+
+    
+    public JSONType set_extras(String key, Object value);
+    public JSONType get_extras(String key);
+
+
+    private static boolean
+    init()
+    {
+
+	if((flags & F_INIT) > 0)
+	    return true;
+
+	parser.defaultHelp(false);
+	parser.addArgument(all_args[ARGNAME_MATNO])
+	    .nargs("+")
+	    .required(true)
+	    .dest(arg_dest[ARGNAME_MATNO]);
+
+	parser.addArgument(all_args[ARGNAME_PWD])
+	    .nargs("+")
+	    .required(true)
+	    .dest(arg_dest[ARGNAME_PWD]);
+
+	parser.addArgument(all_args[ARGNAME_CRSCODE])
+	    .nargs("+")
+	    .dest(arg_dest[ARGNAME_CRSCODE]);
+
+	//NO need for ARGNAME_TMA
+
+	flags |= F_INIT;
+	return true;
+    }
+
 
     /**
      * <b>init_new_user</b> creates a new user with given details:
@@ -163,121 +256,116 @@ Puppy
      *	USR_EXTRAS: {},
      * }
      */
-    private Integer
+
+    private JSONObject
     init_new_user(
 	    String name,
 	    String pwd,
 	    )
     {
-	this._user_rw.set(USR_ID, Integer.parseInt(name));
-	this._user_rw.set(USR_PWD, pwd);
-	this._user_rw.set(USR_EXTRAS, new JSONObject());
-	this._user_rw.set(USR_TRANSACTION_ID, NULL_ID);
-	// random id from 0 to INIT_MAX_PID
-	Integer pid =  Integer.valueOf(Math.round(Math.random() * INIT_MAX_PID));
-	this._user.set(USR_PUPPY_ID, pid);
-
-	return pid;
-
+	JSONObject user_rw = new JSONObject();
+	return init_new_user(name, pwd, user_rw);
     }
 
-    private void
-    load_user_rw(String name)
-    {
-
-    }
-
-    private void
-    load_user_r(String name)
-    {
-	if(this._name_r == null)
-	{
-	    char[] rev = name.toCharArray();
-
-	    int idx = rev.length - 1;
-
-	    for(char c : name)
-		rev[idx--] = c;
-
-	    this._name_r = new String(rev);
-
-	}
-
-	//network code
-    }
-
-
-    Puppy(
+    private JSONObject
+    init_new_user(
 	    String name,
 	    String pwd,
-	    Integer pid,
-	    Server server,
-	    JSONObject initials
-	    ) throws AuthError
+	    JSONObject user_rw,
+	    )
     {
-	load_user_rw(name);
 
-	if (this._user_rw.empty())
-	{
-	    pid = init_new_user(name, pwd);
+	user_rw.set(USR_ID, Integer.parseInt(name));
+	user_rw.set(USR_PWD, pwd);
+	user_rw.set(USR_EXTRAS, new JSONObject());
+	user_rw.set(USR_TRANSACTION_ID, NULL_ID);
+	// random id from 0 to INIT_MAX_PID
+	Integer pid =  Integer.valueOf(Math.round(Math.random() * INIT_MAX_PID));
+	user_rw.set(USR_PUPPY_ID, pid);
 
-	} else
-	{
+	return user_rw;
 
-	    if(name != this._user_rw.get(USR_ID).toString())
-		throw new AuthError(MSG_INVALID_NAME);
-
-
-	    if(pwd != this._user_rw.get(USR_PWD))
-		throw new AuthError(MSG_INVALID_PWD);
-
-	    if(pid != this._user_rw.get(USR_PUPPY_ID))
-		throw new AuthError(MSG_INVALID_PID);
-	}
-
-	load_user_r(name);
-	this._name_r = name;
-	this._pwd = pwd;
-	this._pid = pid;
-	this._server = server;
-
-	//Check if we have initial data,
-	//e.g from a previous unsuccessful attempt to flush to server.
-	
-	update_from_obj(initial);
     }
 
-    
-    public JSONType set_extras(String key, Object value);
-    public JSONType get_extras(String key);
-
-
-    private static boolean
-    _init()
+    private JSONObject
+    load_user_rw(String name)
     {
+	String data = this.server.get(name);
+	JSONObject user_rw;
+	
+	try
+	{
+	    user_rw = (data != null)?
+		new JSONObject(data) :
+		new JSONObject();
+	}catch(JSONException exp)
+	{
+	    user_rw = new JSONObject();
+	}
 
-	if((flags & F_INIT) > 0)
-	    return true;
+	return user_rw;
+    }
 
-	_parser.defaultHelp(false);
-	_parser.addArgument(all_args[ARGNAME_MATNO])
-	    .nargs("+")
-	    .dest(arg_dest[ARGNAME_MATNO]);
+    private boolean
+    load_user_rw()
+    {
+	return load_user_rw(this._name);
+    }
 
-	_parser.addArgument(all_args[ARGNAME_PWD])
-	    .nargs("+")
-	    .dest(arg_dest[ARGNAME_PWD]);
+    private JSONObject
+    load_user_r(String name)
+    {
+	String data = this.server.get(name);
+	JSONObject user_r;
+	
+	try
+	{
+	    user_r = (data != null)?
+		new JSONObject(data) :
+		new JSONObject();
+	}catch(JSONException exp)
+	{
+	    user_r = new JSONObject();
+	}
 
-	_parser.addArgument(all_args[ARGNAME_CRSCODE])
-	    .nargs("+")
-	    .dest(arg_dest[ARGNAME_CRSCODE]);
+	if(;
+    }
 
-	//NO need for ARGNAME_TMA
+    private boolean
+    load_user_r()
+    {
+	this.user_r = load_user_r(this.name_r);
 
-	flags |= F_INIT;
 	return true;
     }
 
+
+    private String
+    to_user_r(String name)
+    {
+
+	char[] rev = name.toCharArray();
+
+	int idx = rev.length - 1, idx1 = 0;
+
+	for(;idx >= 0; idx1++)
+	    rev[idx--] = name.charAt(idx1);
+
+	return new String(rev);
+
+    }
+
+    private boolean
+    is_user_rw_empty(JSONObject user_rw)
+    {
+
+	return !(
+		user_rw.has(USR_ID) &&
+		user_rw.has(USR_PWD) &&
+		user_rw.has(USR_TRANSACTION_ID) &&
+		user_rw.has(USR_PUPPY_ID)
+		);
+    }
 
     /**
      * <code><b>is_valid_argument</b></code> is used to check if a flag is recognized by the given <code>psr</code>
@@ -287,7 +375,7 @@ Puppy
     private String
     is_valid_argument(String arg)
     {
-	_init();
+	init();
 
 	for(int idx = 0; idx < all_args.length; idx++)
 	{
@@ -321,12 +409,12 @@ Puppy
 
 	List lines = Files.readAllLines(ff.toPath(), StandardCharsets.UTF_8);
 
-	String[] argv = _preprocess(new String[lines.size()]);
+	Vector<String> argv = preprocess(new String[lines.size()]);
 
 	try
 	{
-	    Namespace args = _parser.parseArgs(argv);
-	    return _write_puppy(argv, ff.getName());
+	    Namespace args = parser.parseArgs(argv.toArray(new String[argv.size()]));
+	    return write_puppy(argv, args, ff.getName());
 
 	}catch(ArgumentParserException argExp){
 	    return argExp;
@@ -334,9 +422,9 @@ Puppy
     }
 
     private Boolean
-    _write_puppy(String[] cmdline, File filename)
+    write_puppy(String[] cmdline, Namespace args, File filename)
     {
-	return _write_puppy(cmdline, filename.getName());
+	return write_puppy(cmdline, args, filename.getName());
     }
 
     /**
@@ -356,7 +444,7 @@ Puppy
      * }
      *
      * @param args
-     * 		parsed command line
+     * 		preprocessed command line
      * @param name
      * 		canonical name of the source of the command line
      *
@@ -365,22 +453,76 @@ Puppy
      */
 
     private Boolean
-    _write_puppy(String[] cmdline, String name)
+    write_puppy(Vector<String> cmdline, Namespace args, String name)
     {
+	JSONObject job = new JSONObject();
+
+	job.put(USR_JOB_NAME, name);
+	job.put(USR_JOB_CMDLINE, cmdline);
+	return put_rw_queue(job, args);
 
     }
 
+    private boolean
+    put_rw_queue(JSONObject job, args)
+    {
+	if(get_r_Int(USR_SLOTS) < 1)
+	    return false;
+
+	JSONArray queue;
+
+	if(get_rw_Int(USR_TRANSACTION_ID) > get_r_Int(USR_TRANSACTION_ID))
+	{
+	    queue = get_rw_JSONArray(USR_TRANSACTION);
+	}else
+	{
+	    queue = new JSONArray();
+	}
+
+	queue.put(job);
+
+	put_rw(USR_TRANSACTION, queue);
+
+	Integer tid = get_rw_Int(USR_TRANSACTION_ID);
+	return put_rw(USR_TRANSACTION_ID, ++tid);
+
+    }
+    
+    public JSONArray
+    get_rw_JSONArray(String key)
+    {
+	return this.user_rw.getJSONArray(key);
+    }
+
+    public Integer
+    get_rw_Int(String key)
+    {
+	return this.user_rw.getInt(key);
+    }
+
+    public Object
+    get_rw(String key)
+    {
+	return this.user_rw.get(key);
+    }
+
+    private boolean
+    put_rw(String key, Object value)
+    {
+	this.user_rw.put(key, value);
+    }
+
     private Boolean
-    _write_puppy(Namespace args, String name){};
+    write_puppy(Namespace args, String name){};
 
     public Object
     flush()
     {
-
+	return server.post(this._name, _user_rw.toString());
     }
 
-    private String[]
-    _preprocess(String[] arglines)
+    private Vector<String>
+    preprocess(String[] arglines)
     {
 	Vector<String> argv = new Vector<String>();
 	
@@ -495,7 +637,7 @@ Puppy
 	    argv.add(argbuff[BUF_ARG_VAL].trim());
 	}
 
-	return argv.toArray(new String[argv.size()]);
+	return argv;
     }
 
     void

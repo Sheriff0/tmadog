@@ -1,18 +1,9 @@
 package dog;
 
-interface Server
+abstract class
+Server
 {
-    boolean addFile(String filename);
-
-    boolean addFile(String filename, String data);
-
-    boolean writeFile(String filename, String data);
-
-    boolean updateFileJSON(String filename, org.json.JSONObject data);
-
-    boolean writeFileJSON(String filename, org.json.JSONObject data);
-
-    String readFile(String filename);
-
-    org.json.JSONObject readFileJSON(String filename);
+    abstract String get(String path);
+    abstract String put(String path, String data);
+    abstract String post(String path, String data);
 }
