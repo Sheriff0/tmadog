@@ -11,15 +11,153 @@
 # hlsearch on (H) or off (h):
 ~h
 # Last Search Pattern:
-~MSle0~/get
+~MSle0~/File
 
 # Command Line History (newest to oldest):
 :qall
-|2,0,1628950073,,"qall"
+|2,0,1629895763,,"qall"
 :w
-|2,0,1628949904,,"w"
+|2,0,1629895673,,"w"
+:w FileServer.java
+|2,0,1629842016,,"w FileServer.java"
+:ed Dropbox.java
+|2,0,1629841837,,"ed Dropbox.java"
+:!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %
+|2,0,1629841660,,"!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %
+|2,0,1629841627,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %"
+:split Server.java
+|2,0,1629841397,,"split Server.java"
+:tcd %:h
+|2,0,1629841383,,"tcd %:h"
+:q
+|2,0,1629809764,,"q"
+:split JSONArray.java
+|2,0,1629805543,,"split JSONArray.java"
+:sh
+|2,0,1629804809,,"sh"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 16
+|2,0,1629760103,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 16"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 1
+|2,0,1629760096,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 1"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 5
+|2,0,1629760091,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Factorial 5"
+:!ls JSON-java/src/main/java/org/json/JSONObject.java
+|2,0,1629739440,,"!ls JSON-java/src/main/java/org/json/JSONObject.java"
+:split /storage/emulated/0/dogger/dogger/src/libdogs.py
+|2,0,1629726503,,"split /storage/emulated/0/dogger/dogger/src/libdogs.py"
+:echo @c
+|2,0,1629723231,,"echo @c"
+:echo @a
+|2,0,1629721198,,"echo @a"
+:pwd
+|2,0,1629710124,,"pwd"
+:edit Factorial.java
+|2,0,1629710102,,"edit Factorial.java"
+:help CTRL-W_<
+|2,0,1629710038,,"help CTRL-W_<"
+:split
+|2,0,1629710008,,"split"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc arg.txt
+|2,0,1629650268,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc arg.txt"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc arg.tx
+|2,0,1629649765,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc arg.tx"
+:split arg.txt
+|2,0,1629493222,,"split arg.txt"
+:hide
+|2,0,1629480784,,"hide"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc %
+|2,0,1629477248,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc %"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc
+|2,0,1629476784,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc hhgg
+|2,0,1629474967,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Preproc hhgg"
+:!echo %:t
+|2,0,1629474457,,"!echo %:t"
+:!echo %
+|2,0,1629474442,,"!echo %"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t jhg
+|2,0,1629473855,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t jhg"
+:!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t jhg
+|2,0,1629473821,,"!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t jhg"
+:!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t
+|2,0,1629473807,,"!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java %:t"
+:set makeprg
+|2,0,1629470849,,"set makeprg"
+:echo 
+|2,0,1629470796,,"echo "
+:help errorformat-javac
+|2,0,1629470672,,"help errorformat-javac"
+:lmake
+|2,0,1629470583,,"lmake"
+:help :lpfile
+|2,0,1629469891,,"help :lpfile"
+:!sh
+|2,0,1629465851,,"!sh"
+:+
+|2,0,1629458766,,"+"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java -h
+|2,0,1629449752,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java -h"
+:!ls
+|2,0,1629449418,,"!ls"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java
+|2,0,1629449116,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java"
+:!rm Checksum.class
+|2,0,1629449113,,"!rm Checksum.class"
+:!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java
+|2,0,1629449064,,"!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Checksum.java"
+:!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Example.java
+|2,0,1629448987,,"!javac -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Example.java"
+:!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Example.java
+|2,0,1629448862,,"!java -cp .:argparse4j-0.9.0.jar:JSON-java/src/main/java Example.java"
+:!java
+|2,0,1629448757,,"!java"
+:split Example.java
+|2,0,1629448080,,"split Example.java"
+:lcd %:h
+|2,0,1629447954,,"lcd %:h"
+:0tabnew ~/play/java/Preproc.java
+|2,0,1629447938,,"0tabnew ~/play/java/Preproc.java"
+:0tabnew
+|2,0,1629447828,,"0tabnew"
+:help tabnew
+|2,0,1629447775,,"help tabnew"
+:.,.+1!
+|2,0,1629378323,,".,.+1!"
+:echo 0xd
+|2,0,1629377555,,"echo 0xd"
+:echo 0xfd
+|2,0,1629377550,,"echo 0xfd"
+:help py3
+|2,0,1629357489,,"help py3"
+:split /data/data/com.termux/files/usr/tmp/java.txt
+|2,0,1629291795,,"split /data/data/com.termux/files/usr/tmp/java.txt"
+:split /storage/emulated/0/dogger/dogger/src/dog_main.py
+|2,0,1629225158,,"split /storage/emulated/0/dogger/dogger/src/dog_main.py"
+:!ls java/
+|2,0,1629217047,,"!ls java/"
+:split %:h/Exceptions.java
+|2,0,1629124637,,"split %:h/Exceptions.java"
+:set cscopetag
+|2,0,1629124030,,"set cscopetag"
+:!ctags -R .
+|2,0,1629123985,,"!ctags -R ."
 :tabs
-|2,0,1628928636,,"tabs"
+|2,0,1629117802,,"tabs"
+:split java/dog/json/JSONObject.java
+|2,0,1629039922,,"split java/dog/json/JSONObject.java"
+:w %:h/JSONType.java
+|2,0,1629028838,,"w %:h/JSONType.java"
+:w %:h/json/JSONType.java
+|2,0,1629028822,,"w %:h/json/JSONType.java"
+:w %:h/json/JSONObject.java
+|2,0,1629028063,,"w %:h/json/JSONObject.java"
+:!mkdir %:h/json
+|2,0,1629027880,,"!mkdir %:h/json"
+:set ft=java
+|2,0,1628957341,,"set ft=java"
+:set ft=cpp
+|2,0,1628957317,,"set ft=cpp"
 :w %:h/Server.java
 |2,0,1628926537,,"w %:h/Server.java"
 :tabnew java/dog/Dropbox.java
@@ -28,14 +166,10 @@
 |2,0,1628894896,,"!ls java/org/json/"
 :!ls java/org/
 |2,0,1628894893,,"!ls java/org/"
-:!ls java/
-|2,0,1628894888,,"!ls java/"
 :0tabmove
 |2,0,1628893217,,"0tabmove"
 :tabnew java/org/json/JSONObject.java
 |2,0,1628893183,,"tabnew java/org/json/JSONObject.java"
-:q
-|2,0,1628893143,,"q"
 :help :tabmove
 |2,0,1628893121,,"help :tabmove"
 :split /storage/emulated/0/dogger/dogger/src/dropbox.py
@@ -56,14 +190,102 @@
 |2,0,1628889179,,"w java/tma/"
 
 # Search String History (newest to oldest):
+?/File
+|2,1,1629842171,47,"File"
+?/toStr
+|2,1,1629839857,47,"toStr"
+??dest
+|2,1,1629826981,63,"dest"
+??_pa
+|2,1,1629821172,63,"_pa"
 ?/get
-|2,1,1628945937,47,"get"
+|2,1,1629814961,47,"get"
+?/getL
+|2,1,1629814958,47,"getL"
+?/put
+|2,1,1629812202,47,"put"
+??USR_
+|2,1,1629811189,63,"USR_"
+?/addAll
+|2,1,1629810839,47,"addAll"
+?/append
+|2,1,1629810803,47,"append"
+?/appen
+|2,1,1629810800,47,"appen"
+?/JSONA
+|2,1,1629807693,47,"JSONA"
+?/writ
+|2,1,1629756869,47,"writ"
+?/init
+|2,1,1629756847,47,"init"
+?/para
+|2,1,1629756626,47,"para"
+?/this.
+|2,1,1629755675,47,"this."
+??server
+|2,1,1629755493,63,"server"
+??prepro
+|2,1,1629726658,63,"prepro"
+??t user
+|2,1,1629723245,63,"t user"
+?/instanceo
+|2,1,1629717719,47,"instanceo"
+??Na
+|2,1,1629651296,63,"Na"
+?/P_
+|2,1,1629644801,47,"P_"
+?/ARGN
+|2,1,1629637536,47,"ARGN"
+?/ARG_N
+|2,1,1629637511,47,"ARG_N"
+?/Unre
+|2,1,1629567885,47,"Unre"
+?/\cswitch_
+|2,1,1629545674,47,"\\cswitch_"
+?/pwdc
+|2,1,1629502212,47,"pwdc"
+?/usrc
+|2,1,1629502203,47,"usrc"
+?/tri
+|2,1,1629495525,47,"tri"
+?/argl
+|2,1,1629467877,47,"argl"
+? \<put\>
+|2,1,1629449091,,"\\<put\\>"
+?/lb
+|2,1,1629407111,47,"lb"
+?/App
+|2,1,1629293448,47,"App"
+?/Dog
+|2,1,1629225515,47,"Dog"
+?/write
+|2,1,1629105357,47,"write"
+?/accum
+|2,1,1629101299,47,"accum"
+?/try
+|2,1,1629101223,47,"try"
+?/keyS
+|2,1,1628978787,47,"keyS"
+?/map\.put
+|2,1,1628977356,47,"map\\.put"
+?/map
+|2,1,1628977173,47,"map"
+?/{$
+|2,1,1628967986,47,"{$"
+?/put.*(.*)\s*{
+|2,1,1628966645,47,"put.*(.*)\\s*{"
+?/public.*(.*)\s*{
+|2,1,1628963123,47,"public.*(.*)\\s*{"
+?/(.*)\s*{
+|2,1,1628962785,47,"(.*)\\s*{"
+?/()\s*{
+|2,1,1628962700,47,"()\\s*{"
+??map
+|2,1,1628960779,63,"map"
 ?/Null
 |2,1,1628945855,47,"Null"
 ?/\cnote
 |2,1,1628945571,47,"\\cnote"
-?/put
-|2,1,1628941562,47,"put"
 ?/<
 |2,1,1628923452,47,"<"
 ?/add
@@ -77,180 +299,621 @@
 
 # Registers:
 ""0	LINE	0
-	    <T> get(String key)
-	    {
-		if(_init())
-		    T res = _data.get(key);
-		else
-		    T res = new T();
-	
-		return res;
-	    }
-	
-|3,1,0,1,10,0,1628946164,"    <T> get(String key)","    {","	if(_init())","	    T res = _data.get(key);","	else","	    T res = new T();","","	return res;","    }",""
+	class
+	NoFileNoCreate extends IOException {};
+|3,1,0,1,2,0,1629895474,"class","NoFileNoCreate extends IOException {};"
 "1	LINE	0
 	
-|3,0,1,1,1,0,1628944403,""
+|3,0,1,1,1,0,1629842053,""
 "2	LINE	0
-	    private boolean _dirty;
-|3,0,2,1,1,0,1628944402,"    private boolean _dirty;"
-"3	LINE	0
-	
-|3,0,3,1,1,0,1628929483,""
-"4	LINE	0
-	
-|3,0,4,1,1,0,1628929444,""
-"5	LINE	0
-	    String _key;
-|3,0,5,1,1,0,1628929442,"    String _key;"
-"6	BLOCK	7
-	DROPBOX_
-	        
-	DROPBOX_
-	        
-	DROPBOX_
-|3,0,6,2,5,7,1628928735,"DROPBOX_","        ","DROPBOX_","        ","DROPBOX_"
-"7	LINE	0
-	    public final var delete_url = CONST.DROPBOX_DELETE_URL;
-	    public final var download_url = CONST.DROPBOX_DOWNLOAD_URL;
-	    public final var list_url = CONST.DROPBOX_LIST_URL;
-|3,0,7,1,3,0,1628928674,"    public final var delete_url = CONST.DROPBOX_DELETE_URL;","    public final var download_url = CONST.DROPBOX_DOWNLOAD_URL;","    public final var list_url = CONST.DROPBOX_LIST_URL;"
-"8	LINE	0
 	    final static String UPLOAD_URL = "https://content.dropboxapi.com/2/files/upload";
 	
-	    final static String DROPBOX_DOWNLOAD_URL = "https://content.dropboxapi.com/2/files/download";
+	    final static String DOWNLOAD_URL = "https://content.dropboxapi.com/2/files/download";
 	
-	    final static String DROPBOX_DELETE_URL = "https://api.dropboxapi.com/2/files/delete";
+	    final static String DELETE_URL = "https://api.dropboxapi.com/2/files/delete";
 	
-	    final static String DROPBOX_LIST_URL = "https://api.dropboxapi.com/2/files/list_folder";
+	    final static String LIST_URL = "https://api.dropboxapi.com/2/files/list_folder";
+|3,0,2,1,7,0,1629842045,"    final static String UPLOAD_URL = \"https://content.dropboxapi.com/2/files/upload\";","","    final static String DOWNLOAD_URL = \"https://content.dropboxapi.com/2/files/download\";","","    final static String DELETE_URL = \"https://api.dropboxapi.com/2/files/delete\";","","    final static String LIST_URL = \"https://api.dropboxapi.com/2/files/list_folder\";"
+"3	LINE	0
+	    boolean addFile(String filename);
 	
-	    final static String DROPBOX_KEY = "zxK60VpMtmwAAAAAAAAAAZ76lD62i4GvL5SxC9ZgkQpIrpV4cReqSh0-SoujeAtZ";
-|3,0,8,1,9,0,1628928623,"    final static String UPLOAD_URL = \"https://content.dropboxapi.com/2/files/upload\";","","    final static String DROPBOX_DOWNLOAD_URL = \"https://content.dropboxapi.com/2/files/download\";","","    final static String DROPBOX_DELETE_URL = \"https://api.dropboxapi.com/2/files/delete\";","","    final static String DROPBOX_LIST_URL = \"https://api.dropboxapi.com/2/files/list_folder\";","",>109
-|<"    final static String DROPBOX_KEY = \"zxK60VpMtmwAAAAAAAAAAZ76lD62i4GvL5SxC9ZgkQpIrpV4cReqSh0-SoujeAtZ\";"
+	    boolean addFile(String filename, String data);
+	
+	    boolean writeFile(String filename, String data);
+	
+	    boolean updateFileJSON(String filename, org.json.JSONObject data);
+	
+	    boolean writeFileJSON(String filename, org.json.JSONObject data);
+	
+	    String readFile(String filename);
+	
+	    org.json.JSONObject readFileJSON(String filename);
+|3,0,3,1,13,0,1629841949,"    boolean addFile(String filename);","","    boolean addFile(String filename, String data);","","    boolean writeFile(String filename, String data);","","    boolean updateFileJSON(String filename, org.json.JSONObject data);","","    boolean writeFileJSON(String filename, org.json.JSONObject data);","","    String readFile(String filename);","","    org.json.JSONObject readFileJSON(String filename);"
+"4	LINE	0
+	    boolean addFile(String filename);
+	
+	    boolean addFile(String filename, String data);
+	
+	    boolean writeFile(String filename, String data);
+	
+	    boolean updateFileJSON(String filename, org.json.JSONObject data);
+	
+	    boolean writeFileJSON(String filename, org.json.JSONObject data);
+	
+	    String readFile(String filename);
+	
+	    org.json.JSONObject readFileJSON(String filename);
+|3,0,4,1,13,0,1629841512,"    boolean addFile(String filename);","","    boolean addFile(String filename, String data);","","    boolean writeFile(String filename, String data);","","    boolean updateFileJSON(String filename, org.json.JSONObject data);","","    boolean writeFileJSON(String filename, org.json.JSONObject data);","","    String readFile(String filename);","","    org.json.JSONObject readFileJSON(String filename);"
+"5	LINE	0
+	    public 
+|3,0,5,1,1,0,1629814465,"    public "
+"6	LINE	0
+		return true;
+|3,0,6,1,1,0,1629814044,"	return true;"
+"7	LINE	0
+		put_rw(USR_TRANSACTION, queue);
+|3,0,7,1,1,0,1629813056,"	put_rw(USR_TRANSACTION, queue);"
+"8	LINE	0
+	
+|3,0,8,1,1,0,1629812550,""
 "9	LINE	0
-	    }
-|3,0,9,1,1,0,1628928582,"    }"
-"a	CHAR	0
-	 = "zxK60VpMtmwAAAAAAAAAAZ76lD62i4GvL5SxC9ZgkQpIrpV4cReqSh0-SoujeAtZ"
-|3,0,10,0,1,0,1628928833," = \"zxK60VpMtmwAAAAAAAAAAZ76lD62i4GvL5SxC9ZgkQpIrpV4cReqSh0-SoujeAtZ\""
+		JSONArray queue;
+|3,0,9,1,1,0,1629812453,"	JSONArray queue;"
+"a	LINE	0
+	
+		if(get_rw_Int(USR_TRANSACTION_ID) > get_r_getInt(USR_TRANSACTION_ID))
+		{
+		    queue = get_rw_JSONArray(USR_TRANSACTION);
+		}else
+		{
+		    queue = new JSONArray();
+		}
+	
+		queue.put(job);
+		put_rw(USR_TRANSACTION, queue);
+		Integer tid = Integer.valueOf(_user_rw.get(USR_TRANSACTION_ID));
+		_user_rw.put(USR_TRANSACTION_ID, ++tid);
+	
+		return true;
+|3,0,10,1,15,0,1629812445,"","	if(get_rw_Int(USR_TRANSACTION_ID) > get_r_getInt(USR_TRANSACTION_ID))","	{","	    queue = get_rw_JSONArray(USR_TRANSACTION);","	}else","	{","	    queue = new JSONArray();","	}","","	queue.put(job);","	put_rw(USR_TRANSACTION, queue);","	Integer tid = Integer.valueOf(_user_rw.get(USR_TRANSACTION_ID));","	_user_rw.put(USR_TRANSACTION_ID, ++tid);","","	return true;"
+"b	CHAR	0
+	JSONException
+|3,0,11,0,1,0,1629815130,"JSONException"
+"c	LINE	0
+	    private JSONObject user;
+	
+	    public String name;
+	
+	    public String pwd;
+	    
+	    //Puppy id
+	    public String pid;
+	
+|3,0,12,1,9,0,1629722231,"    private JSONObject user;","","    public String name;","","    public String pwd;","    ","    //Puppy id","    public String pid;",""
 "-	CHAR	0
-	String key
-|3,0,36,0,1,0,1628929321,"String key"
+	)
+|3,0,36,0,1,0,1629893953,")"
 
 # global variables:
 
 # File marks:
-'0  23  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,48,23,0,1628950075,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
-'1  97  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,49,97,0,1628929541,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
-'2  6  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
-|4,50,6,0,1628893394,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java"
-'3  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,51,1,0,1628889323,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
-'4  1  7  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java
-|4,52,1,7,1628889282,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java"
-'5  63  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
-|4,53,63,0,1628781289,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
-'6  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
-|4,54,1,0,1628770262,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
+'0  35  22  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,48,35,22,1629895766,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+'1  582  3  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,49,582,3,1629231909,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+'2  582  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,50,582,0,1629149321,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+'3  24  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
+|4,51,24,0,1628950075,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
+'4  182  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
+|4,52,182,0,1628929541,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
+'5  6  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
+|4,53,6,0,1628893394,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java"
+'6  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,54,1,0,1628889323,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+'7  1  7  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java
+|4,55,1,7,1628889282,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java"
+'8  63  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
+|4,56,63,0,1628781289,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
+'9  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
+|4,57,1,0,1628770262,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
 
 # Jumplist (newest first):
--'  23  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,23,0,1628950075,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  93  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,93,0,1628949874,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  69  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,69,0,1628949632,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  84  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,84,0,1628949471,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  87  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,87,0,1628949310,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  88  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,88,0,1628948719,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  70  5  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,70,5,1628948494,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  20  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,20,0,1628945003,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  30  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,30,0,1628943423,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  35  27  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,35,27,1628941087,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  36  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,36,0,1628940840,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  97  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,97,0,1628940764,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  4  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,4,0,1628940762,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  38  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java
-|4,39,38,0,1628940424,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java"
--'  505  22  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,39,505,22,1628940424,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  5  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
-|4,39,5,0,1628940424,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java"
--'  39  26  /storage/emulated/0/dogger/dogger/src/dropbox.py
-|4,39,39,26,1628940424,"/storage/emulated/0/dogger/dogger/src/dropbox.py"
--'  60  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,39,60,0,1628940424,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
--'  592  14  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
-|4,39,592,14,1628940424,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java"
--'  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
-|4,39,1,0,1628940424,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java"
--'  50  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,50,0,1628927905,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  19  36  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,19,36,1628925454,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  52  55  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-|4,39,52,55,1628925276,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java"
--'  6  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
-|4,39,6,0,1628893396,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java"
--'  159  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
-|4,39,159,0,1628893396,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java"
--'  4  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
-|4,39,4,0,1628892394,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java"
--'  61  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,39,61,0,1628891048,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
--'  66  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,39,66,1,1628890883,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
--'  63  16  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,39,63,16,1628889401,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  35  22  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,35,22,1629895766,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  154  34  /data/data/com.termux/files/usr/tmp/java.txt
+|4,39,154,34,1629895751,"/data/data/com.termux/files/usr/tmp/java.txt"
+-'  1730  60  /storage/emulated/0/dogger/dogger/src/dog_main.py
+|4,39,1730,60,1629895751,"/storage/emulated/0/dogger/dogger/src/dog_main.py"
+-'  2347  18  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
+|4,39,2347,18,1629895751,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java"
+-'  1096  21  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONArray.java
+|4,39,1096,21,1629895751,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONArray.java"
+-'  13  18  ~/play/java/Factorial.java
+|4,39,13,18,1629895751,"~/play/java/Factorial.java"
+-'  105  1  ~/play/java/Preproc.java
+|4,39,105,1,1629895751,"~/play/java/Preproc.java"
+-'  1  0  ~/play/java/Preproc.java
+|4,39,1,0,1629895750,"~/play/java/Preproc.java"
+-'  13  17  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,13,17,1629895520,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  9  35  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,9,35,1629895397,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,1,0,1629892340,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  36  16  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,36,16,1629892334,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  60  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,60,4,1629889258,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java
+|4,39,1,0,1629889256,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java"
+-'  26  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java
+|4,39,26,0,1629889253,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java"
+-'  75  13  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,75,13,1629872005,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  77  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,77,0,1629871846,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  46  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,46,0,1629871449,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  59  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,59,0,1629871171,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  55  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,55,0,1629871095,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  51  5  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,51,5,1629870982,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  41  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+|4,39,41,0,1629870808,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java"
+-'  8  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java
+|4,39,8,4,1629841850,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java"
+-'  3  6  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java
+|4,39,3,6,1629841848,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java"
+-'  7  24  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java
+|4,39,7,24,1629841755,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java"
+-'  9  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java
+|4,39,9,0,1629841466,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java"
+-'  411  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,411,0,1629841397,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  448  11  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,448,11,1629839769,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  417  10  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,417,10,1629839714,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  402  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,402,0,1629839494,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  403  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,403,0,1629839487,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  291  15  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,291,15,1629826988,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  317  17  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,317,17,1629826982,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  263  25  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,263,25,1629826914,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  395  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,395,0,1629826819,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  253  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,253,0,1629826816,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  190  16  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,190,16,1629826487,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  264  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,264,4,1629826433,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  419  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,419,4,1629823736,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  347  48  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,347,48,1629821816,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  391  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,391,1,1629821453,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  286  19  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,286,19,1629821436,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  346  22  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,346,22,1629821178,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  372  36  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,372,36,1629821172,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  404  48  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,404,48,1629816720,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  446  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,446,4,1629816664,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  206  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,206,4,1629816658,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  234  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,234,1,1629816652,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  203  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,203,0,1629816540,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  425  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,425,0,1629814885,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  431  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,431,0,1629814519,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  433  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,433,4,1629814494,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  420  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,420,0,1629814481,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  434  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,434,0,1629814472,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  437  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,437,0,1629814367,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  443  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,443,0,1629814191,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  416  12  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,416,12,1629813068,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  388  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,388,0,1629812464,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  393  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,393,1,1629811678,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  134  22  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,134,22,1629811386,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
 -'  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-|4,39,1,0,1628889326,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
--'  1  7  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java
-|4,39,1,7,1628889282,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/tma/Puppy.java"
--'  63  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
-|4,39,63,0,1628889202,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
--'  1  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
-|4,39,1,0,1628889167,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
--'  45  5  /storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java
-|4,39,45,5,1628773873,"/storage/emulated/0/dogger/dogger/tma-puppy/src/puppy.java"
+|4,39,1,0,1629811192,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  394  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,394,4,1629808978,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  344  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,344,1,1629808353,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  351  1  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,351,1,1629808329,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  386  13  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,386,13,1629808313,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  571  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,571,4,1629807085,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  377  15  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,377,15,1629805379,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  385  18  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,385,18,1629805378,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  452  0  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,452,0,1629758000,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  367  4  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,367,4,1629757423,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  153  10  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,153,10,1629756869,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  308  2  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,308,2,1629756859,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  272  5  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,272,5,1629756858,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
+-'  260  20  /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
+|4,39,260,20,1629756854,"/storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java"
 
 # History of marks within files (newest to oldest):
 
-> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
-	*	1628945974	0
-	"	566	18
+> ~/play/java/Preproc.java
+	*	1629895751	0
+	"	105	1
+	.	105	0
+	+	119	0
+	+	104	0
+	+	119	0
+	+	119	43
+	+	119	39
+	+	119	0
+	+	119	16
+	+	119	41
+	+	119	0
+	+	37	0
+	+	31	0
+	+	24	46
+	+	29	0
+	+	28	24
+	+	25	1
+	+	26	1
+	+	27	1
+	+	28	1
+	+	31	26
+	+	32	17
+	+	33	15
+	+	34	19
+	+	35	15
+	+	49	76
+	+	59	44
+	+	63	30
+	+	67	30
+	+	199	37
+	+	208	50
+	+	222	37
+	+	226	50
+	+	103	22
+	+	116	0
+	+	107	45
+	+	115	0
+	+	111	25
+	+	109	38
+	+	110	0
+	+	111	43
+	+	113	35
+	+	114	33
+	+	118	12
+	+	119	0
+	+	29	5
+	+	114	37
+	+	283	44
+	+	283	0
+	+	283	44
+	+	58	0
+	+	283	48
+	+	44	0
+	+	38	44
+	+	42	5
+	+	41	22
+	+	39	1
+	+	40	1
+	+	41	1
+	+	44	0
+	+	61	20
+	+	65	32
+	+	69	39
+	+	71	4
+	+	71	27
+	+	72	0
+	+	114	25
+	+	157	0
+	+	176	39
+	+	207	50
+	+	189	7
+	+	207	7
+	+	225	7
+	+	173	37
+	+	282	41
+	+	283	0
+	+	278	16
+	+	11	19
+	+	278	16
+	+	280	0
+	+	106	0
+	+	54	0
+	+	58	0
+	+	76	0
+	+	67	0
+	+	105	0
+	x	143	10
 
 > /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Puppy.java
-	*	1628940424	0
-	"	60	0
-	.	61	0
-	+	63	12
-	+	65	0
-	+	66	11
-	+	66	1
-	+	61	0
-	+	67	0
-	+	61	1
-	+	61	25
-	+	61	0
+	*	1629895751	0
+	"	73	0
+	^	72	20
+	.	72	19
+	+	393	34
+	+	393	0
+	+	393	41
+	+	393	12
+	+	388	15
+	+	388	29
+	+	388	18
+	+	388	0
+	+	388	70
+	+	388	19
+	+	388	11
+	+	388	0
+	+	393	8
+	+	134	22
+	+	393	29
+	+	393	0
+	+	390	0
+	+	391	31
+	+	388	0
+	+	388	27
+	+	393	12
+	+	393	6
+	+	388	15
+	+	388	9
+	+	393	5
+	+	391	32
+	+	393	0
+	+	388	0
+	+	393	0
+	+	388	10
+	+	392	7
+	+	396	11
+	+	390	5
+	+	392	8
+	+	396	19
+	+	397	33
+	+	419	0
+	+	404	0
+	+	403	0
+	+	413	0
+	+	414	12
+	+	416	45
+	+	415	0
+	+	414	8
+	+	417	8
+	+	439	18
+	+	419	0
+	+	417	7
+	+	439	19
+	+	440	37
+	+	443	0
+	+	442	28
+	+	434	21
+	+	433	16
+	+	437	0
+	+	436	30
+	+	433	0
+	+	427	18
+	+	428	26
+	+	432	0
+	+	430	33
+	+	421	20
+	+	422	32
+	+	426	0
+	+	424	39
+	+	199	23
+	+	188	4
+	+	200	18
+	+	204	0
+	+	206	4
+	+	254	1
+	+	234	1
+	+	404	45
+	+	281	20
+	+	286	20
+	+	347	36
+	+	355	50
+	+	386	56
+	+	357	35
+	+	392	30
+	+	397	37
+	+	222	15
+	+	193	0
+	+	194	18
+	+	190	0
+	+	196	24
+	+	258	50
+	+	403	0
+	+	399	0
+	+	402	0
+	+	399	29
+	+	401	0
+	+	451	18
+	+	448	0
+	+	451	7
+	+	72	19
+	a	403	0
+	b	346	22
+	x	386	52
+
+> ~/play/java/Factorial.java
+	*	1629895751	0
+	"	13	18
+	^	13	19
+	.	13	18
+	+	1	0
+	+	1	16
+	+	1	15
+	+	1	0
+	+	1	18
+	+	1	26
+	+	1	14
+	+	1	26
+	+	1	17
+	+	1	41
+	+	1	14
+	+	1	21
+	+	1	0
+	+	1	26
+	+	1	0
+	+	1	11
+	+	1	15
+	+	1	11
+	+	1	21
+	+	1	0
+	+	1	32
+	+	1	31
+	+	1	29
+	+	1	21
+	+	1	38
+	+	1	16
+	+	1	17
+	+	1	0
+	+	36	0
+	+	8	42
+	+	17	0
+	+	16	31
+	+	21	4
+	+	20	13
+	+	28	0
+	+	24	26
+	+	26	1
+	+	35	0
+	+	33	30
+	+	34	29
+	+	13	18
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONArray.java
+	*	1629895751	0
+	"	1096	21
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/org/json/JSONObject.java
+	*	1629895751	0
+	"	2347	18
+	a	61	0
+	n	1928	4
+
+> /storage/emulated/0/dogger/dogger/src/dog_main.py
+	*	1629895751	0
+	"	1730	60
+
+> /data/data/com.termux/files/usr/tmp/java.txt
+	*	1629895751	0
+	"	154	34
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/FileServer.java
+	*	1629895760	0
+	"	35	22
+	^	35	24
+	.	35	23
+	+	15	9
+	+	17	22
+	+	21	11
+	+	24	21
+	+	17	15
+	+	3	19
+	+	7	0
+	+	21	16
+	+	27	18
+	+	29	61
+	+	35	25
+	+	27	7
+	+	29	42
+	+	39	15
+	+	48	10
+	+	4	26
+	+	49	21
+	+	60	0
+	+	51	5
+	+	5	25
+	+	54	9
+	+	52	4
+	+	55	1
+	+	54	0
+	+	6	26
+	+	55	1
+	+	59	0
+	+	52	4
+	+	58	16
+	+	54	11
+	+	51	37
+	+	54	15
+	+	47	0
+	+	45	18
+	+	62	11
+	+	63	22
+	+	77	0
+	+	66	0
+	+	63	33
+	+	70	30
+	+	71	24
+	+	75	13
+	+	35	25
+	+	36	18
+	+	34	3
+	+	29	37
+	+	33	0
+	+	34	33
+	+	31	78
+	+	36	71
+	+	25	21
+	+	30	14
+	+	8	5
+	+	9	35
+	+	9	34
+	+	9	37
+	+	11	0
+	+	13	0
+	+	12	10
+	+	25	37
+	+	30	28
+	+	35	23
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Exceptions.java
+	*	1629895751	0
+	"	2	30
+	.	3	0
+	+	1	5
+	+	2	28
+	+	3	0
+	+	2	30
+	+	3	0
 
 > /storage/emulated/0/dogger/dogger/src/dropbox.py
-	*	1628940424	0
+	*	1629895751	0
 	"	505	22
 
 > /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/CONST.java
-	*	1628940424	0
+	*	1629895751	0
 	"	5	0
 	.	5	0
 	+	1	12
@@ -268,171 +931,183 @@
 	+	5	0
 
 > /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Dropbox.java
-	*	1628940424	0
-	"	38	0
-	^	15	13
-	.	13	0
-	+	38	0
-	+	15	13
-	+	38	21
-	+	38	22
-	+	38	50
-	+	38	16
-	+	15	21
-	+	13	16
-	+	13	56
-	+	13	22
-	+	13	27
-	+	13	29
-	+	13	22
-	+	13	20
-	+	13	24
-	+	14	0
-	+	18	0
-	+	17	16
+	*	1629895751	0
+	"	26	0
+	^	16	13
+	.	26	0
+	+	26	0
+	+	16	13
+	+	26	21
+	+	26	22
+	+	26	50
+	+	26	16
+	+	16	21
+	+	14	16
+	+	14	56
+	+	14	22
+	+	14	27
+	+	14	29
+	+	14	22
+	+	14	20
+	+	14	24
+	+	15	0
+	+	19	0
+	+	18	16
 	+	3	30
-	+	25	0
-	+	17	0
-	+	5	0
-	+	13	0
-	+	7	24
-	+	13	15
-	+	17	74
-	+	15	12
-	+	20	21
-	+	22	10
-	+	13	0
-
-> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/User.java
-	*	1628949915	0
-	"	23	0
-	^	92	0
-	.	93	0
-	+	19	38
-	+	52	32
-	+	52	55
-	+	61	0
-	+	52	4
-	+	38	0
-	+	19	0
-	+	38	40
-	+	46	0
-	+	45	0
-	+	46	36
-	+	48	18
-	+	50	0
-	+	48	14
-	+	49	17
-	+	40	18
-	+	44	5
-	+	43	13
-	+	42	19
-	+	19	14
-	+	19	5
-	+	19	0
-	+	98	0
-	+	37	0
-	+	35	0
-	+	90	18
-	+	31	0
-	+	17	27
+	+	26	0
 	+	18	0
-	+	17	15
-	+	6	30
-	+	5	28
-	+	6	31
 	+	6	0
-	+	7	14
-	+	8	0
-	+	17	0
-	+	27	36
-	+	20	0
-	+	22	16
-	+	21	19
-	+	29	12
-	+	26	24
-	+	27	37
-	+	28	0
-	+	23	0
-	+	55	0
-	+	52	23
-	+	60	0
-	+	54	11
-	+	55	27
-	+	57	15
-	+	55	12
-	+	57	12
-	+	60	5
-	+	59	11
-	+	62	10
-	+	66	21
-	+	62	39
-	+	52	14
-	+	55	8
-	+	57	8
-	+	62	38
-	+	66	8
-	+	52	18
-	+	55	8
-	+	57	8
-	+	62	42
-	+	66	8
-	+	70	16
-	+	72	11
-	+	88	0
-	+	77	15
-	+	21	23
-	+	75	30
-	+	77	36
+	+	14	0
+	+	8	24
+	+	14	15
+	+	18	74
+	+	16	12
+	+	21	21
+	+	23	10
+	+	14	0
+	+	3	5
+	+	4	14
+	+	26	0
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/json/JSONObject.java
+	*	1629895751	0
+	"	8	18
+	.	7	0
+	+	2	26
+	+	2	0
+	+	3	15
+	+	3	5
+	+	4	26
+	+	6	0
+	+	7	0
+
+> /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/json/JSONType.java
+	*	1629895751	0
+	"	46	47
+	^	46	48
+	.	46	48
+	+	34	4
+	+	45	0
+	+	34	0
+	+	33	0
+	+	34	11
+	+	45	0
+	+	34	40
+	+	29	0
+	+	28	21
+	+	27	0
+	+	26	10
+	+	30	11
+	+	28	11
+	+	26	11
+	+	45	0
+	+	32	0
+	+	31	0
+	+	32	27
+	+	34	40
+	+	106	0
+	+	109	0
+	+	106	32
+	+	111	0
+	+	110	18
+	+	89	11
+	+	90	29
+	+	104	0
+	+	93	37
+	+	97	33
+	+	97	7
+	+	97	51
+	+	103	13
+	+	97	13
+	+	97	0
+	+	97	14
+	+	102	0
+	+	97	48
+	+	101	0
+	+	95	29
+	+	96	0
+	+	99	0
+	+	97	18
+	+	99	27
+	+	100	13
+	+	99	31
+	+	112	0
+	+	18	0
+	+	108	0
+	+	107	0
+	+	106	18
+	+	108	17
+	+	68	11
+	+	69	12
+	+	74	0
+	+	69	24
+	+	68	11
+	+	69	11
+	+	71	30
+	+	73	14
+	+	71	15
+	+	68	13
 	+	87	0
-	+	82	6
-	+	82	0
-	+	87	1
-	+	80	1
-	+	77	13
-	+	79	0
-	+	80	26
-	+	81	0
-	+	84	0
-	+	82	7
-	+	80	34
-	+	83	13
-	+	86	14
-	+	69	2
-	+	65	0
-	+	69	0
-	+	67	11
-	+	69	2
-	+	67	20
-	+	68	0
-	+	90	12
-	+	86	8
-	+	93	0
-	x	77	14
+	+	76	0
+	+	77	4
+	+	69	4
+	+	77	23
+	+	80	20
+	+	82	13
+	+	57	15
+	+	65	22
+	+	66	0
+	+	59	26
+	+	61	0
+	+	60	28
+	+	62	0
+	+	64	0
+	+	62	14
+	+	63	14
+	+	20	67
+	+	21	6
+	+	38	13
+	+	15	0
+	+	44	0
+	+	42	20
+	+	43	13
+	+	36	40
+	+	37	0
+	+	25	0
+	+	24	11
+	+	17	10
+	+	22	10
+	+	46	23
+	+	36	22
+	+	46	48
 
 > /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Server.java
-	*	1628940424	0
+	*	1629895751	0
 	"	5	0
-	^	11	68
-	.	11	67
+	^	8	24
+	.	8	23
 	+	3	15
-	+	5	0
-	+	15	22
-	+	17	38
+	+	9	0
+	+	9	22
 	+	9	38
-	+	5	20
-	+	7	47
-	+	6	0
-	+	11	43
-	+	13	42
-	+	12	0
-	+	15	20
-	+	17	37
-	+	13	66
-	+	11	67
+	+	9	20
+	+	9	47
+	+	9	0
+	+	9	43
+	+	9	42
+	+	9	0
+	+	9	20
+	+	9	37
+	+	9	66
+	+	9	67
+	+	3	14
+	+	9	0
+	+	6	12
+	+	7	22
+	+	8	23
 
 > /storage/emulated/0/dogger/dogger/tma-puppy/src/java/dog/Resu.java
-	*	1628940424	0
+	*	1629895751	0
 	"	2	0
 	^	2	0
 	.	2	0

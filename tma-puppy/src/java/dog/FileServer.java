@@ -8,41 +8,44 @@ import java.io.IOException;
 class
 FileServer extends Server
 {
-    private File _dir;
+    private final File _dir;
 
     FileServer()
     {
-	_dir = File(".");
+	this._dir = new File(".");
     }
 
     FileServer(String dir)
     throws NoDirNoRead, NoFileNoCreate
     {
-	File ff = File(dir);
+	File ff = new File(dir);
 
 	if(!(ff.exists()) && !(ff.mkdirs()))
+	{
 	    throw new NoFileNoCreate(
-		    String.format("the directory '%s' does not exist or can't be created", ff);
+		    String.format("the directory '%s' does not exist or can't be created", ff)
 		    );
 
-	else if(!(ff.isDirectory()) || !(ff.canRead()))
-		throws new NoDirNoRead(
-			String.format("the file '%s' is not a directory or can't be read", ff);
+	}else if(!(ff.isDirectory()) || !(ff.canRead()))
+	{
+		throw new NoDirNoRead(
+			String.format("the file '%s' is not a directory or can't be read", ff)
 			);
+	}
 
 	this._dir = ff;
     }
 
-    String
+    public String
     get(String path)
     {
 	return read(path);
     }
 
-    String
+    public String
     read(String path)
     {
-	Path file = File(this._dir, path).toPath();
+	Path file = new File(this._dir, path).toPath();
 	try
 	{
 	    return new String(Files.readAllBytes(file));
@@ -53,13 +56,13 @@ FileServer extends Server
 	}
     }
     
-    Integer
+    public Integer
     put(String path, String data)
     {
 	return write(path, data);
     }
 
-    Integer
+    public Integer
     post(String path, String data)
     {
 	return write(path, data);
@@ -70,7 +73,7 @@ FileServer extends Server
     write(String path, String data)
     {
 
-	Path file = File(this._dir, path).toPath();
+	Path file = new File(this._dir, path).toPath();
 	try
 	{
 	    byte[] bytes = data.getBytes();
