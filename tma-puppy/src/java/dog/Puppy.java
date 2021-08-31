@@ -70,7 +70,7 @@ import java.nio.file.Files;
 import java.io.IOException;
 import java.util.Set;
 import java.io.File;
-import java.util.Iterable;
+import java.lang.Iterable;
 
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -84,7 +84,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-public class 
+abstract public class 
 Puppy
 {
 
@@ -119,11 +119,12 @@ Puppy
 	MSG_INVALID_NAME = "Invalid Username",
 	MSG_INVALID_PWD = "Invalid password";
     
-    private static final byte
+    public static final byte
 	NULL_ID = 0,
-	INIT_MAX_PID = 10,
 	NO_SLOT = 0,
 	MIN_SLOT = 1;
+    
+    public static final byte INIT_MAX_PID = 10;
 
     public static final String
 	USR_ID = "uid",
@@ -155,7 +156,7 @@ Puppy
 	name_r,
 	pwd;
     
-    public final Server server;
+    protected static Server server;
 
     //Puppy id
     public final Integer pid;
@@ -172,6 +173,14 @@ Puppy
 	this(name, pwd, pid, null);
     }
 
+    Puppy(JSONObject user)
+	throws AuthError
+    {
+	this(user.getString(USR_ID),
+		user.getString(USR_PWD),
+		user.getInt(USR_PUPPY_ID));
+    }
+
     Puppy(
 	    String name,
 	    String pwd,
@@ -180,8 +189,7 @@ Puppy
 	    )
 	    throws AuthError
     {
-	init();
-	this.server = (server != null)? server : new FileServer();
+	init(server);
 
 	JSONObject user_rw = load_user_rw(name);
 
@@ -193,16 +201,21 @@ Puppy
 	} else
 	{
 
-	    if(name != user_rw.getString(USR_ID))
+	    if(name.compareTo(user_rw.getString(USR_ID)) != 0)
 		throw new AuthError(
 			MSG_INVALID_NAME + String.format(" %s", name));
 
 
-	    if(pwd != user_rw.getString(USR_PWD))
+	    if(pwd.compareTo(user_rw.getString(USR_PWD)) != 0)
 		throw new AuthError(
 			MSG_INVALID_PWD + String.format(" %s", pwd));
 
-	    if(pid != user_rw.getInt(USR_PUPPY_ID))
+	    if(user_rw.getInt(USR_PUPPY_ID) == NULL_ID)
+	    {
+		pid = get_new_pid();
+		user_rw.put(USR_PUPPY_ID, pid);
+
+	    }else if(pid != user_rw.getInt(USR_PUPPY_ID))
 		throw new AuthError(MSG_INVALID_PID);
 	}
 
@@ -219,13 +232,18 @@ Puppy
 
     }
 
-    
-    private static boolean
-    init()
+    // must be called for some critical operations where a server or parser is needed. 
+    protected static boolean
+    init(Server serv)
     {
 
 	if((flags & F_INIT) > 0)
 	    return true;
+
+	if(server == null && serv != null)
+	    server = serv;
+	else if(server == null)
+	    server = new FileServer();
 
 	parser.defaultHelp(false);
 	parser.addArgument(all_args[ARGNAME_MATNO])
@@ -267,7 +285,7 @@ Puppy
      * }
      */
 
-    private JSONObject
+    public static JSONObject
     init_new_user(
 	    String name,
 	    String pwd
@@ -276,8 +294,17 @@ Puppy
 	JSONObject user_rw = new JSONObject();
 	return init_new_user(name, pwd, user_rw);
     }
+    
+    public static Integer
+    get_new_pid()
+    {
+	// random id from 0 to INIT_MAX_PID
+	return Integer.valueOf(Math.round(
+		    Math.round(Math.random() * INIT_MAX_PID)
+		    ));
+    }
 
-    private JSONObject
+    public static JSONObject
     init_new_user(
 	    String name,
 	    String pwd,
@@ -285,15 +312,11 @@ Puppy
 	    )
     {
 
-	user_rw.put(USR_ID, Integer.parseInt(name));
+	user_rw.put(USR_ID, name);
 	user_rw.put(USR_PWD, pwd);
 	user_rw.put(USR_EXTRAS, new JSONObject());
 	user_rw.put(USR_TRANSACTION_ID, NULL_ID);
-	// random id from 0 to INIT_MAX_PID
-	Integer pid =  Integer.valueOf(Math.round(
-		    Math.round(Math.random() * INIT_MAX_PID)
-		    ));
-	user_rw.put(USR_PUPPY_ID, pid);
+	user_rw.put(USR_PUPPY_ID, get_new_pid());
 
 	return user_rw;
 
@@ -320,10 +343,11 @@ Puppy
 
     }
 
-    private JSONObject
+    protected static JSONObject
     load_user_rw(String name)
     {
-	String data = this.server.get(name);
+	init(null);
+	String data = server.get(name);
 	JSONObject user_rw;
 	
 	try
@@ -585,6 +609,16 @@ Puppy
 	return tlist;
     }
 
+    public JSONArray
+    getPendingTransactions()
+    {
+	if(!(this.user_rw.getInt(USR_TRANSACTION_ID) > getTid()))
+	    return new JSONArray();
+
+	JSONArray tlist = this.user_r.getJSONArray(USR_TRANSACTION);
+	return tlist;
+    }
+
     Integer
     getTid()
     {
@@ -718,6 +752,6 @@ Puppy
 	return argv;
     }
 
-    void logout() {};
+    void logout() { this.user_rw.put(USR_PUPPY_ID, NULL_ID); };
     void close() {};
 }

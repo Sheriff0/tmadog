@@ -45,15 +45,29 @@ FileServer extends Server
     public String
     read(String path)
     {
-	Path file = new File(this._dir, path).toPath();
+	File file = new File(this._dir, path);
+	
+	if(!(file.exists()) || !(file.canRead()))
+	    return null;
+
 	try
 	{
-	    return new String(Files.readAllBytes(file));
+	    return new String(Files.readAllBytes(file.toPath()));
 	
 	}catch(IOException exp)
 	{
 	    return null;
 	}
+    }
+
+    public Boolean
+    exists(String path)
+    {
+
+	File file = new File(this._dir, path);
+	
+	return file.exists() && file.canRead(); // readability affects existense
+
     }
     
     public Integer
