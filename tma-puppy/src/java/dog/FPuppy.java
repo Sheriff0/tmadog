@@ -41,7 +41,7 @@ FPuppy extends Puppy
 	FileServer serv = (FileServer)server;
 	Boolean ne = serv.exists(name);
 	JSONObject udata = load_user_rw(name);
-	return ne && udata.has(USR_PWD) && udata.getString(USR_PWD) == pwd;
+	return ne && udata.has(USR_PWD) && pwd.compareTo(udata.getString(USR_PWD)) == 0;
 
     }
 

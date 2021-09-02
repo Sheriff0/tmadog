@@ -71,6 +71,7 @@ import java.io.IOException;
 import java.util.Set;
 import java.io.File;
 import java.lang.Iterable;
+import java.util.Map;
 
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -87,27 +88,6 @@ import org.json.JSONException;
 abstract public class 
 Puppy
 {
-
-    private static final String[][] all_args = {
-	{"--matno"},
-	{"--pwd"},
-	{"--crscode"},
-	{"--tma"}
-    };
-
-    private static final String arg_dest[] = {
-	"matno",
-	"pwd",
-	"crscode",
-    };
-
-    private static final int
-	ARGNAME_MATNO = 0,
-	ARGNAME_PWD = 1,
-	ARGNAME_CRSCODE = 2,
-	ARGNAME_TMA = 3;
-
-
     private static byte flags = 0;
     
     private static final byte
@@ -135,13 +115,8 @@ Puppy
 	USR_EXTRAS = "extras",
 	USR_CRSCODES = "courses",
 	USR_SLOTS = "slots",
-	USR_TRANSC_MATNO = "matno",
-	USR_TRANSC_PWD = "pwd",
-	USR_TRANSC_STATUS = "status",
-	USR_TRANSC_CRSCODES = "crscodes",
-	USR_TRANSC_CRSCODES_CRS = "crs",
-	USR_TRANSC_CRSCODES_STATUS = "status",
-	USR_TRANSC_CRSCODES_SCORE = "score",
+
+	// for jobs
 	USR_JOB_CMDLINE = "cmdline",
 	USR_JOB_NAME = "name";
     
@@ -161,7 +136,6 @@ Puppy
     //Puppy id
     public final Integer pid;
 
-    private static final ArgumentParser parser = ArgumentParsers.newFor(null).build();
 
     Puppy(
 	    String name,
@@ -245,21 +219,6 @@ Puppy
 	else if(server == null)
 	    server = new FileServer();
 
-	parser.defaultHelp(false);
-	parser.addArgument(all_args[ARGNAME_MATNO])
-	    .nargs("+")
-	    .required(true)
-	    .dest(arg_dest[ARGNAME_MATNO]);
-
-	parser.addArgument(all_args[ARGNAME_PWD])
-	    .nargs("+")
-	    .required(true)
-	    .dest(arg_dest[ARGNAME_PWD]);
-
-	parser.addArgument(all_args[ARGNAME_CRSCODE])
-	    .nargs("+")
-	    .dest(arg_dest[ARGNAME_CRSCODE]);
-
 	//NO need for ARGNAME_TMA
 
 	flags |= F_INIT;
@@ -329,6 +288,15 @@ Puppy
 		this.user_rw.put(USR_EXTRAS, new JSONObject());
 
 	return this.user_rw.getJSONObject(USR_EXTRAS).put(key, value);
+    }
+
+    public Boolean
+    has_extras(String key)
+    {
+
+	if(!(this.user_rw.has(USR_EXTRAS)) || !( this.user_rw.get(USR_EXTRAS) instanceof JSONObject))
+		this.user_rw.put(USR_EXTRAS, new JSONObject());
+	return this.user_rw.getJSONObject(USR_EXTRAS).has(key);
     }
 
     public Object
@@ -434,66 +402,6 @@ Puppy
 		);
     }
 
-    /**
-     * <code><b>is_valid_argument</b></code> is used to check if a flag is recognized by the given <code>psr</code>
-     * 
-     * <b>NOTE:</b> This does not work for all kinds of flags and even <code>psr</code>
-     */
-    private String
-    is_valid_argument(String arg)
-    {
-
-	for(int idx = 0; idx < all_args.length; idx++)
-	{
-	    String[] arg_grp = all_args[idx];
-
-	    for(int idx1 = 0; idx1 < arg_grp.length; idx1++)
-	    {
-		if(arg_grp[idx1].startsWith(arg))
-		    return arg_dest[idx].substring(0); 
-	    }
-	}
-
-	return null;
-    }
-    
-    Object
-    read_line_v(List<String> lines, String ff)
-    {
-	Vector<String> argv = preprocess(lines.toArray(new String[lines.size()]));
-
-	try
-	{
-	    Namespace args = parser.parseArgs(argv.toArray(new String[argv.size()]));
-	    return write_puppy(argv, args, ff);
-
-	}catch(ArgumentParserException argExp){
-	    return argExp;
-	}
-    }
-
-    Object
-    read_tmafile(String filename)
-    {
-
-	File ff = new File(filename);
-
-	if(!(ff.exists() && ff.isFile() && ff.canRead()))
-		return Boolean.FALSE;
-
-
-	try
-	{
-	    List<String> lines = Files.readAllLines(ff.toPath(), StandardCharsets.UTF_8);
-
-	    return read_line_v(lines, ff.getName());
-	}catch(IOException e)
-	{
-	    return null;
-	}
-
-    }
-
     private Boolean
     write_puppy(List<String> cmdline, Namespace args, File filename)
     {
@@ -504,7 +412,7 @@ Puppy
      * Populates the <b>user_rw</b> data with command line.
      * {
      *	...
-     *  USR_TRANSACTION_ID: [
+     *  USR_TRANSACTION: [
      *    ...
      *	  {
      *	     "name": {name},
@@ -540,7 +448,7 @@ Puppy
     put_job_queue(JSONObject job, Namespace args)
     {
 	if(getSlots() < MIN_SLOT)
-	    return Boolean.FALSE;
+	    return false;
 
 	JSONArray queue;
 
@@ -559,8 +467,67 @@ Puppy
 	Integer tid = this.user_rw.getInt(USR_TRANSACTION_ID);
 	
 	this.user_rw.put(USR_TRANSACTION_ID, ++tid);
-	return Boolean.TRUE;
+	return true;
 
+    }
+
+    
+    protected List<JSONObject>
+    toDogProcessed(Collection<String> cmdline)
+    {
+	return toDogProcessed(cmdline.toArray(new String[cmdline.size()]));
+    }
+
+    protected List<JSONObject>
+    toDogProcessed(String[] cmdline)
+    {
+
+	Namespace args = null;
+
+	try
+	{
+	    args = parser.parseArgs(cmdline);
+
+	}catch(ArgumentParserException argExp)
+	{
+	    return null;
+	}
+
+	List<Object> matno = args.get(arg_dest[ARGNAME_MATNO]);
+	List<Object> pwd = args.get(arg_dest[ARGNAME_PWD]);
+	List<Object> crscode = args.get(arg_dest[ARGNAME_CRSCODE]);
+
+	Integer argc = Math.max(matno.size(), crscode.size());
+
+	String mt, pw, cr;
+
+	List<JSONObject> res = new List<JSONObject>(argc);
+	Map<String, JSONObject> cache = new Map<String, JSONObject>();
+
+	for(int idx = 0; idx < argc; idx++)
+	{
+	    if(idx < matno.size())
+		mt = (String)matno.get(idx);
+
+	    if(idx < pwd.size())
+		pw = (String)pwd.get(idx);
+
+	    if(idx < crscode.size())
+		cr = (String)crscode.get(idx);
+
+	    String[] crs = cr.split("\\s+");
+
+	    for(String cc : crs)
+	    {
+		JSONObject info = new JSONObject();
+	    }
+	}
+    }
+
+    protected List<JSONObject>
+    toDogProcessed(JSONArray cmdline)
+    {
+	return toDogProcessed(cmdline.toList());
     }
 
     public Integer
@@ -575,18 +542,21 @@ Puppy
      * {
      * matno: <matno>,
      * pwd: <pwd>,
-     * status: <OK, wrong credentials>
+     * status: <OK, wrong credentials>,
+     * cmdline: all css000 ...
      * crscodes:[ 
      * 		...
      *		{
      *		crs: <crscode>,
      *		status: <pending, submitted>,
      *		score : <int, unknown>,
+     *		index: <1-3>
      *		}
      * 		...
      *		]
      *	}
      */
+
     public JSONArray
     getTransactions()
     {
@@ -633,124 +603,25 @@ Puppy
 	return server.put(this.name, user_rw.toString());
     }
 
-    private Vector<String>
-    preprocess(String[] arglines)
+    public static Boolean
+    user_exists(String name, String pwd)
     {
-	Vector<String> argv = new Vector<String>();
-	
-	String word;
-	String[] argbuff = {"", "", ""};
-	
-	byte BUF_ARG_DEST = 0,
-	     BUF_ARG_NAME = 1,
-	     BUF_ARG_VAL = 2;
+	init(null);
+	Boolean ne = server.exists(name);
+	JSONObject udata = load_user_rw(name);
+	return ne && udata.has(USR_PWD) && pwd.compareTo(udata.getString(USR_PWD)) == 0;
 
-	/**
-	 * <code>PFLAGS</code> holds states of the preprocessor.
-	 * SWITCH_* are &'ed with this flag to set/reset states 
-	 */
-	byte PFLAGS = 0,
-	     // mutually exlusives
-	     SWITCH_ONE = 0b001,
-	     SWITCH_MULTI = 0b010;
-	
-	PFLAGS = SWITCH_ONE;
-
-	int lastbuf_id = 0, buf_id = 0;
-
-	boolean in_switch = false;
-
-	int lcount = arglines.length;
-
-	for(int lidx = 0; lidx < lcount; lidx++)
-	{
-	    if(arglines[lidx].isEmpty())
-		continue;
-
-	    String[] line = arglines[lidx].split("\\s");
-	    for(int widx = 0; widx < line.length; widx++)
-	    {
-		word = line[widx];
-		word = (word.isEmpty())? " " : word;
-		String wchk = is_valid_argument(word);
-		if(wchk != null)
-		{
-		    if(wchk == arg_dest[ARGNAME_MATNO])
-			PFLAGS = SWITCH_ONE;
-
-		    else
-			PFLAGS = SWITCH_MULTI;
-
-		    if(buf_id > lastbuf_id && argbuff[BUF_ARG_VAL] != null)
-		    {
-			argv.add(argbuff[BUF_ARG_NAME]);
-			argv.add(argbuff[BUF_ARG_VAL].trim());
-			lastbuf_id = buf_id;
-		    }
-		    
-		    //argbuff[BUF_ARG_DEST] = wchk;
-		    argbuff[BUF_ARG_NAME] = word;
-		    argbuff[BUF_ARG_VAL] = null;
-		    buf_id++;
-
-		}else if(PFLAGS == SWITCH_ONE)
-		{
-		    if(word.isBlank())
-			continue;
-		    
-		    argv.add(all_args[ARGNAME_MATNO][0]);
-		    argv.add(word);
-		    lastbuf_id = buf_id;
-
-		    /**
-		     * passwords should be sought by default unless prompted otherwise by a non-password flag.
-		     */
-		    PFLAGS = SWITCH_MULTI;
-		    //argbuff[BUF_ARG_DEST] = arg_dest[ARGNAME_PWD];
-		    argbuff[BUF_ARG_NAME] = all_args[ARGNAME_PWD][0];
-		    argbuff[BUF_ARG_VAL] = null;
-		    buf_id++;
-
-		}else if(!(word.isBlank()) &&
-			widx == 0 && buf_id >
-			lastbuf_id &&
-			argbuff[BUF_ARG_VAL] !=
-			null)
-		{
-		    argv.add(argbuff[BUF_ARG_NAME]);
-		    argv.add(argbuff[BUF_ARG_VAL].trim());
-		    lastbuf_id = buf_id;
-
-		    argv.add(all_args[ARGNAME_MATNO][0]);
-		    argv.add(word.trim());
-		    PFLAGS = SWITCH_MULTI;
-		    //argbuff[BUF_ARG_DEST] = P_PWD;
-		    argbuff[BUF_ARG_NAME] = all_args[ARGNAME_PWD][0];
-		    argbuff[BUF_ARG_VAL] = null;
-		    buf_id++;
-
-		}else
-		{
-		    if(argbuff[BUF_ARG_VAL] == null)
-			argbuff[BUF_ARG_VAL] = word;
-		    else
-			argbuff[BUF_ARG_VAL] += " " + word;
-		}
-
-
-
-
-	    }
-	}
-
-	if(buf_id > lastbuf_id && argbuff[BUF_ARG_VAL] != null)
-	{
-	    argv.add(argbuff[BUF_ARG_NAME]);
-	    argv.add(argbuff[BUF_ARG_VAL].trim());
-	}
-
-	return argv;
     }
+
+
+    public static Boolean
+    user_exists(String name)
+    {
+	init(null);
+	return server.exists(name);
+
+    }
+
 
     void logout() { this.user_rw.put(USR_PUPPY_ID, NULL_ID); };
     void close() {};

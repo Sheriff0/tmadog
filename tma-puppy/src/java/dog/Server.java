@@ -8,4 +8,5 @@ Server
     abstract public Integer put(String path, String data);
 
     abstract public Integer post(String path, String data);
+    abstract public Boolean exists(String path);
 }
