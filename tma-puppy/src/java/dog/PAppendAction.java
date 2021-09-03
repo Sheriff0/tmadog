@@ -1,5 +1,9 @@
+package dog;
+
 import java.util.Map;
 import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
 
 
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -11,15 +15,15 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.ArgumentAction;
 import net.sourceforge.argparse4j.inf.Argument;
 
-class
+public class
 PAppendAction implements ArgumentAction
 {
-    boolean
+    public boolean
     consumeArgument() { return true; };
 
-    void onAttach(Argument arg) { return; };
+    public void onAttach(Argument arg) { return; };
 
-    void
+    public void
     run(ArgumentParser parser,
 	    Argument arg,
 	    Map<String,Object> attrs,
@@ -27,12 +31,12 @@ PAppendAction implements ArgumentAction
     {
 	if(!(attrs.containsKey(arg.getDest())) ||
 		attrs.get(arg.getDest()) == null)
-	    attrs.put(arg.getDest(), new List<Object>());
+	    attrs.put(arg.getDest(), new ArrayList<Object>());
 
-	Collection<Object> values = attrs.get(arg.getDest());
+	Collection<Object> values = (Collection<Object>)attrs.get(arg.getDest());
 
 	if(value instanceof Collection)
-	    values.addAll(value);
+	    values.addAll((Collection<Object>)value);
 
 	else
 	    values.add(value);

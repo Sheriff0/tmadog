@@ -90,10 +90,6 @@ Puppy
 {
     private static byte flags = 0;
     
-    private static final byte
-	F_INIT = 0b0001;
-
-
     public static final String
 	MSG_INVALID_PID = "User already logged-in another device",
 	MSG_INVALID_NAME = "Invalid Username",
@@ -114,12 +110,8 @@ Puppy
 	USR_PUPPY_ID = "pid",
 	USR_EXTRAS = "extras",
 	USR_CRSCODES = "courses",
-	USR_SLOTS = "slots",
+	USR_SLOTS = "slots";
 
-	// for jobs
-	USR_JOB_CMDLINE = "cmdline",
-	USR_JOB_NAME = "name";
-    
 
 
     private final JSONObject user_rw;
@@ -131,29 +123,10 @@ Puppy
 	name_r,
 	pwd;
     
-    protected static Server server;
+    protected final Server server;
 
     //Puppy id
     public final Integer pid;
-
-
-    Puppy(
-	    String name,
-	    String pwd,
-	    Integer pid
-	 )
-	throws AuthError
-    {
-	this(name, pwd, pid, null);
-    }
-
-    Puppy(JSONObject user)
-	throws AuthError
-    {
-	this(user.getString(USR_ID),
-		user.getString(USR_PWD),
-		user.getInt(USR_PUPPY_ID));
-    }
 
     Puppy(
 	    String name,
@@ -163,9 +136,8 @@ Puppy
 	    )
 	    throws AuthError
     {
-	init(server);
 
-	JSONObject user_rw = load_user_rw(name);
+	JSONObject user_rw = load_user_rw(name, server);
 
 	if (is_user_rw_empty(user_rw))
 	{
@@ -201,28 +173,10 @@ Puppy
 	
 	this.name_r = to_name_r(name);
 
-	this.user_r = load_user_r(this.name_r);
+	assert server != null: "Server must not be null";
+	this.user_r = load_user_r(this.name_r, server);
+	this.server = server;
 
-
-    }
-
-    // must be called for some critical operations where a server or parser is needed. 
-    protected static boolean
-    init(Server serv)
-    {
-
-	if((flags & F_INIT) > 0)
-	    return true;
-
-	if(server == null && serv != null)
-	    server = serv;
-	else if(server == null)
-	    server = new FileServer();
-
-	//NO need for ARGNAME_TMA
-
-	flags |= F_INIT;
-	return true;
     }
 
 
@@ -312,9 +266,8 @@ Puppy
     }
 
     protected static JSONObject
-    load_user_rw(String name)
+    load_user_rw(String name, Server server)
     {
-	init(null);
 	String data = server.get(name);
 	JSONObject user_rw;
 	
@@ -334,13 +287,13 @@ Puppy
     private JSONObject
     load_user_rw()
     {
-	return load_user_rw(this.name);
+	return load_user_rw(this.name, this.server);
     }
 
-    private JSONObject
-    load_user_r(String name)
+    protected static JSONObject
+    load_user_r(String name, Server server)
     {
-	String data = this.server.get(name);
+	String data = server.get(name);
 	JSONObject user_r;
 	
 	try
@@ -365,7 +318,7 @@ Puppy
     public boolean
     load_user_r()
     {
-	this.user_r = load_user_r(this.name_r);
+	this.user_r = load_user_r(this.name_r, this.server);
 
 	return true;
     }
@@ -403,9 +356,10 @@ Puppy
     }
 
     private Boolean
-    write_puppy(List<String> cmdline, Namespace args, File filename)
+    write_tr(List<Object> argv)
+	throws ArgumentParserException
     {
-	return write_puppy(cmdline, args, filename.getName());
+	return put_job_queue(new PTransaction(argv));
     }
 
     /**
@@ -434,21 +388,28 @@ Puppy
      */
 
     private Boolean
-    write_puppy(List<String> cmdline, Namespace args, String name)
+    write_tr(File tr_file)
+	throws IOException, ArgumentParserException
     {
-	JSONObject job = new JSONObject();
 
-	job.put(USR_JOB_NAME, name);
-	job.put(USR_JOB_CMDLINE, new JSONArray(cmdline));
-	return put_job_queue(job, args);
+	return put_job_queue(new PTransaction(tr_file));
 
     }
 
     private Boolean
-    put_job_queue(JSONObject job, Namespace args)
+    stingy_put_queue(PTransaction job)
+    {
+	//implement
+	
+	// always
+	return false;
+    }
+
+    private Boolean
+    put_job_queue(PTransaction job)
     {
 	if(getSlots() < MIN_SLOT)
-	    return false;
+	    return stingy_put_queue(job);
 
 	JSONArray queue;
 
@@ -460,7 +421,7 @@ Puppy
 	    queue = new JSONArray();
 	}
 
-	queue.put(job);
+	queue.putAll(job.tr2list());
 
 	this.user_rw.put(USR_TRANSACTION, queue);
 
@@ -472,64 +433,6 @@ Puppy
     }
 
     
-    protected List<JSONObject>
-    toDogProcessed(Collection<String> cmdline)
-    {
-	return toDogProcessed(cmdline.toArray(new String[cmdline.size()]));
-    }
-
-    protected List<JSONObject>
-    toDogProcessed(String[] cmdline)
-    {
-
-	Namespace args = null;
-
-	try
-	{
-	    args = parser.parseArgs(cmdline);
-
-	}catch(ArgumentParserException argExp)
-	{
-	    return null;
-	}
-
-	List<Object> matno = args.get(arg_dest[ARGNAME_MATNO]);
-	List<Object> pwd = args.get(arg_dest[ARGNAME_PWD]);
-	List<Object> crscode = args.get(arg_dest[ARGNAME_CRSCODE]);
-
-	Integer argc = Math.max(matno.size(), crscode.size());
-
-	String mt, pw, cr;
-
-	List<JSONObject> res = new List<JSONObject>(argc);
-	Map<String, JSONObject> cache = new Map<String, JSONObject>();
-
-	for(int idx = 0; idx < argc; idx++)
-	{
-	    if(idx < matno.size())
-		mt = (String)matno.get(idx);
-
-	    if(idx < pwd.size())
-		pw = (String)pwd.get(idx);
-
-	    if(idx < crscode.size())
-		cr = (String)crscode.get(idx);
-
-	    String[] crs = cr.split("\\s+");
-
-	    for(String cc : crs)
-	    {
-		JSONObject info = new JSONObject();
-	    }
-	}
-    }
-
-    protected List<JSONObject>
-    toDogProcessed(JSONArray cmdline)
-    {
-	return toDogProcessed(cmdline.toList());
-    }
-
     public Integer
     getSlots()
     {
@@ -557,36 +460,36 @@ Puppy
      *	}
      */
 
-    public JSONArray
+    public PTransaction
     getTransactions()
     {
 	load_user_r();
 	if(!(this.user_r.has(USR_TRANSACTION)))
-	    return new JSONArray();
+	    return null;
 
-	JSONArray tlist = this.user_r.getJSONArray(USR_TRANSACTION);
-
-
-	/**
-	for(Iterable<JSONArray> it = tlist.iterator(); it.hasNext();)
+	try
 	{
-	    //fill missing details with defaults
-	    JSONObject user = it.next();
-	    if(user.has(USR_TRANSC_CRSCODES)
-	}
-	*/
+	 return new PTransaction(this.user_r.getJSONArray(USR_TRANSACTION).toList());
 
-	return tlist;
+	}catch(ArgumentParserException argExp){
+	    return null;
+	}
     }
 
-    public JSONArray
+    public PTransaction
     getPendingTransactions()
     {
 	if(!(this.user_rw.getInt(USR_TRANSACTION_ID) > getTid()))
-	    return new JSONArray();
+	    return null;
 
-	JSONArray tlist = this.user_r.getJSONArray(USR_TRANSACTION);
-	return tlist;
+	try
+	{
+	 return new PTransaction(this.user_rw.getJSONArray(USR_TRANSACTION).toList());
+
+	} catch (ArgumentParserException e)
+	{
+	    return null;
+	}
     }
 
     Integer
@@ -600,26 +503,7 @@ Puppy
     public Object
     flush()
     {
-	return server.put(this.name, user_rw.toString());
-    }
-
-    public static Boolean
-    user_exists(String name, String pwd)
-    {
-	init(null);
-	Boolean ne = server.exists(name);
-	JSONObject udata = load_user_rw(name);
-	return ne && udata.has(USR_PWD) && pwd.compareTo(udata.getString(USR_PWD)) == 0;
-
-    }
-
-
-    public static Boolean
-    user_exists(String name)
-    {
-	init(null);
-	return server.exists(name);
-
+	return this.server.put(this.name, user_rw.toString());
     }
 
 

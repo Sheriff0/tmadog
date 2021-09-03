@@ -21,24 +21,27 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.internal.UnrecognizedArgumentException;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.impl.action.StoreConstArgumentAction;
+import net.sourceforge.argparse4j.impl.action.StoreTrueArgumentAction;
 
 
 public class
 IPuppy
 {
     public static void
-    print(String[] argv, Puppy puppy, JSONObject user, BufferedReader stdin)
+    print(String[] argv, FPuppy puppy, JSONObject user, BufferedReader stdin)
     {
 	String[] choices = {
 	    "raw",
 	    "slots",
 	    "job",
 	    "jobs",
+	    "help"
 	};
 
-	ArgumentParser parser = ArgumentParsers.newFor("print").build();
+	ArgumentParser parser = ArgumentParsers.newFor("print").addHelp(false).build();
 	parser.addArgument("command")
 	    .choices(choices);
+
 
 	String cmd = null;
 
@@ -60,6 +63,10 @@ IPuppy
 			);
 		break;
 
+	    case "help":
+		parser.printHelp();
+		break;
+
 	    case "slots":
 		System.out.printf("%s slots", puppy.getSlots());
 		break;
@@ -74,41 +81,54 @@ IPuppy
     }
 
     public static void
-    slots(String[] argv, Puppy puppy, JSONObject user, BufferedReader stdin)
+    slots(String[] argv, FPuppy puppy, JSONObject user, BufferedReader stdin)
     {
 	System.out.printf("You have %s slots", puppy.getSlots());
     }
 
     public static void
-    tma(String[] argv, Puppy puppy, JSONObject user, BufferedReader stdin)
+    tma(String[] argv, FPuppy puppy, JSONObject user, BufferedReader stdin)
     {
 
 	System.out.println("tma executed");
     }
 
     public static String
-    getcmd(String[] argv, Puppy puppy, List<String> largv, BufferedReader stdin)
+    getcmd(String[] argv, FPuppy puppy, List<String> largv, BufferedReader stdin)
     {
 	String[] choices = {
 	    "tma",
 	    "slots",
 	    "print",
 	    "quit",
+	    "help",
 	};
 
-	ArgumentParser parser = ArgumentParsers.newFor("").build();
+	ArgumentParser parser = ArgumentParsers.newFor("").addHelp(false).build();
 	parser.addArgument("command")
 	    .choices(choices);
 
+	String cmd = null;
 
 	try{
 	    Namespace args = parser.parseKnownArgs(argv, largv);
-	    String cmd = args.get("command");
-	    return cmd;
+	    cmd = args.get("command");
 
 	}catch(ArgumentParserException argExp){
 	    parser.printUsage();
 	    return null;
+	}
+
+	switch(cmd)
+	{
+
+	    case "help":
+		parser.printHelp();
+		return null;
+
+	    default:
+		return cmd;
+
 	}
 
     }
@@ -186,7 +206,7 @@ IPuppy
     }
     
     public static void
-    quit(Puppy puppy, JSONObject user, File rc)
+    quit(FPuppy puppy, JSONObject user, File rc)
 	throws IOException
     {
 	System.out.println("\nquiting...");
@@ -194,6 +214,20 @@ IPuppy
 	Files.write(rc.toPath(), user.toString(4).getBytes());
 	System.exit(0);
     }
+
+    public static void
+    print_welcome(FPuppy puppy, BufferedReader stdin)
+	throws IOException
+    {
+	if(!(puppy.has_extras("fullname")))
+	{
+	    System.out.printf("\nFullname: ");
+	    String name = stdin.readLine();
+	    puppy.set_extras("fullname", (String)name);
+	}
+
+	System.out.printf("\nWelcome %s\n", puppy.get_extras("fullname"));
+}
 
     public static void
     main(String[] argv)
@@ -209,7 +243,6 @@ IPuppy
 	{
 	    String rc_str = new String(Files.readAllBytes(rc.toPath()));
 	    user = new JSONObject(rc_str);
-	    puppy = new FPuppy(user);
 	
 	}else
 	{
@@ -217,9 +250,12 @@ IPuppy
 	    if(user == null)
 		System.exit(0);
 
-	    puppy = new FPuppy(user);
-	    user.put(FPuppy.USR_PUPPY_ID, puppy.pid);
 	}
+
+	puppy = new FPuppy(user);
+	user.put(FPuppy.USR_PUPPY_ID, puppy.pid);
+
+	print_welcome(puppy, stdin);
 
 	String line;
 
