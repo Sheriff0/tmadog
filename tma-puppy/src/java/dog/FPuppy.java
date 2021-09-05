@@ -28,7 +28,7 @@ FPuppy extends Puppy
     user_exists(String name, String pwd)
     {
 	Boolean ne = serv.exists(name);
-	JSONObject udata = load_user_rw(name);
+	JSONObject udata = load_user_rw(name, serv);
 	return ne && udata.has(USR_PWD) && pwd.compareTo(udata.getString(USR_PWD)) == 0;
 
     }

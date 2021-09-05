@@ -72,7 +72,7 @@ import java.util.Set;
 import java.io.File;
 import java.lang.Iterable;
 import java.util.Map;
-
+import java.util.Collection;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -85,7 +85,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-abstract public class 
+public class 
 Puppy
 {
     private static byte flags = 0;
@@ -355,12 +355,12 @@ Puppy
 		);
     }
 
-    private Boolean
-    write_tr(List<Object> argv)
-	throws ArgumentParserException
-    {
-	return put_job_queue(new PTransaction(argv));
-    }
+    //public Boolean
+    //write_tr(Collection<Object> argv)
+    //    throws ArgumentParserException
+    //{
+    //    return put_job_queue(new PTransaction(argv));
+    //}
 
     /**
      * Populates the <b>user_rw</b> data with command line.
@@ -387,7 +387,7 @@ Puppy
      * 
      */
 
-    private Boolean
+    public Boolean
     write_tr(File tr_file)
 	throws IOException, ArgumentParserException
     {
@@ -413,7 +413,7 @@ Puppy
 
 	JSONArray queue;
 
-	if(this.user_rw.getInt(USR_TRANSACTION_ID) > getTid())
+	if(this.user_rw.getInt(USR_TRANSACTION_ID) > getTid() && this.user_rw.has(USR_TRANSACTION))
 	{
 	    queue = this.user_rw.getJSONArray(USR_TRANSACTION);
 	}else
@@ -421,7 +421,12 @@ Puppy
 	    queue = new JSONArray();
 	}
 
-	queue.putAll(job.tr2list());
+	var ll = job.tr2list();
+	
+	if(ll == null || ll.size() == 0)
+	    return false;
+
+	queue.putAll(ll);
 
 	this.user_rw.put(USR_TRANSACTION, queue);
 
@@ -469,11 +474,28 @@ Puppy
 
 	try
 	{
-	 return new PTransaction(this.user_r.getJSONArray(USR_TRANSACTION).toList());
+	    var ll = this.user_r.getJSONArray(USR_TRANSACTION).toList();
+
+	 return new PTransaction(tr_fy(ll));
 
 	}catch(ArgumentParserException argExp){
 	    return null;
 	}
+    }
+
+    private <T> List<List<T>>
+    tr_fy(List<?> ll)
+    {
+	int llen = ll.size();
+
+	ArrayList<ArrayList<T>> tr_fied = new ArrayList<ArrayList<T>>(llen);
+	
+	for(int idx = 0; idx < llen; idx++)
+	{
+	    tr_fied.add((ArrayList<T>)ll.get(idx));
+	}
+
+	return (List)tr_fied;
     }
 
     public PTransaction
@@ -482,9 +504,12 @@ Puppy
 	if(!(this.user_rw.getInt(USR_TRANSACTION_ID) > getTid()))
 	    return null;
 
+	if(!(this.user_rw.has(USR_TRANSACTION)))
+		return null;
 	try
 	{
-	 return new PTransaction(this.user_rw.getJSONArray(USR_TRANSACTION).toList());
+	    var ll = this.user_rw.getJSONArray(USR_TRANSACTION).toList();
+	 return new PTransaction(tr_fy(ll));
 
 	} catch (ArgumentParserException e)
 	{

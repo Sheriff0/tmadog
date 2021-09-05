@@ -1,7 +1,7 @@
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
-import java.io.File;
 import java.nio.file.Files;
+import java.io.File;
 import java.nio.file.FileSystems;
 import java.util.List;
 import java.util.ArrayList;
@@ -28,6 +28,79 @@ public class
 IPuppy
 {
     public static void
+    pending(String[] argv, Puppy puppy, JSONObject user, BufferedReader stdin)
+    {
+
+	Integer def = 5;
+
+	ArgumentParser parser = ArgumentParsers.newFor("").addHelp(false).build();
+
+	parser.addArgument("lines")
+	    .type(def.getClass()).setDefault(def);
+
+	    Namespace args = null;
+	try{
+	    args = parser.parseArgs(argv);
+
+	}catch(ArgumentParserException argExp){
+	    parser.printUsage();
+	    return;
+	}
+	
+	var t = puppy.getPendingTransactions();
+	
+	if(t == null)
+	{
+	    System.out.println("None");
+	    return;
+	}
+    
+	var tr = t.iterator();
+
+	int len = args.getInt("lines");
+
+	for(int l = args.getInt("lines"); l > 0 && tr.hasNext(); --l)
+	{
+	    System.out.printf("(%d)\n\tMatric No: %s\n\tPassword: %s\n\tCourses: %s\n\tScores: %s\n", (len - l) + 1, tr.getNext_matno(), tr.getNext_pwd(), tr.getNext_crscodes(), tr.getNext_scores());
+	}
+    }
+
+    public static void
+    tfile(String[] argv, Puppy puppy, JSONObject user, BufferedReader stdin)
+    {
+
+	ArgumentParser parser = ArgumentParsers.newFor("tfile").addHelp(false).build();
+
+	parser.addArgument("filename")
+	    .help("file containing your matrics and password");
+
+	    Namespace args = null;
+	try{
+	    args = parser.parseArgs(argv);
+
+	}catch(ArgumentParserException argExp){
+	    parser.printUsage();
+	    return;
+	}
+
+	File ff = new File(args.getString("filename"));
+
+	try{
+	    if(puppy.write_tr(ff))
+		System.out.printf("Success\n");
+	    else
+		System.out.printf("Failed\n");
+
+	}catch(ArgumentParserException argExp){
+	    argExp.printStackTrace();
+
+	}catch(IOException exp){
+	    exp.printStackTrace();
+
+	}
+    }
+
+    public static void
     print(String[] argv, FPuppy puppy, JSONObject user, BufferedReader stdin)
     {
 	String[] choices = {
@@ -35,7 +108,8 @@ IPuppy
 	    "slots",
 	    "job",
 	    "jobs",
-	    "help"
+	    "help",
+	    "pending"
 	};
 
 	ArgumentParser parser = ArgumentParsers.newFor("print").addHelp(false).build();
@@ -44,9 +118,10 @@ IPuppy
 
 
 	String cmd = null;
+	List<String> rest = new ArrayList<String>();
 
 	try{
-	    Namespace args = parser.parseArgs(argv);
+	    Namespace args = parser.parseKnownArgs(argv, rest);
 	    cmd = args.get("command");
 	    
 
@@ -61,6 +136,10 @@ IPuppy
 		System.out.println(
 			user.toString(4)
 			);
+		break;
+
+	    case "pending":
+		pending(rest.toArray(new String[rest.size()]), puppy, user, stdin);
 		break;
 
 	    case "help":
@@ -102,6 +181,7 @@ IPuppy
 	    "print",
 	    "quit",
 	    "help",
+	    "tfile",
 	};
 
 	ArgumentParser parser = ArgumentParsers.newFor("").addHelp(false).build();
@@ -289,6 +369,10 @@ IPuppy
 
 		case "tma":
 		    tma(argv, puppy, user, stdin);
+		    break;
+
+		case "tfile":
+		    tfile(argv, puppy, user, stdin);
 		    break;
 
 		default:

@@ -1,7 +1,7 @@
 package dog;
 
 class
-Dropbox extends Server
+Dropbox/* extends Server*/
 {
     final static String UPLOAD_URL = "https://content.dropboxapi.com/2/files/upload";
 

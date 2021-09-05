@@ -14,7 +14,7 @@ import java.lang.Iterable;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Iterator;
-
+import java.util.Arrays;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -22,6 +22,7 @@ import net.sourceforge.argparse4j.inf.Namespace;
 
 import net.sourceforge.argparse4j.internal.UnrecognizedArgumentException;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.impl.action.AppendArgumentAction;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -89,29 +90,62 @@ PTransaction
     PTransaction(File tfile)
 	throws IOException, ArgumentParserException
     {
-	this(read_tr(tfile), tfile.getName());
+	ArrayList<String> argv = (ArrayList)read_tr(tfile);
+	ArrayList<ArrayList<String>> argv_list = new ArrayList<ArrayList<String>>();
+
+	if(argv != null)
+	    argv_list.add(argv);
+
+	init((List)argv_list, tfile.getName());
 	
     }
 
     PTransaction(String tstr)
 	    throws ArgumentParserException
     {
-	this((List<Object>)read_tr(tstr), null);
+	ArrayList<String> argv = (ArrayList)read_tr(tstr);
+	ArrayList<ArrayList<String>> argv_list = new ArrayList<ArrayList<String>>();
+
+	if(argv != null)
+	    argv_list.add(argv);
+
+	init((List)argv_list, null);
     }
 
-    PTransaction(Collection<Object> argv)
+    
+    PTransaction(List<List<String>> argv_list)
 	    throws ArgumentParserException
     {
-	this((Collection<Object>[]) new Object[] {argv}, null);
+	this(argv_list, null);
     }
 
-    PTransaction(Collection<Object> argv, String cname)
+    PTransaction(List<List<String>> argv_list,
+	    String cname)
 	    throws ArgumentParserException
     {
-	this((Collection<Object>[]) new Object[] {argv}, cname);
+	init((argv_list != null)? argv_list : (List)new ArrayList<ArrayList<String>>(0), cname);
     }
+   // PTransaction(List<Collection<?>> argv_list,
+   //         String cname)
+   //         throws ArgumentParserException
+   // {
+   //     init((argv_list != null)? argv_list : Arrays.asList(), cname);
+   // }
 
-    PTransaction(Collection<Object>[] argv_list,
+    //PTransaction(Object[] argv)
+    //        throws ArgumentParserException
+    //{
+    //    this((argv != null && argv.length > 0)? new Object[][] {argv}: new Object[0][0], null);
+    //}
+
+    //PTransaction(Object[] argv, String cname)
+    //        throws ArgumentParserException
+    //{
+    //    this((argv != null && argv.length > 0)? new Object[][] {argv} : new Object[0][0], cname);
+    //}
+
+    private void
+    init(List<List<String>> argv_list,
 	    String cname)
 	    throws ArgumentParserException
     {
@@ -127,17 +161,20 @@ PTransaction
 	    .dest(CNAME)
 	    .action(new PAppendAction());
 	
-	int llen = argv_list.length;
+	int llen = argv_list.size();
 
 	ArrayList<Namespace> args_list = new ArrayList<Namespace>(llen);
 
 
 	for(int idx = 0; idx < llen; idx++){ 
-	    Collection<Object> argv = argv_list[idx];
+	    //String[] argv = Arrays.copyOf(argv_list.get(idx).toArray(), argv_list.get(idx).size(), String[].class);
+
+	    String[] argv = argv_list.get(idx).toArray(new String[argv_list.get(idx).size()]);
+
 	    ArrayList<String> rest = new ArrayList<String>();
 
 	    // use custom 'psr' first to propagate errors from the main 'parser'
-	    Namespace args = psr.parseKnownArgs(argv.toArray(new String[argv.size()]), (List<String>)rest);
+	    Namespace args = psr.parseKnownArgs(argv, rest);
 
 	    args.getAttrs().putAll(
 		    parser.parseArgs(rest.toArray(new String[rest.size()])).getAttrs()
@@ -457,9 +494,9 @@ PTransaction
     }
 
 
-    PIterator iterator() { return new PIterator(this); };
+    public PIterator iterator() { return new PIterator(this); };
 
-    PIterator iterator(Integer from_idx) { return new PIterator(this, from_idx); };
+    public PIterator iterator(Integer from_idx) { return new PIterator(this, from_idx); };
 
     List<List<String>>
     tr2list()
@@ -487,10 +524,12 @@ PTransaction
 	    argv.add(all_args[ARGNAME_PWD][0]);
 
 	    argv.addAll(args.getList(arg_dest[ARGNAME_PWD]));
-
-	    argv.add(all_args[ARGNAME_CRSCODE][0]);
-
-	    argv.addAll(args.getList(arg_dest[ARGNAME_CRSCODE]));
+	    List<String> ll = args.getList(arg_dest[ARGNAME_CRSCODE]);
+	    if(ll != null && ll.size() > 0)
+	    {
+		argv.add(all_args[ARGNAME_CRSCODE][0]);
+		argv.addAll(ll);
+	    }
 
 	    all_argv.add(argv);
 
@@ -520,14 +559,14 @@ PTransaction
     }
 
 
-    private static List<Object>
+    private static List<String>
     read_tr(String str)
     {
 	List<String> lines = array_to_list(str.split("\n"));
 	return preprocess(lines.toArray(new String[lines.size()]));
     }
 
-    private static List<Object>
+    private static List<String>
     read_tr(File ff)
 	throws IOException
     {
@@ -542,10 +581,10 @@ PTransaction
 
     }
 
-    private static List<Object>
+    private static List<String>
     preprocess(String[] arglines)
     {
-	List<Object> argv = new ArrayList<Object>();
+	List<String> argv = new ArrayList<String>();
 	
 	String word;
 	String[] argbuff = {"", "", ""};
@@ -696,8 +735,8 @@ PTransaction
 	PIterator(PTransaction tr, Integer from_idx)
 	{
 	    this.tr = tr;
-	    this.index = from_idx;
-	    this.dim2 = this.tr.to2D(this.index);
+	    this.index = from_idx - 1;
+	    this.dim2 = new Integer[0];
 	}
 
 	PIterator(PTransaction tr)
@@ -705,7 +744,7 @@ PTransaction
 	    this(tr, 0);
 	}
 
-	boolean
+	public boolean
 	hasNext()
 	{
 	    // you need another iterator if the underlying transaction size changes
@@ -717,9 +756,9 @@ PTransaction
 	    return this.dim2 != null;
 	}
 
-	Object getNext_matno() { return this.tr.get_matno(this.dim2); };
+	public Object getNext_matno() { return this.tr.get_matno(this.dim2); };
 
-	Object
+	public Object
 	getNext_pwd()
 	{
 	    try
@@ -732,9 +771,9 @@ PTransaction
 	    }
 	}
 
-	Object getNext_crscodes() { return this.tr.get_crscodes(this.dim2); };
+	public Object getNext_crscodes() { return this.tr.get_crscodes(this.dim2); };
 
-	Object getNext_scores() { return this.tr.get_scores(this.dim2); };
+	public Object getNext_scores() { return this.tr.get_scores(this.dim2); };
     }
 
     public static class
